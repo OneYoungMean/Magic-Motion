@@ -1,0 +1,95 @@
+========================================================================================================================
+-------------------------------------------------------- BIO IK --------------------------------------------------------
+========================================================================================================================
+Hello! First of all, thank you for your interest and trust in this asset! I hope (and believe!) you will not be disappointed. :)
+
+Everything you need 'BioIK' component. Add it to your character, and add joints and objectives wherever you like. I suggest you 
+take a look at the various demo scenes to get a quick understanding of how it all works! Note that the online step-by-step tutorial 
+is still online, it was much more complex at that time and is now outdated, but can still be used to get an impression about the concept.
+If you are happy with this asset, please let me know! If you use it for scientific research or related purposes, I'd be glad 
+if you reference my corresponding publications on my website. If you have any questions or suggestions for improvements, 
+just contact me. If you experience any bugs or unexpected behaviour - please let me know! I will fix it as soon as possible 
+since I'm very interested in consistently improving this asset. Hence, further updates will frequently come! :)
+
+--- HOW TO SETUP YOUR KINEMATIC MODEL ---
+    #Step 1: Provide an arbitrary model with a hierarchical structure of game objects.
+    #Step 2: Add the 'BioIK' component somewhere to your character. You should then see the controllable segments connected by chains.
+    #Step 3: Add joints and objectives where desired. Joints define the motion, Objectives define the goals to be reached by the optimisation.
+             Note that each segment can only have one joint, but multiple objectives at the same time. However, be aware that a higher number
+             of objectives naturally increases the complexity, but can also help to constrain the motion or possible solutions.
+    #Step 4: Fill the parameters for the objectives (i.e. Transform references).
+    #Step 5: If desired, play around with the settings parameters for the algorithm, or the weights for the objectives.
+    #Step 6: Everything should be fine now. Go play around and see the magic happen! :)
+
+--- PARAMETERS ---
+    ===BioIK===
+    Generations (Recommended: 1-3):
+        The number of generations (iterations) per frame. Increasing this parameter linearly increases the computation time. 
+    Individiuals (Recommended: 40-120):
+        This is the number of individuals (potential solutions) that are heuristically created and evolved during each evolutionary generation.
+        This number should always be significantly higher than the elitist individuals.
+    Elites (Recommended: 1-3):
+        This is the number of individuals that are currently most successfull among the population. Those are tracked and are
+        exploited to track multiple solutions (local extrema) simultaneously. 1 Elite will cause strictly unimodal solutions
+        but might get stuck in suboptimal extrema. Multiple elites are likely to cause small fluctuations due to multimodal optimisation.
+        For simple kinematic structures, one elite should be sufficient. If you observe the algorithm getting stuck, try using two or three elites.
+    Smoothing (Recommended: 0.1-0.5):
+        This simply blends between the last joint positions and the current joint positions, introducing a smoother transition between postures.
+    Animation Weight:
+	    This factor weights animation into solving IK by manipulating the reference frame and then by post-modulating the animation.
+        Hence, 0 = zero animation added and 1 = full animation added into IK.
+        Note that this factor also shifts the predefined joint limits in direction of the animation offset.
+	Animation Blend:
+	    This factor blends between the animation posture and the evolved IK posture, where 0 = IK posture and 1 = animation posture.
+      Motion Type:
+        Realistic - Creates smooth motion to the target configuration depending on acceleration and velocity.
+        Instantaneous - Immediately assigns the target configuration.
+
+    ===Joints===
+        Anchor:
+            The connected anchor to which the motion is relative to.
+        Orientation:
+            The orientation of the motion relative to the connected body.
+	    Default Frame:
+	        This is the reference transformation for computing relative joint motion.
+
+        X/Y/Z Motion:
+            Constrained:
+                Use this if you want to use joint limits.
+            Lower Limit:
+                Assign a lower limit for this joint.
+            Upper Limit:
+                Assign an upper limit for this joint.
+            Target Value:
+                This value is controlled by BioIK, but you can also individually set this value if you want and if you turn off solving IK automatically :)
+
+    ===Objective Component=== (See individual files for further description)
+        Weight:
+            How important is this objective for the optimisation?
+        ---Position---
+            This objective optimises a given target position with XYZ coordinates. The target can either be a transform or a Vector3.
+            The maximum error is the threshold for which a solution is considered as converged for this objective.
+        ---Orientation---
+            This objective optimises a given target orientation. The target can either be a transform or a Quaternion.
+            The maximum error is the threshold for which a solution is considered as converged for this objective.
+        ---LookAt---
+            This objective optimises a target by looking into its direction relative to the objective. The target can either be a transform or a Vector3.
+            The direction vector is defined relative to the objective. The maximum error is the threshold for which a solution is considered as converged for this objective.
+        ---Distance--- (beta development)
+            This objective ensures that the distance from the objective to the target becomes not lower than the given distance threshold.
+        ---Displacement--- (beta development)
+            This objective aims to achieve minimal joint value changes during optimisation, and thus to avoid fluctuations or larger posture changes.
+            Note that the weight should typically be chosen comparatively small.
+        ---JointValue--- (beta development)
+            This objective aims to maintain given joint value for a specific joint.
+        ---Projection--- (beta development)
+            This objective projects a transform onto the surface with respect to the normal vector and the projection distance. (Will be integrated into position and orientation soon)
+
+
+========================================================================================================================
+--------------------------------------------------- ADDITIONAL NOTES ---------------------------------------------------
+========================================================================================================================
+#1 - Please avoid non-uniform scaling. It's the root of all evil and might destroy the IK solutions. The implemented FK solver does
+     not consider this mainly for performance reasons.
+#2 - BIO IK NOW USES THREADING - IF YOU ARE USING THE HOLOLENS ON WINDOWS, THERE MIGHT BE SOME ISSUES. IN THIS CASE, PLEASE CONTACT ME!
+========================================================================================================================
