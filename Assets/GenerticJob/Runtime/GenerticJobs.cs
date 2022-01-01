@@ -243,7 +243,7 @@ public static unsafe class GenerticJobs
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void CrossoverGene(GeneDynamic1 origin1, GeneDynamic1 origin2, GeneDynamic1 destination, int geneSnippetCount, uint randomseed)
             {
-                Random random =  Random.CreateFromIndex(randomseed);
+                Random random =  Random.CreateFromIndex(randomseed+ (uint)destination.First);
                 Crossover_CycleCrossArray(origin1.GetSnippetGenePtr(), origin2.GetSnippetGenePtr(), destination.GetSnippetGenePtr(), geneSnippetCount, random);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -457,13 +457,9 @@ public static unsafe class GenerticJobs
                     GeneDynamic1 target = tempGeneBufferPtr[i];
                     int originIndex1 = i/eliteGeneCount;
                     int originIndex2 = i % eliteGeneCount;
-                    if (originIndex2 >= originIndex1)
-                    {
-                        originIndex2++;
-                    }
 
                     GeneDynamic1 originElite1 = tempGeneBufferPtr[originIndex1];
-                    GeneDynamic1 originElite2 = tempGeneBufferPtr[originIndex2];
+                    GeneDynamic1 originElite2 = tempGeneBufferPtr[originIndex2+ eliteGeneCount];
                     CrossoverGene(originElite1, originElite2, target, geneSnippetCount, (uint)(randomSeed + i));
 
                     for (int j0 = 0; j0 < i; j0++)

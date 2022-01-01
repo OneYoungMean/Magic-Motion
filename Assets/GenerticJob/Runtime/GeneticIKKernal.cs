@@ -87,7 +87,7 @@ namespace GeneticJob
 
                 EliteGeneCount = EliteGeneCount,
                 MutationGeneCount = EliteGeneCount,
-                CrossoverGeneCount = EliteGeneCount* (EliteGeneCount-1),
+                CrossoverGeneCount = EliteGeneCount* EliteGeneCount,
                 RandomGeneCount = RandomGeneCount,
 
                 geneSnippetCount=jointCount,

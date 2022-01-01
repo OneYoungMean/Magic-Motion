@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using Unity.Mathematics;
+using UnityEngine;
 
 namespace BIOIK {
 
@@ -182,107 +183,124 @@ namespace BIOIK {
 			} else {
 				//LocalPosition = WorldAnchor + AngleAxis(roll) * AngleAxis(pitch) * AngleAxis(yaw) * (-LocalAnchor)
 				//LocalRotation = DefaultLocalRotation * AngleAxis(roll) * AngleAxis(pitch) * AngleAxis(yaw)
-				double sin, x1, y1, z1, w1, x2, y2, z2, w2, qx, qy, qz, qw = 0.0;
-				if(valueZ != 0.0) {
-					sin = System.Math.Sin(valueZ/2.0);
-					qx = Z.Axis.x * sin;
-					qy = Z.Axis.y * sin;
-					qz = Z.Axis.z * sin;
-					qw = System.Math.Cos(valueZ/2.0);
-					if(valueX != 0.0) {
-						sin = System.Math.Sin(valueX/2.0);
-						x1 = X.Axis.x * sin;
-						y1 = X.Axis.y * sin;
-						z1 = X.Axis.z * sin;
-						w1 = System.Math.Cos(valueX/2.0);
-						x2 = qx; y2 = qy; z2 = qz; w2 = qw;
-						qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
-						qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
-						qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
-						qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
-						if(valueY != 0.0) {
-							sin = System.Math.Sin(valueY/2.0);
-							x1 = Y.Axis.x * sin;
-							y1 = Y.Axis.y * sin;
-							z1 = Y.Axis.z * sin;
-							w1 = System.Math.Cos(valueY/2.0);
-							x2 = qx; y2 = qy; z2 = qz; w2 = qw;
-							qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
-							qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
-							qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
-							qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
-						} else {
+/*				double sin, x1, y1, z1, w1, x2, y2, z2, w2, qx, qy, qz, qw = 0.0;*/
+				/*				
+								if(valueZ != 0.0) {
+									sin = System.Math.Sin(valueZ/2.0);
+									qx = Z.Axis.x * sin;
+									qy = Z.Axis.y * sin;
+									qz = Z.Axis.z * sin;
+									qw = System.Math.Cos(valueZ/2.0);
+									if(valueX != 0.0) {
+										sin = System.Math.Sin(valueX/2.0);
+										x1 = X.Axis.x * sin;
+										y1 = X.Axis.y * sin;
+										z1 = X.Axis.z * sin;
+										w1 = System.Math.Cos(valueX/2.0);
+										x2 = qx; y2 = qy; z2 = qz; w2 = qw;
+										qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
+										qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
+										qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
+										qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
+										if(valueY != 0.0) {
+											sin = System.Math.Sin(valueY/2.0);
+											x1 = Y.Axis.x * sin;
+											y1 = Y.Axis.y * sin;
+											z1 = Y.Axis.z * sin;
+											w1 = System.Math.Cos(valueY/2.0);
+											x2 = qx; y2 = qy; z2 = qz; w2 = qw;
+											qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
+											qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
+											qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
+											qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
+										} else {
 
-						}
-					} else if(valueY != 0.0) {
-						sin = System.Math.Sin(valueY/2.0);
-						x1 = Y.Axis.x * sin;
-						y1 = Y.Axis.y * sin;
-						z1 = Y.Axis.z * sin;
-						w1 = System.Math.Cos(valueY/2.0);
-						x2 = qx; y2 = qy; z2 = qz; w2 = qw;
-						qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
-						qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
-						qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
-						qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
-					} else {
+										}
+									} else if(valueY != 0.0) {
+										sin = System.Math.Sin(valueY/2.0);
+										x1 = Y.Axis.x * sin;
+										y1 = Y.Axis.y * sin;
+										z1 = Y.Axis.z * sin;
+										w1 = System.Math.Cos(valueY/2.0);
+										x2 = qx; y2 = qy; z2 = qz; w2 = qw;
+										qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
+										qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
+										qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
+										qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
+									} else {
 
-					}
-				} else if(valueX != 0.0) {
-					sin = System.Math.Sin(valueX/2.0);
-					qx = X.Axis.x * sin;
-					qy = X.Axis.y * sin;
-					qz = X.Axis.z * sin;
-					qw = System.Math.Cos(valueX/2.0);
-					if(valueY != 0.0) {
-						sin = System.Math.Sin(valueY/2.0);
-						x1 = Y.Axis.x * sin;
-						y1 = Y.Axis.y * sin;
-						z1 = Y.Axis.z * sin;
-						w1 = System.Math.Cos(valueY/2.0);
-						x2 = qx; y2 = qy; z2 = qz; w2 = qw;
-						qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
-						qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
-						qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
-						qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
-					} else {
+									}
+								} else if(valueX != 0.0) {
+									sin = System.Math.Sin(valueX/2.0);
+									qx = X.Axis.x * sin;
+									qy = X.Axis.y * sin;
+									qz = X.Axis.z * sin;
+									qw = System.Math.Cos(valueX/2.0);
+									if(valueY != 0.0) {
+										sin = System.Math.Sin(valueY/2.0);
+										x1 = Y.Axis.x * sin;
+										y1 = Y.Axis.y * sin;
+										z1 = Y.Axis.z * sin;
+										w1 = System.Math.Cos(valueY/2.0);
+										x2 = qx; y2 = qy; z2 = qz; w2 = qw;
+										qx = x1 * w2 + y1 * z2 - z1 * y2 + w1 * x2;
+										qy = -x1 * z2 + y1 * w2 + z1 * x2 + w1 * y2;
+										qz = x1 * y2 - y1 * x2 + z1 * w2 + w1 * z2;
+										qw = -x1 * x2 - y1 * y2 - z1 * z2 + w1 * w2;
+									} else {
 
-					}
-				} else if(valueY != 0.0) {
-					sin = System.Math.Sin(valueY/2.0);
-					qx = Y.Axis.x * sin;
-					qy = Y.Axis.y * sin;
-					qz = Y.Axis.z * sin;
-					qw = System.Math.Cos(valueY/2.0);
-				} else {
-					lpX = AnimatedDefaultPosition.x;
-					lpY = AnimatedDefaultPosition.y;
-					lpZ = AnimatedDefaultPosition.z;
-					lrX = AnimatedDefaultRotation.x;
-					lrY = AnimatedDefaultRotation.y;
-					lrZ = AnimatedDefaultRotation.z;
-					lrW = AnimatedDefaultRotation.w;
-					return;
-				}
-
+									}
+								} else if(valueY != 0.0) {
+									sin = System.Math.Sin(valueY/2.0);
+									qx = Y.Axis.x * sin;
+									qy = Y.Axis.y * sin;
+									qz = Y.Axis.z * sin;
+									qw = System.Math.Cos(valueY/2.0);
+								} else {
+									lpX = AnimatedDefaultPosition.x;
+									lpY = AnimatedDefaultPosition.y;
+									lpZ = AnimatedDefaultPosition.z;
+									lrX = AnimatedDefaultRotation.x;
+									lrY = AnimatedDefaultRotation.y;
+									lrZ = AnimatedDefaultRotation.z;
+									lrW = AnimatedDefaultRotation.w;
+									return;
+								}*/
+				Quaternion test = quaternion.Euler((float)valueX, (float)valueY, (float)valueZ);
+/*				qx = test.x;
+				qy = test.y;
+				qz = test.z;
+				qw = test.w;*/
+				test = AnimatedDefaultRotation* test ;
 				//Local Rotation
 				//R' = R*Q
-				lrX = AnimatedDefaultRotation.x * qw + AnimatedDefaultRotation.y * qz - AnimatedDefaultRotation.z * qy + AnimatedDefaultRotation.w * qx;
-				lrY = -AnimatedDefaultRotation.x * qz + AnimatedDefaultRotation.y * qw + AnimatedDefaultRotation.z * qx + AnimatedDefaultRotation.w * qy;
-				lrZ = AnimatedDefaultRotation.x * qy - AnimatedDefaultRotation.y * qx + AnimatedDefaultRotation.z * qw + AnimatedDefaultRotation.w * qz;
-				lrW = -AnimatedDefaultRotation.x * qx - AnimatedDefaultRotation.y * qy - AnimatedDefaultRotation.z * qz + AnimatedDefaultRotation.w * qw;
+				/*				lrX = AnimatedDefaultRotation.x * qw + AnimatedDefaultRotation.y * qz - AnimatedDefaultRotation.z * qy + AnimatedDefaultRotation.w * qx;
+								lrY = -AnimatedDefaultRotation.x * qz + AnimatedDefaultRotation.y * qw + AnimatedDefaultRotation.z * qx + AnimatedDefaultRotation.w * qy;
+								lrZ = AnimatedDefaultRotation.x * qy - AnimatedDefaultRotation.y * qx + AnimatedDefaultRotation.z * qw + AnimatedDefaultRotation.w * qz;
+								lrW = -AnimatedDefaultRotation.x * qx - AnimatedDefaultRotation.y * qy - AnimatedDefaultRotation.z * qz + AnimatedDefaultRotation.w * qw;*/
 
+				lrX = test.x;
+				lrY = test.y;
+				lrZ = test.z;
+				lrW = test.w;
 				//Local Position
-				if(LSA.x == 0.0 && LSA.y == 0.0 && LSA.z == 0.0) {
+				if (LSA.x == 0.0 && LSA.y == 0.0 && LSA.z == 0.0) {
 					//P' = Pz
 					lpX = AnimatedDefaultPosition.x;
 					lpY = AnimatedDefaultPosition.y;
 					lpZ = AnimatedDefaultPosition.z;
 				} else {
 					//P' = P + RA + R*Q*(-A)
-					lpX = ADPADRSA.x + 2.0 * ((0.5 - lrY * lrY - lrZ * lrZ) * -LSA.x + (lrX * lrY - lrW * lrZ) * -LSA.y + (lrX * lrZ + lrW * lrY) * -LSA.z);
-					lpY = ADPADRSA.y + 2.0 * ((lrX * lrY + lrW * lrZ) * -LSA.x + (0.5 - lrX * lrX - lrZ * lrZ) * -LSA.y + (lrY * lrZ - lrW * lrX) * -LSA.z);
-					lpZ = ADPADRSA.z + 2.0 * ((lrX * lrZ - lrW * lrY) * -LSA.x + (lrY * lrZ + lrW * lrX) * -LSA.y + (0.5 - lrX * lrX - lrY * lrY) * -LSA.z);
+					Vector3 localPosition = ADPADRSA + test * LSA;
+
+					lpX = localPosition.x;
+					lpY = localPosition.y;
+					lpZ = localPosition.z;
+					/*					lpX = ADPADRSA.x + 2.0 * ((0.5 - lrY * lrY - lrZ * lrZ) * -LSA.x + (lrX * lrY - lrW * lrZ) * -LSA.y + (lrX * lrZ + lrW * lrY) * -LSA.z);
+										lpY = ADPADRSA.y + 2.0 * ((lrX * lrY + lrW * lrZ) * -LSA.x + (0.5 - lrX * lrX - lrZ * lrZ) * -LSA.y + (lrY * lrZ - lrW * lrX) * -LSA.z);
+										lpZ = ADPADRSA.z + 2.0 * ((lrX * lrZ - lrW * lrY) * -LSA.x + (lrY * lrZ + lrW * lrX) * -LSA.y + (0.5 - lrX * lrX - lrY * lrY) * -LSA.z);*/
+
+					Vector3 test2 = ADPADRSA + test * LSA;
 				}
 			}
 		}
