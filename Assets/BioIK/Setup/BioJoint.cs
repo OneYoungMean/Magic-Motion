@@ -11,7 +11,7 @@ namespace BIOIK {
 
 		[SerializeField] private Vector3 Anchor = Vector3.zero;						//Joint anchor  position ,锚点
 		[SerializeField] private Vector3 Orientation = Vector3.zero;				//Joint orientation		 朝向，
-		[SerializeField] private float DPX, DPY, DPZ, DRX, DRY, DRZ, DRW;			//Default frame 这里是transform的position和rotation
+		[SerializeField] private float DPX, DPY, DPZ, DRX, DRY, DRZ, DRW;			//Default frame 这里是transform的position和rotation       
 
 		private Vector3 AnimationPosition, AnimatedDefaultPosition;
 		private Quaternion AnimationRotation, AnimatedDefaultRotation;
