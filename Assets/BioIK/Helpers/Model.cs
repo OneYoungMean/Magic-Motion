@@ -20,7 +20,7 @@ namespace BIOIK {
 		//Global pointers to the IK setup
 		public MotionPtr[] MotionPtrs = new MotionPtr[0];
 		public ObjectivePtr[] ObjectivePtrs = new ObjectivePtr[0];
-
+		    
 		//Assigned Configuraton
 		private double[] Configuration;
 		private double[] Gradient;

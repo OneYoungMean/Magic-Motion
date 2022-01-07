@@ -54,5 +54,70 @@ namespace BIOIK2
         {
             childs.Add( child);
         }
+        public void Refresh()
+        {
+            if (joint==null)
+            {
+                localPosition = transform.localPosition;
+                localRotation = transform.localRotation;
+            }
+            else
+            {
+                value = joint.bioMotion.GetTargetValue(true);
+                joint.ComputeLocalTransformation(value, out localPosition, out localRotation);
+
+                worldScale = transform.lossyScale;
+            }
+
+
+
+        }
+
+        private void ComputeWorldTransformation()
+        {
+            quaternion rotation;
+            float3 position;
+            if (parent ==null)
+            {
+                worldPosition = model.originPosition;
+                 rotation = model.originRotation;
+                 position = model.originScale * localPosition;
+            }
+            else
+            {
+                worldPosition = parent.worldPosition;
+                 rotation = parent.worldRotation;
+                 position = parent.worldScale * localPosition;
+            }
+            worldPosition =math.mul( rotation , position);
+            worldRotation = math.mul(rotation, localRotation);
+        }
+    }
+
+    public class ObjectivePtr
+    {
+        public BioObjective Objective;
+        public BioNode Node;
+        public int Index;
+        public ObjectivePtr(BioObjective objective, BioNode node, int index)
+        {
+            Objective = objective;
+            Node = node;
+            Index = index;
+        }
+
+    }
+
+    public class MotionPtr
+    {
+        public BioMotion Motion;
+        public BioNode Node;
+        public int Index;
+        public MotionPtr(BioMotion motion, BioNode node, int index)
+        {
+            Motion = motion;
+            Node = node;
+            Index = index;
+        }
     }
 }
