@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -27,7 +28,8 @@ namespace BIOIK2
 
         public float3 value;
 
-        public BioNode(BioModel model, BioNode parent, BioSegment segment)
+        public bool[] ObjectiveImpacts; //表示整个运动树中哪些目标指标受到影响的布尔值
+        public BioNode(BioModel model, BioNode parent, BioSegment parentSegment)
         {
             this.model = model;
             this.parent = parent;
@@ -35,8 +37,8 @@ namespace BIOIK2
             {
                 this.parent.AddChild(this);
             }
-            transform = segment.transform;
-            joint = segment.Joint;
+            transform = parentSegment.transform;
+            joint = parentSegment.Joint;
             List<Transform> reverseChain = new List<Transform>();
             reverseChain.Add(transform);
             BioNode p = parent;
@@ -91,6 +93,17 @@ namespace BIOIK2
             }
             worldPosition =math.mul( rotation , position);
             worldRotation = math.mul(rotation, localRotation);
+        }
+
+        internal void CopyFrom(BioNode other)
+        {
+            other.worldPosition = worldPosition;
+            other.worldRotation = worldRotation;
+            other.worldScale = worldScale;
+            other.localPosition = localPosition;
+            other.localRotation = localRotation;
+
+            other.value = value;
         }
     }
 

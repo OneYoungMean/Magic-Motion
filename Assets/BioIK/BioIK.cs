@@ -197,7 +197,7 @@ namespace BIOIK {
 		}
 
 		public List<BioSegment> GetChain(BioSegment start, BioSegment end) {
-			List<BioSegment> chain = new List<BioSegment>();
+			List<BioSegment> chain = new List<BioSegment>(); //这个方法写的有问题,不应该放在这里.
 			BioSegment segment = end;
 			while(true) {
 				chain.Add(segment);

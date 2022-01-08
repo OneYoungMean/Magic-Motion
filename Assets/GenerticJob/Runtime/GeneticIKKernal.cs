@@ -72,7 +72,6 @@ namespace GeneticJob
             }
             ulong* rawEliteDataPtr = (ulong*)genesRawData.GetUnsafePtr();
 
-
             PrepareGeneticDataJob prepareGeneticDataJob = new PrepareGeneticDataJob()
             {
                 targetPosition = targetPositionPtr

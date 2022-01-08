@@ -59,7 +59,7 @@ namespace BIOIK2
             {
                 forward = segment.Childs[0].Transform.localPosition;
             }
-            else if (segment.Parent != null)
+            else if (segment.parent != null)
             {
                 forward = Quaternion.Inverse(segment.Transform.localRotation) * segment.Transform.localPosition;//OYM;”¶∏√ «childposion
             }
@@ -146,7 +146,7 @@ namespace BIOIK2
         }
         public int GetDof()
         {
-            return math.csum((int3)bioMotion.enabled);
+            return math.csum((int3)bioMotion.isEnable);
         }
         public void SetDefaultFrame(Vector3 localPosition, Quaternion localRotation)
         {

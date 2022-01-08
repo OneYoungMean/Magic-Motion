@@ -48,7 +48,7 @@ namespace BIOIK {
             for(int i=0; i<objectives.Length; i++) {
                 List<BioSegment> chain = Character.GetChain(Root, objectives[i].Segment);//OYM:求解链
                 for(int j=1; j<chain.Count; j++) {
-					AddNode(chain[j]);
+					AddNode(chain[j]);//这个地方看上去会同时添加好几条链
 				}
 			}
 
