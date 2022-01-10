@@ -159,7 +159,7 @@ namespace BIOIK2
                 }
                 
             }
-            for (int i = 0; i < segment.Childs.Length; i++)
+            for (int i = 0; i < segment.Childs.Count; i++)
             {
                 CollectObjectives(segment.Childs[i], objectiveList);
             }

@@ -55,13 +55,13 @@ namespace BIOIK2
             defaultRotation = transform.localRotation;
 
             Vector3 forward = Vector3.zero;
-            if (segment.Childs.Length == 1)
+            if (segment.Childs.Count == 1)
             {
-                forward = segment.Childs[0].Transform.localPosition;
+                forward = segment.Childs[0].transform.localPosition;
             }
             else if (segment.parent != null)
             {
-                forward = Quaternion.Inverse(segment.Transform.localRotation) * segment.Transform.localPosition;//OYM;应该是childposion
+                forward = Quaternion.Inverse(segment.transform.localRotation) * segment.transform.localPosition;//OYM;应该是childposion
             }
 
  /*           if (forward.magnitude != 0f)

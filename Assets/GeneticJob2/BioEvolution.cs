@@ -29,6 +29,14 @@ namespace BIOIK2
 
         private bool useThreading;
 
+        private bool evolving = false;
+
+        private bool[] improved = null;
+
+        private BioModel[] models = null;
+
+        private BFGS_F[] optimisers = null;
+
         public BioEvolution(BioModel bioModel, int populationSize, int elites, bool useThreading)
         {
             this.bioModel = bioModel;

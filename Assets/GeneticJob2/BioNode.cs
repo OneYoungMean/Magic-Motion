@@ -24,7 +24,7 @@ namespace BIOIK2
 
         public bool3 enabled;
 
-        public int3 index;
+        public int index;
 
         public float3 value;
 
