@@ -1,4 +1,4 @@
-﻿using Unity.Mathematics;
+﻿
 using UnityEngine;
 
 namespace BIOIK {
@@ -266,7 +266,7 @@ namespace BIOIK {
 									lrW = AnimatedDefaultRotation.w;
 									return;
 								}*/
-				Quaternion test = quaternion.Euler((float)valueX, (float)valueY, (float)valueZ);
+				Quaternion test = Quaternion.Euler((float)valueX*Mathf.Rad2Deg, (float)valueY * Mathf.Rad2Deg, (float)valueZ * Mathf.Rad2Deg);
 /*				qx = test.x;
 				qy = test.y;
 				qz = test.z;

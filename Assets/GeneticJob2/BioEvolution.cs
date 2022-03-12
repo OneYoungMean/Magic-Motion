@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
 using Unity.Mathematics;
 
 namespace BIOIK2
@@ -37,6 +38,9 @@ namespace BIOIK2
 
         private BFGS_F[] optimisers = null;
 
+        //OYM: threading;
+
+        private bool threadsRunning = false;
         public BioEvolution(BioModel bioModel, int populationSize, int elites, bool useThreading)
         {
             this.bioModel = bioModel;
