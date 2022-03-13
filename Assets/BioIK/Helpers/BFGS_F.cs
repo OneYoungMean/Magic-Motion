@@ -68,7 +68,7 @@ namespace BIOIK
             NewG = null;
         }
 
-        public void minimise(float[] values, ref bool evolving)
+        public void Minimise(float[] values, ref bool evolving)
         {
             for (int i = 0; i < Dimensionality; i++)
             {
@@ -110,7 +110,7 @@ namespace BIOIK
             Value = Function(Solution);
         }
 
-        public void minimise(float[] values, float timeout)
+        public void Minimise(float[] values, float timeout)
         {
             for (int i = 0; i < Dimensionality; i++)
             {
@@ -253,7 +253,7 @@ namespace BIOIK
             newG = null;
         }
 
-        public void minimise(float[] values, ref bool evolving) {
+        public void Minimise(float[] values, ref bool evolving) {
             Prepare(values);
             Optimise(ref evolving);
             Value = Function(Solution);
@@ -277,7 +277,7 @@ namespace BIOIK
             }
         }
 
-        public void minimise(float[] values, float timeout) {
+        public void Minimise(float[] values, float timeout) {
             Prepare(values);
             Optimise(timeout);
             Value = Function(Solution);
