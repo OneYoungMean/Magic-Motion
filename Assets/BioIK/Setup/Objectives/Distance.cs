@@ -15,7 +15,7 @@ namespace BIOIK {
     public class Distance : BioObjective
     { //OYM:与某一点保持特定的距离
 
-        [SerializeField] private double Radius = 0.1;
+        [SerializeField] private float Radius = 0.1f;
 		[SerializeField] private DistancePoint[] Points = new DistancePoint[0];
 
 		public override ObjectiveType GetObjectiveType() {
@@ -36,16 +36,16 @@ namespace BIOIK {
 			}
 		}
 
-		public override double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			double loss = 0.0;
+		public override float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			float loss = 0.0f;
 			for(int i=0; i<Points.Length; i++) {
 				if(Points[i] != null) {
-					double dist = System.Math.Sqrt((Points[i].TPX-WPX)*(Points[i].TPX-WPX) + (Points[i].TPY-WPY)*(Points[i].TPY-WPY) + (Points[i].TPZ-WPZ)*(Points[i].TPZ-WPZ));
-					double x = dist - Radius;
-					if(x <= 0.0) {
+					float dist = (float)System.Math.Sqrt((Points[i].TPX-WPX)*(Points[i].TPX-WPX) + (Points[i].TPY-WPY)*(Points[i].TPY-WPY) + (Points[i].TPZ-WPZ)*(Points[i].TPZ-WPZ));
+					float x = dist - Radius;
+					if(x <= 0.0f) {
 						return float.MaxValue;
 					} else {
-						loss += 1.0/x;
+						loss += 1.0f/x;
 					}
 				}
 			}
@@ -53,7 +53,7 @@ namespace BIOIK {
 			return Weight * loss * loss;
 		}
 
-		public override bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			for(int i=0; i<Points.Length; i++) {
 				if(Points[i] != null) {
 					if(System.Math.Sqrt((Points[i].TPX-WPX)*(Points[i].TPX-WPX) + (Points[i].TPY-WPY)*(Points[i].TPZ-WPY) + (Points[i].TPZ-WPZ)*(Points[i].TPZ-WPZ)) <= Radius) {
@@ -64,21 +64,21 @@ namespace BIOIK {
 			return true;
 		}
 
-		public override double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			double dist = 0.0;
+		public override float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			float dist = 0.0f;
 			for(int i=0; i<Points.Length; i++) {
 				if(Points[i] != null) {
-					dist = System.Math.Max(dist, System.Math.Sqrt((Points[i].TPX-WPX)*(Points[i].TPX-WPX) + (Points[i].TPY-WPY)*(Points[i].TPY-WPY) + (Points[i].TPZ-WPZ)*(Points[i].TPZ-WPZ)));
+					dist =(float) System.Math.Max(dist, System.Math.Sqrt((Points[i].TPX-WPX)*(Points[i].TPX-WPX) + (Points[i].TPY-WPY)*(Points[i].TPY-WPY) + (Points[i].TPZ-WPZ)*(Points[i].TPZ-WPZ)));
 				}
 			}
 			return dist;
 		}
 
-		public void SetRadius(double radius) {
+		public void SetRadius(float radius) {
 			Radius = radius;
 		}
 
-		public double GetRadius() {
+		public float GetRadius() {
 			return Radius;
 		}
 
@@ -102,8 +102,8 @@ namespace BIOIK {
 	[System.Serializable]
 	public class DistancePoint {
 		public Transform Target;
-		public double Radius;
-		public double TPX, TPY, TPZ;
+		public float Radius;
+		public float TPX, TPY, TPZ;
 
 		public void SetTargetTransform(Transform t) {
 			Target = t;
@@ -122,11 +122,11 @@ namespace BIOIK {
 			return new Vector3((float)TPX, (float)TPY, (float)TPZ);
 		}
 
-		public void SetRadius(double radius) {
+		public void SetRadius(float radius) {
 			Radius = radius;
 		}
 
-		public double GetRadius() {
+		public float GetRadius() {
 			return Radius;
 		}
 	}

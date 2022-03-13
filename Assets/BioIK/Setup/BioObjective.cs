@@ -6,7 +6,7 @@ namespace BIOIK {
     public abstract class BioObjective : MonoBehaviour
     { //OYM:抽象类,包括各种工具
         public BioSegment Segment;
-		public double Weight = 1.0;
+		public float Weight = 1.0f;
 
 		void Awake() {
 
@@ -60,24 +60,24 @@ namespace BIOIK {
 			Utility.Destroy(this);
 		}
 
-		public void SetWeight(double weight) {
-			if(weight < 0.0) {
+		public void SetWeight(float weight) {
+			if(weight < 0.0f) {
 				Debug.Log("Weight must be at least zero.");
-				Weight = 0.0;
+				Weight = 0.0f;
 				return;
 			}
 			Weight = weight;
 		}
 
-		public double GetWeight() {
+		public float GetWeight() {
 			return Weight;
 		}
 
 		public abstract ObjectiveType GetObjectiveType();
 		public abstract void UpdateData();
-		public abstract double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration);
-		public abstract bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration);
-		public abstract double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration);
+		public abstract float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration);
+		public abstract bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration);
+		public abstract float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration);
 	}
 
 }

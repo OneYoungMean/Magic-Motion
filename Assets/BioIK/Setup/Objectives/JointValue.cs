@@ -12,13 +12,13 @@ namespace BIOIK {
 	[AddComponentMenu("")]
 	public class JointValue : BioObjective {
 
-		public double TargetValue = 0.0;
+		public float TargetValue = 0.0f;
 		public bool X, Y, Z;
 		
 		private BioJoint.Motion Motion;
 		private bool Valid;
 		private Model.MotionPtr Ptr;
-		private double NormalisedTargetValue;
+		private float NormalisedTargetValue;
 
 		public override ObjectiveType GetObjectiveType() {
 			return ObjectiveType.JointValue;
@@ -45,30 +45,30 @@ namespace BIOIK {
 			NormalisedTargetValue = Segment.Joint.JointType == JointType.Rotational ? NormalisedTargetValue = Utility.Deg2Rad * TargetValue : TargetValue;
 		}
 
-		public override double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			if(!Valid) {
-				return 0.0;
+				return 0.0f;
 			}
-			double loss = configuration[Ptr.Index] - NormalisedTargetValue;
+			float loss = configuration[Ptr.Index] - NormalisedTargetValue;
 			return Weight * loss * loss;
 		}
 
-		public override bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			return true;
 		}
 
-		public override double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			if(!Valid) {
-				return 0.0;
+				return 0.0f;
 			}
 			return System.Math.Abs(configuration[Ptr.Index] - NormalisedTargetValue);
 		}
 
-		public void SetTargetValue(double value) {
+		public void SetTargetValue(float value) {
 			TargetValue = value;
 		}
 
-		public double GetTargetValue() {
+		public float GetTargetValue() {
 			return TargetValue;
 		}
 

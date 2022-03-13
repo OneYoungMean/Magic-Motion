@@ -1,7 +1,6 @@
 ﻿using UnityEngine;
 using System.Threading;
 using System.Collections.Generic;
-
 namespace BIOIK
 {
 
@@ -16,17 +15,17 @@ namespace BIOIK
 		private int Elites;                     				//Number of elite individuals
 		private int Dimensionality;                  			//Search space dimensionality
 
-		private double[] LowerBounds;               			//Constraints for the lower bounds
-		private double[] UpperBounds; 		                    //Constraints for the upper bounds
+		private float[] LowerBounds;               			//Constraints for the lower bounds
+		private float[] UpperBounds; 		                    //Constraints for the upper bounds
 
 		private Individual[] Population;                    	//Array for current individuals
 		private Individual[] Offspring;							//Array for offspring individuals
 
 		private List<Individual> Pool = new List<Individual>();	//Selection pool for recombination
 		private int PoolCount;									//Current size of the selection pool
-		private double[] Probabilities;							//Current probabilities for selection
-		private double Gene;									//Simple storage variable #1
-		private double Weight;									//Simple storage variable #2
+		private float[] Probabilities;							//Current probabilities for selection
+		private float Gene;									//Simple storage variable #1
+		private float Weight;									//Simple storage variable #2
 		private bool[] Constrained;
 
         //Variables for elitism exploitation
@@ -34,7 +33,7 @@ namespace BIOIK
         private bool Evolving = false;
         private bool[] Improved = null;
         private Model[] Models = null;
-        private BFGS[] Optimisers = null;
+        private BFGS_F[] Optimisers = null;
 
         //Threading
 		private bool ThreadsRunning = false;
@@ -43,8 +42,8 @@ namespace BIOIK
 	    private bool[] Work = null;
         
         //Variables for optimisation queries
-		private double[] Solution;                       		//Evolutionary solution
-		private double Fitness;                  				//Evolutionary fitness
+		private float[] Solution;                       		//Evolutionary solution
+		private float Fitness;                  				//Evolutionary fitness
 
         private bool Killed = false;
 
@@ -64,19 +63,19 @@ namespace BIOIK
 				Offspring[i] = new Individual(Dimensionality);
 			}
 
-			LowerBounds = new double[Dimensionality];
-			UpperBounds = new double[Dimensionality];
+			LowerBounds = new float[Dimensionality];
+			UpperBounds = new float[Dimensionality];
 			Constrained = new bool[Dimensionality];
-			Probabilities = new double[PopulationSize];
-			Solution = new double[Dimensionality];
+			Probabilities = new float[PopulationSize];
+			Solution = new float[Dimensionality];
 
             Models = new Model[Elites];
-            Optimisers = new BFGS[Elites];
+            Optimisers = new BFGS_F[Elites];
             Improved = new bool[Elites];
             for(int i=0; i<Elites; i++) {
                 int index = i;
                 Models[index] = new Model(Model.GetCharacter());
-                Optimisers[index] = new BFGS(Dimensionality, x => Models[index].ComputeLoss(x), y => Models[index].ComputeGradient(y, 1e-5));
+                Optimisers[index] = new BFGS_F(Dimensionality, x =>Models[index].ComputeLoss(x), y => Models[index].ComputeGradient(y, 1e-5f));
             }
 
             if(UseThreading) {
@@ -118,7 +117,7 @@ namespace BIOIK
             }
         }
 
-		public double[] Optimise(int generations, double[] seed) {
+		public float[] Optimise(int generations, float[] seed) {
             if(UseThreading) {
                 for(int i=0; i<Elites; i++) {
                     if(!Threads[i].IsAlive) {
@@ -141,8 +140,8 @@ namespace BIOIK
 				Initialise(seed);
 				for(int i=0; i<Elites; i++) {
 					Models[i].CopyFrom(Model);
-					Optimisers[i].LowerBounds = LowerBounds;
-					Optimisers[i].UpperBounds = UpperBounds;
+                    Optimisers[i].LowerBounds = LowerBounds;
+                    Optimisers[i].UpperBounds = UpperBounds;
 				}
 				for(int i=0; i<generations; i++) {
 					//for(int i=0; i<25; i++) { //Performance testing
@@ -154,10 +153,10 @@ namespace BIOIK
 		}
 
 		//Initialises the population with the seed
-		private void Initialise(double[] seed) {
+		private void Initialise(float[] seed) {
 			for(int i=0; i<Dimensionality; i++) {
 				Population[0].Genes[i] = seed[i];
-				Population[0].Momentum[i] = 0.0;
+				Population[0].Momentum[i] = 0.0f;
 			}
 			Population[0].Fitness = Model.ComputeLoss(Population[0].Genes);
 
@@ -257,7 +256,7 @@ namespace BIOIK
                         Reroll(Offspring[i]);
                     }
                 }
-                double duration = Utility.GetElapsedTime(timestamp);
+                float duration = Utility.GetElapsedTime(timestamp);
 
                 //Exploit elites sequentially
                 for(int i=0; i<Elites; i++) {
@@ -287,24 +286,24 @@ namespace BIOIK
 		}
 
 		//Returns the mutation probability from two parents
-		private double GetMutationProbability(Individual parentA, Individual parentB) {
-			double extinction = 0.5 * (parentA.Extinction + parentB.Extinction);
-			double inverse = 1.0/(double)Dimensionality;
-			return extinction * (1.0-inverse) + inverse;
+		private float GetMutationProbability(Individual parentA, Individual parentB) {
+			float extinction = 0.5f* (parentA.Extinction + parentB.Extinction);
+			float inverse = 1.0f/(float)Dimensionality;
+			return extinction * (1.0f-inverse) + inverse;
 		}
 
 		//Returns the mutation strength from two parents
-		private double GetMutationStrength(Individual parentA, Individual parentB) {
-			return 0.5 * (parentA.Extinction + parentB.Extinction);
+		private float GetMutationStrength(Individual parentA, Individual parentB) {
+			return 0.5f* (parentA.Extinction + parentB.Extinction);
 		}
 
 		//Computes the extinction factors for all individuals
 		private void ComputeExtinctions() {
-			double min = Population[0].Fitness;
-			double max = Population[PopulationSize-1].Fitness;
+			float min = Population[0].Fitness;
+			float max = Population[PopulationSize-1].Fitness;
 			for(int i=0; i<PopulationSize; i++) {
-				double grading = (double)i/((double)PopulationSize-1);
-				Population[i].Extinction = (Population[i].Fitness + min*(grading-1.0)) / max;
+				float grading = (float)i/((float)PopulationSize-1);
+				Population[i].Extinction = (Population[i].Fitness + min*(grading-1.0f)) / max;
 			}
 		}
 
@@ -329,7 +328,7 @@ namespace BIOIK
 
 		//Tries to improve the evolutionary solution by the population, and returns whether it was successful
 		private bool TryUpdateSolution() {
-			double candidateFitness = Population[0].Fitness;
+			float candidateFitness = Population[0].Fitness;
 			if(candidateFitness < Fitness) {
 				for(int i=0; i<Dimensionality; i++) {
 					Solution[i] = Population[0].Genes[i];
@@ -354,7 +353,7 @@ namespace BIOIK
                 }
 
                 //Exploit
-                double fitness = Models[index].ComputeLoss(elite.Genes);
+                float fitness = Models[index].ComputeLoss(elite.Genes);
                 Optimisers[index].Minimise(elite.Genes, ref Evolving);
                 if(Optimisers[index].Value < fitness) {
                     for(int i=0; i<Dimensionality; i++) {
@@ -377,7 +376,7 @@ namespace BIOIK
             }
         }
 
-		private void SurviveSequential(int index, double timeout) {
+		private void SurviveSequential(int index, float timeout) {
             //Copy elitist survivor
             Individual survivor = Population[index];
             Individual elite = Offspring[index];
@@ -387,8 +386,8 @@ namespace BIOIK
             }
 
             //Exploit
-            double fitness = Models[index].ComputeLoss(elite.Genes);
-            Optimisers[index].Minimise(elite.Genes, timeout);
+            float fitness = Models[index].ComputeLoss(elite.Genes);
+            Optimisers[index].Minimise(elite.Genes, (float)timeout);
             if(Optimisers[index].Value < fitness) {
                 for(int i=0; i<Dimensionality; i++) {
                     elite.Momentum[i] = Optimisers[index].Solution[i] - elite.Genes[i];
@@ -404,14 +403,14 @@ namespace BIOIK
 
 		//Evolves a new individual
 		private void Reproduce(Individual offspring, Individual parentA, Individual parentB, Individual prototype) {
-            double mutationProbability = GetMutationProbability(parentA, parentB);
-			double mutationStrength = GetMutationStrength(parentA, parentB);
+            float mutationProbability = GetMutationProbability(parentA, parentB);
+			float mutationStrength = GetMutationStrength(parentA, parentB);
 
 			for(int i=0; i<Dimensionality; i++) {
 				//Recombination
 				Weight = Random.value;
-				double momentum = Random.value * parentA.Momentum[i] + Random.value * parentB.Momentum[i];
-				offspring.Genes[i] = Weight*parentA.Genes[i] + (1.0-Weight)*parentB.Genes[i] + momentum;
+				float momentum = Random.value * parentA.Momentum[i] + Random.value * parentB.Momentum[i];
+				offspring.Genes[i] = Weight*parentA.Genes[i] + (1.0f-Weight)*parentB.Genes[i] + momentum;
 
 				//Store
 				Gene = offspring.Genes[i];
@@ -426,8 +425,8 @@ namespace BIOIK
 				//Adoption
 				Weight = Random.value;
 				offspring.Genes[i] += 
-					Weight * Random.value * (0.5 * (parentA.Genes[i] + parentB.Genes[i]) - offspring.Genes[i])
-					+ (1.0-Weight) * Random.value * (prototype.Genes[i] - offspring.Genes[i]);
+					Weight * Random.value * (0.5f* (parentA.Genes[i] + parentB.Genes[i]) - offspring.Genes[i])
+					+ (1.0f-Weight) * Random.value * (prototype.Genes[i] - offspring.Genes[i]);
 
 				//Project
                 if(Constrained[i]) {
@@ -451,11 +450,11 @@ namespace BIOIK
 		private void Reroll(Individual individual) {
 			for(int i=0; i<Dimensionality; i++) {
 				if(Constrained[i]) {
-					individual.Genes[i] = (double)Random.Range((float)LowerBounds[i], (float)UpperBounds[i]);
-					individual.Momentum[i] = 0.0;
+					individual.Genes[i] = (float)Random.Range((float)LowerBounds[i], (float)UpperBounds[i]);
+					individual.Momentum[i] = 0.0f;
 				} else {
 					individual.Genes[i] = Solution[i];
-					individual.Momentum[i] = 0.0;
+					individual.Momentum[i] = 0.0f;
 				}
 			}
 			individual.Fitness = Model.ComputeLoss(individual.Genes);
@@ -463,23 +462,23 @@ namespace BIOIK
 
 		//Rank-based selection of an individual
 		private Individual Select(List<Individual> pool) {
-			double rankSum = (double)(PoolCount*(PoolCount+1)) / 2.0;
+			float rankSum = (float)(PoolCount*(PoolCount+1)) / 2.0f;
 			for(int i=0; i<PoolCount; i++) {
-				Probabilities[i] = (double)(PoolCount-i)/rankSum;
+				Probabilities[i] = (float)(PoolCount-i)/rankSum;
 			}
 			return pool[GetRandomWeightedIndex(Probabilities, PoolCount)];
 		}
 		
 		//Returns a random index with respect to the probability weights
-		private int GetRandomWeightedIndex(double[] probabilities, int count) {
-			double weightSum = 0.0;
+		private int GetRandomWeightedIndex(float[] probabilities, int count) {
+			float weightSum = 0.0f;
 			for(int i=0; i<count; i++) {
 				weightSum += probabilities[i];
 			}
-			double rVal = Random.value * weightSum;
+			float rVal = Random.value * weightSum;
 			for(int i=0; i<count; i++) {
 				rVal -= probabilities[i];
-				if(rVal <= 0.0) {
+				if(rVal <= 0.0f) {
 					return i;
 				}
 			}
@@ -488,9 +487,9 @@ namespace BIOIK
 
         /*
 		//Projects a single gene to stay within search space
-		private double Project(double gene, double min, double max, bool constrained) {
-			if(max - min == 0.0) {
-				return 0.0;
+		private float Project(float gene, float min, float max, bool constrained) {
+			if(max - min == 0.0f) {
+				return 0.0f;
 			}
 			if(type == JointType.Revolute || type == JointType.Prismatic) {
 				//Bounce
@@ -541,24 +540,24 @@ namespace BIOIK
             return Model;
         }
 
-        public double[] GetSolution() {
+        public float[] GetSolution() {
             return Solution;
         }
 
-        public double GetFitness() {
+        public float GetFitness() {
             return Fitness;
         }
 
-        public double[] GetLowerBounds() {
+        public float[] GetLowerBounds() {
             return LowerBounds;
         }
 
-        public double[] GetUpperBounds() {
+        public float[] GetUpperBounds() {
             return UpperBounds;
         }
 
-		public double[,] GetGeneLandscape() {
-			double[,] values = new double[PopulationSize, Dimensionality];
+		public float[,] GetGeneLandscape() {
+			float[,] values = new float[PopulationSize, Dimensionality];
 			for(int i=0; i<PopulationSize; i++) {
 				for(int j=0; j<Dimensionality; j++) {
 					values[i,j] = Population[i].Genes[j];
@@ -567,8 +566,8 @@ namespace BIOIK
 			return values;
 		}
 
-		public double[] GetFitnessLandscape() {
-			double[] values = new double[PopulationSize];
+		public float[] GetFitnessLandscape() {
+			float[] values = new float[PopulationSize];
 			for(int i=0; i<PopulationSize; i++) {
 				values[i] = Population[i].Fitness;
 			}
@@ -577,46 +576,46 @@ namespace BIOIK
 
 		//Data class for the individuals
 		public class Individual {
-			public double[] Genes;
-			public double[] Momentum;
-			public double Fitness;
-            public double Extinction;
+			public float[] Genes;
+			public float[] Momentum;
+			public float Fitness;
+            public float Extinction;
 
 			public Individual(int dimensionality) {
-				Genes = new double[dimensionality];
-				Momentum = new double[dimensionality];
-				Fitness = 0.0;
-                Extinction = 0.0;
+				Genes = new float[dimensionality];
+				Momentum = new float[dimensionality];
+				Fitness = 0.0f;
+                Extinction = 0.0f;
 			}
 		}
 	}
 
-    ///   Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) optimization method.
+    ///   Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS_F) optimization method.
 
-    ///   The L-BFGS algorithm is a member of the broad family of quasi-Newton optimization
-    ///   methods. L-BFGS stands for 'Limited memory BFGS'. Indeed, L-BFGS uses a limited
-    ///   memory variation of the Broyden–Fletcher–Goldfarb–Shanno (BFGS) update to approximate
-    ///   the inverse Hessian matrix (denoted by Hk). Unlike the original BFGS method which
-    ///   stores a dense  approximation, L-BFGS stores only a few vectors that represent the
-    ///   approximation implicitly. Due to its moderate memory requirement, L-BFGS method is
+    ///   The L-BFGS_F algorithm is a member of the broad family of quasi-Newton optimization
+    ///   methods. L-BFGS_F stands for 'Limited memory BFGS_F'. Indeed, L-BFGS_F uses a limited
+    ///   memory variation of the Broyden–Fletcher–Goldfarb–Shanno (BFGS_F) update to approximate
+    ///   the inverse Hessian matrix (denoted by Hk). Unlike the original BFGS_F method which
+    ///   stores a dense  approximation, L-BFGS_F stores only a few vectors that represent the
+    ///   approximation implicitly. Due to its moderate memory requirement, L-BFGS_F method is
     ///   particularly well suited for optimization problems with a large number of variables.
-    ///   L-BFGS never explicitly forms or stores Hk. Instead, it maintains a history of the past
+    ///   L-BFGS_F never explicitly forms or stores Hk. Instead, it maintains a history of the past
     ///   m updates of the position x and gradient g, where generally the history
     ///   m can be short, often less than 10. These updates are used to implicitly do operations
     ///   requiring the Hk-vector product.
 
     ///   The framework implementation of this method is based on the original FORTRAN source code
-    ///   by Jorge Nocedal (see references below). The original FORTRAN source code of L-BFGS (for
-    ///   unconstrained problems) is available at http://www.netlib.org/opt/lbfgs_um.shar and had
+    ///   by Jorge Nocedal (see references below). The original FORTRAN source code of L-BFGS_F (for
+    ///   unconstrained problems) is available at http://www.netlib.org/opt/lBFGS_F_um.shar and had
     ///   been made available under the public domain.
     /// 
     ///   References:
-    ///        http://www.netlib.org/opt/lbfgs_um.shar
-    ///        Jorge Nocedal. Limited memory BFGS method for large scale optimization (Fortran source code). 1990.
-    ///        Available in http://www.netlib.org/opt/lbfgs_um.shar
+    ///        http://www.netlib.org/opt/lBFGS_F_um.shar
+    ///        Jorge Nocedal. Limited memory BFGS_F method for large scale optimization (Fortran source code). 199f0.
+    ///        Available in http://www.netlib.org/opt/lBFGS_F_um.shar
     ///        Jorge Nocedal. Updating Quasi-Newton Matrices with Limited Storage. Mathematics of Computation,
-    ///        Vol. 35, No. 151, pp. 773--782, 1980.
-    ///        Dong C. Liu, Jorge Nocedal. On the limited memory BFGS method for large scale optimization.
+    ///        Vol. 35, No. 151f, pp. 773f--782f, 198f0.
+    ///        Dong C. Liu, Jorge Nocedal. On the limited memory BFGS_F method for large scale optimization.
     
 
 

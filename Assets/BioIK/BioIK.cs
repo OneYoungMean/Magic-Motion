@@ -26,7 +26,7 @@ namespace BIOIK {
 
 		public BioSegment Root = null;
 		public Evolution Evolution = null;
-		public double[] Solution = null;
+		public float[] Solution = null;
 
 		private bool Destroyed = false;
 
@@ -256,7 +256,7 @@ namespace BIOIK {
 			if(evolution && Application.isPlaying) {
 				DeInitialise();
 				Initialise();
-				Solution = new double[Evolution.GetModel().GetDoF()];
+				Solution = new float[Evolution.GetModel().GetDoF()];
 			}
 		}
         //OYM:递归寻找节点

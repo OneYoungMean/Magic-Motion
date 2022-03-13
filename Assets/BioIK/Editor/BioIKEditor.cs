@@ -366,14 +366,14 @@ namespace BIOIK {
 					motion.Constrained = EditorGUILayout.Toggle("Constrained", motion.Constrained);
 					if(motion.Constrained) {
 						SetGUIColor(Color1);
-						motion.SetLowerLimit(EditorGUILayout.DoubleField("Lower Limit", motion.GetLowerLimit()));
+						motion.SetLowerLimit(EditorGUILayout.FloatField("Lower Limit", motion.GetLowerLimit()));
 						SetGUIColor(Color1);
-						motion.SetUpperLimit(EditorGUILayout.DoubleField("Upper Limit", motion.GetUpperLimit()));
+						motion.SetUpperLimit(EditorGUILayout.FloatField("Upper Limit", motion.GetUpperLimit()));
 						SetGUIColor(Color1);
 						motion.SetTargetValue(EditorGUILayout.Slider("Target Value", (float)motion.GetTargetValue(), (float)motion.GetLowerLimit(), (float)motion.GetUpperLimit()));
 					} else {
 						SetGUIColor(Color1);
-						motion.SetTargetValue(EditorGUILayout.DoubleField("Target Value", motion.GetTargetValue()));
+						motion.SetTargetValue(EditorGUILayout.FloatField("Target Value", motion.GetTargetValue()));
 					}
 					
 					GUI.skin.button.alignment = TextAnchor.MiddleCenter;
@@ -415,7 +415,7 @@ namespace BIOIK {
 				objective.enabled = EditorGUILayout.Toggle("Enabled", objective.enabled);
 
 				SetGUIColor(Color1);
-				objective.Weight = EditorGUILayout.DoubleField("Weight", objective.Weight);
+				objective.Weight = EditorGUILayout.FloatField("Weight", objective.Weight);
 
 				switch(objective.GetObjectiveType()) {
 					case ObjectiveType.Position:
@@ -472,7 +472,7 @@ namespace BIOIK {
 			SetGUIColor(Color1);
 			objective.SetTargetPosition(EditorGUILayout.Vector3Field("Target Position", objective.GetTargetPosition()));
 			SetGUIColor(Color1);
-			objective.SetMaximumError(EditorGUILayout.DoubleField("Maximum Error", objective.GetMaximumError()));
+			objective.SetMaximumError(EditorGUILayout.FloatField("Maximum Error", objective.GetMaximumError()));
 		}
 
 		private void InspectOrientation(Orientation objective) {
@@ -481,7 +481,7 @@ namespace BIOIK {
 			SetGUIColor(Color1);
 			objective.SetTargetRotation(EditorGUILayout.Vector3Field("Target Rotation", objective.GetTargetRotattion()));
 			SetGUIColor(Color1);
-			objective.SetMaximumError(EditorGUILayout.DoubleField("Maximum Error", objective.GetMaximumError()));
+			objective.SetMaximumError(EditorGUILayout.FloatField("Maximum Error", objective.GetMaximumError()));
 		}
 
 		private void InspectLookAt(LookAt objective) {
@@ -492,12 +492,12 @@ namespace BIOIK {
 			SetGUIColor(Color1);
 			objective.SetViewingDirection(EditorGUILayout.Vector3Field("Viewing Direction", objective.GetViewingDirection()));
 			SetGUIColor(Color1);
-			objective.SetMaximumError(EditorGUILayout.DoubleField("Maximum Error", objective.GetMaximumError()));
+			objective.SetMaximumError(EditorGUILayout.FloatField("Maximum Error", objective.GetMaximumError()));
 		}
 
 		private void InspectDistance(Distance objective) {
 			SetGUIColor(Color1);
-			objective.SetRadius(EditorGUILayout.DoubleField("Radius", objective.GetRadius()));
+			objective.SetRadius(EditorGUILayout.FloatField("Radius", objective.GetRadius()));
 
 			SetGUIColor(Color1);
 			GUILayout.BeginHorizontal();
@@ -513,7 +513,7 @@ namespace BIOIK {
 					SetGUIColor(Color1);
 					points[i].SetTargetTransform(EditorGUILayout.ObjectField("Target", points[i].Target, typeof(Transform), true) as Transform);
 					SetGUIColor(Color1);
-					points[i].SetRadius(EditorGUILayout.DoubleField("Radius", points[i].Radius));
+					points[i].SetRadius(EditorGUILayout.FloatField("Radius", points[i].Radius));
 				}
 			}
 			SetGUIColor(Color8);
@@ -528,7 +528,7 @@ namespace BIOIK {
 
 		private void InspectJointValue(JointValue objective) {
 			SetGUIColor(Color1);
-			objective.SetTargetValue(EditorGUILayout.DoubleField("Target Value", objective.GetTargetValue()));
+			objective.SetTargetValue(EditorGUILayout.FloatField("Target Value", objective.GetTargetValue()));
 			SetGUIColor(Color1);
 			objective.SetXMotion(EditorGUILayout.Toggle("X Motion", objective.IsXMotion()));
 			SetGUIColor(Color1);
@@ -555,7 +555,7 @@ namespace BIOIK {
 			SetGUIColor(Color1);
 			objective.SetSensitivity(EditorGUILayout.Slider("Projection Sensitivitiy", objective.GetSensitivity(), 0f, 1f));
 			SetGUIColor(Color1);
-			objective.SetMaximumError(EditorGUILayout.DoubleField("Maximum Error", objective.GetMaximumError()));
+			objective.SetMaximumError(EditorGUILayout.FloatField("Maximum Error", objective.GetMaximumError()));
 		}
 
 		public void OnSceneGUI() {
@@ -780,7 +780,7 @@ namespace BIOIK {
 			Vector3 up = rotation * Vector3.up;
 			Vector3 forward = rotation * Vector3.forward;
 
-			//float length = 0.05f;
+			//Float length = 0.05f;
 			
 			//DrawLine(objective.Segment.Transform.position - length * right, objective.Segment.Transform.position + length * right, 5f, Color.red);
 			//DrawLine(objective.Segment.Transform.position - length * up, objective.Segment.Transform.position + length * up, 5f, Color.green);

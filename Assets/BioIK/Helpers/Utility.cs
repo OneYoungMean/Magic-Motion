@@ -7,9 +7,9 @@ using UnityEditor;
 namespace BIOIK {
 
 	public static class Utility {
-		public const double Deg2Rad = 0.017453292;
-		public const double Rad2Deg = 57.29578049;
-		public const double PI = 3.14159265358979;
+		public const float Deg2Rad = 0.017453292f;
+		public const float Rad2Deg = 57.29578049f;
+		public const float PI = 3.14159265358979f;
 
 		public static void Destroy(Component c) {
 			if(c == null) {
@@ -38,8 +38,8 @@ namespace BIOIK {
 			return System.DateTime.Now;
 		}
 
-		public static double GetElapsedTime(System.DateTime timestamp) {
-			return (System.DateTime.Now-timestamp).Duration().TotalSeconds;
+		public static float GetElapsedTime(System.DateTime timestamp) {
+			return (float)(System.DateTime.Now-timestamp).Duration().TotalSeconds;
 		}
 
 		public static void Cleanup(Transform t) {

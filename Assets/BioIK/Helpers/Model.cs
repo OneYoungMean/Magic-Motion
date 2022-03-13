@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using System.Collections.Generic;
+using System;
 
 namespace BIOIK {
 	public class Model {
@@ -10,9 +11,9 @@ namespace BIOIK {
 		private BioSegment Root;
 
 		//Offset to world
-		private double OPX, OPY, OPZ;								//Offset rosition to world frame
-		private double ORX, ORY, ORZ, ORW;							//Offset rotation to world frame
-		private double OSX, OSY, OSZ;								//Offset scale to world Frame
+		private float OPX, OPY, OPZ;								//Offset rosition to world frame
+		private float ORX, ORY, ORZ, ORW;							//Offset rotation to world frame
+		private float OSX, OSY, OSZ;								//Offset scale to world Frame
 		
 		//Linked list of nodes in the model
 		public Node[] Nodes = new Node[0];
@@ -22,13 +23,13 @@ namespace BIOIK {
 		public ObjectivePtr[] ObjectivePtrs = new ObjectivePtr[0];
 		    
 		//Assigned Configuraton
-		private double[] Configuration;
-		private double[] Gradient;
-		private double[] Losses;
+		private float[] Configuration;
+		private float[] Gradient;
+		private float[] Losses;
 
 		//Simulated Configuration
-		private double[] PX,PY,PZ,RX,RY,RZ,RW;
-		private double[] SimulatedLosses;
+		private float[] PX,PY,PZ,RX,RY,RZ,RW;
+		private float[] SimulatedLosses;
 
 		//Degree of Freedom
 		private int DoF;
@@ -60,17 +61,17 @@ namespace BIOIK {
 				Nodes[i].ObjectiveImpacts = new bool[ObjectivePtrs.Length];
 			}
             //OYM:一堆看上去需要计算的东西
-            PX = new double[ObjectivePtrs.Length];
-			PY = new double[ObjectivePtrs.Length];
-			PZ = new double[ObjectivePtrs.Length];
-			RX = new double[ObjectivePtrs.Length];
-			RY = new double[ObjectivePtrs.Length];
-			RZ = new double[ObjectivePtrs.Length];
-			RW = new double[ObjectivePtrs.Length];
-			Configuration = new double[MotionPtrs.Length];
-			Gradient = new double[MotionPtrs.Length];
-			Losses = new double[ObjectivePtrs.Length];
-			SimulatedLosses = new double[ObjectivePtrs.Length];
+            PX = new float[ObjectivePtrs.Length];
+			PY = new float[ObjectivePtrs.Length];
+			PZ = new float[ObjectivePtrs.Length];
+			RX = new float[ObjectivePtrs.Length];
+			RY = new float[ObjectivePtrs.Length];
+			RZ = new float[ObjectivePtrs.Length];
+			RW = new float[ObjectivePtrs.Length];
+			Configuration = new float[MotionPtrs.Length];
+			Gradient = new float[MotionPtrs.Length];
+			Losses = new float[ObjectivePtrs.Length];
+			SimulatedLosses = new float[ObjectivePtrs.Length];
 
 			//Assigns references to all objective nodes that are affected by a parenting node
 			for(int i=0; i<ObjectivePtrs.Length; i++) {
@@ -102,8 +103,8 @@ namespace BIOIK {
 
 			//Update offset from world to root
 			if(Root.Transform.root == Character.transform) {
-				OPX = OPY = OPZ = ORX = ORY = ORZ = 0.0;
-				ORW = OSX = OSY = OSZ = 1.0;
+				OPX = OPY = OPZ = ORX = ORY = ORZ = 0.0f;
+				ORW = OSX = OSY = OSZ = 1.0f;
 			} else {
 				Vector3 p = Root.Transform.parent.position;
 				Quaternion r = Root.Transform.parent.rotation;
@@ -117,7 +118,7 @@ namespace BIOIK {
 			Nodes[0].Refresh();
 		}
 
-		public void CopyFrom(Model model) {
+        public void CopyFrom(Model model) {
 			OPX = model.OPX;
 			OPY = model.OPY;
 			OPZ = model.OPZ;
@@ -173,36 +174,36 @@ namespace BIOIK {
 		}
 
 		//Computes the loss as the RMSE over all objectives
-		public double ComputeLoss(double[] configuration) {
+		public float ComputeLoss(float[] configuration) {
 			FK(configuration);
-			double loss = 0.0;
+			float loss = 0.0f;
 			for(int i=0; i<ObjectivePtrs.Length; i++) {
 				Node node = ObjectivePtrs[i].Node;
 				Losses[i] = ObjectivePtrs[i].Objective.ComputeLoss(node.WPX, node.WPY, node.WPZ, node.WRX, node.WRY, node.WRZ, node.WRW, node, Configuration);
 				loss += Losses[i];
 			}
-			return System.Math.Sqrt(loss / (double)ObjectivePtrs.Length);
+			return (float)System.Math.Sqrt(loss / (float)ObjectivePtrs.Length);
 		}
 
 		//Computes the gradient
-		public double[] ComputeGradient(double[] configuration, double resolution) {
-			double oldLoss = ComputeLoss(configuration);
+		public float[] ComputeGradient(float[] configuration, float resolution) {
+			float oldLoss = ComputeLoss(configuration);
 			for(int j=0; j<DoF; j++) {
 				Configuration[j] += resolution;
 				MotionPtrs[j].Node.SimulateModification(Configuration);
 				Configuration[j] -= resolution;
-				double newLoss = 0.0;
+				float newLoss = 0.0f;
 				for(int i=0; i<ObjectivePtrs.Length; i++) {
 					newLoss += SimulatedLosses[i];
 				}
-				newLoss = System.Math.Sqrt(newLoss / (double)ObjectivePtrs.Length);
-				Gradient[j] = (newLoss - oldLoss) / resolution;
+				newLoss = (float)System.Math.Sqrt(newLoss / (float)ObjectivePtrs.Length);
+				Gradient[j] =(float) ((newLoss - oldLoss) / resolution);
 			}
 			return Gradient;
 		}
 
 		//Returns whether the model converges for a particular configuration
-		public bool CheckConvergence(double[] configuration) {
+		public bool CheckConvergence(float[] configuration) {
 			FK(configuration);
 			for(int i=0; i<ObjectivePtrs.Length; i++) {
 				Model.Node node = ObjectivePtrs[i].Node;
@@ -214,7 +215,7 @@ namespace BIOIK {
 		}
 
 		//Applies a forward kinematics pass to the model
-		private void FK(double[] configuration) {
+		private void FK(float[] configuration) {
 			for(int i=0; i<Configuration.Length; i++) {
 				Configuration[i] = configuration[i];
 			}
@@ -323,12 +324,12 @@ namespace BIOIK {
 			public BioJoint Joint;						//Reference to the joint
 			public Transform[] Chain;
 
-			public double WPX, WPY, WPZ;				//World position
-			public double WRX, WRY, WRZ, WRW;			//World rotation
-			public double WSX, WSY, WSZ;				//World scale
-			public double LPX, LPY, LPZ;				//Local position
-			public double LRX, LRY, LRZ, LRW;			//Local rotation
-			//public double RootX, RootY, RootZ;		//World position of root joint
+			public float WPX, WPY, WPZ;				//World position
+			public float WRX, WRY, WRZ, WRW;			//World rotation
+			public float WSX, WSY, WSZ;				//World scale
+			public float LPX, LPY, LPZ;				//Local position
+			public float LRX, LRY, LRZ, LRW;			//Local rotation
+			//public float RootX, RootY, RootZ;		//World position of root joint
 
 			public bool XEnabled = false;
 			public bool YEnabled = false;
@@ -336,9 +337,9 @@ namespace BIOIK {
 			public int XIndex = -1;
 			public int YIndex = -1;
 			public int ZIndex = -1;
-			public double XValue = 0.0;					//
-			public double YValue = 0.0;					//
-			public double ZValue = 0.0;					//
+			public float XValue = 0.0f;					//
+			public float YValue = 0.0f;					//
+			public float ZValue = 0.0f;					//
 		
 			public bool[] ObjectiveImpacts;				//Boolean values to represent which objective indices in the whole kinematic tree are affected (TODO: Refactor this)
 			//Setup for the node
@@ -402,7 +403,7 @@ namespace BIOIK {
 			}
 
 			//Updates local and world transform, and feeds the joint variable configuration forward to all childs
-			public void FeedForwardConfiguration(double[] configuration, bool updateWorld = false) {
+			public void FeedForwardConfiguration(float[] configuration, bool updateWorld = false) {
 				//Assume no local update is required
 				bool updateLocal = false;
 
@@ -439,23 +440,23 @@ namespace BIOIK {
 			//Simulates a single transform modification while leaving the whole data structure unchanged
 			//Returns the resulting Cartesian posture transformations in the out values
 			public void SimulateModification(
-				double[] configuration
+				float[] configuration
 			) {
-				double[] px=Model.PX; double[] py=Model.PY; double[] pz=Model.PZ;
-				double[] rx=Model.RX; double[] ry=Model.RY; double[] rz=Model.RZ; double[] rw=Model.RW;
+				float[] px=Model.PX; float[] py=Model.PY; float[] pz=Model.PZ;
+				float[] rx=Model.RX; float[] ry=Model.RY; float[] rz=Model.RZ; float[] rw=Model.RW;
 				for(int i=0; i<Model.ObjectivePtrs.Length; i++) {
 					Node node = Model.ObjectivePtrs[i].Node;
 					if(ObjectiveImpacts[i]) {
 						//WorldPosition = ParentPosition + ParentRotation * (LocalPosition . ParentScale) + ParentRotation * LocalRotation * WorldRotation^-1 * (ObjectivePosition - WorldPosition)
 						//WorldRotation = ParentRotation * LocalRotation * WorldRotation^-1 * ObjectiveRotation
-						double lpX, lpY, lpZ, lrX, lrY, lrZ, lrW;
+						float lpX, lpY, lpZ, lrX, lrY, lrZ, lrW;
 						Joint.ComputeLocalTransformation(
 							XEnabled ? configuration[XIndex] : XValue,
 							YEnabled ? configuration[YIndex] : YValue, 
 							ZEnabled ? configuration[ZIndex] : ZValue, 
 							out lpX, out lpY, out lpZ, out lrX, out lrY, out lrZ, out lrW
 						);
-						double Rx, Ry, Rz, Rw, X, Y, Z;
+						float Rx, Ry, Rz, Rw, X, Y, Z;
 						if(Parent == null) {
 							px[i] = Model.OPX;
 							py[i] = Model.OPY;
@@ -479,25 +480,25 @@ namespace BIOIK {
 							Y = Parent.WSY*lpY;
 							Z = Parent.WSZ*lpZ;
 						}
-						double qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
-						double qy = -Rx * lrZ + Ry * lrW + Rz * lrX + Rw * lrY;
-						double qz = Rx * lrY - Ry * lrX + Rz * lrW + Rw * lrZ;
-						double qw = -Rx * lrX - Ry * lrY - Rz * lrZ + Rw * lrW;
-						double dot = WRX*WRX + WRY*WRY + WRZ*WRZ + WRW*WRW;
-						double x = qx/dot; double y = qy/dot; double z = qz/dot; double w = qw/dot;
+						float qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
+						float qy = -Rx * lrZ + Ry * lrW + Rz * lrX + Rw * lrY;
+						float qz = Rx * lrY - Ry * lrX + Rz * lrW + Rw * lrZ;
+						float qw = -Rx * lrX - Ry * lrY - Rz * lrZ + Rw * lrW;
+						float dot = WRX*WRX + WRY*WRY + WRZ*WRZ + WRW*WRW;
+						float x = qx/dot; float y = qy/dot; float z = qz/dot; float w = qw/dot;
 						qx = x * WRW + y * -WRZ - z * -WRY + w * -WRX;
 						qy = -x * -WRZ + y * WRW + z * -WRX + w * -WRY;
 						qz = x * -WRY - y * -WRX + z * WRW + w * -WRZ;
 						qw = -x * -WRX - y * -WRY - z * -WRZ + w * WRW;
 						px[i] +=
-								+ 2.0 * ((0.5 - Ry * Ry - Rz * Rz) * X + (Rx * Ry - Rw * Rz) * Y + (Rx * Rz + Rw * Ry) * Z)
-								+ 2.0 * ((0.5 - qy * qy - qz * qz) * (node.WPX-WPX) + (qx * qy - qw * qz) * (node.WPY-WPY) + (qx * qz + qw * qy) * (node.WPZ-WPZ));
+								+ 2.0f* ((0.5f- Ry * Ry - Rz * Rz) * X + (Rx * Ry - Rw * Rz) * Y + (Rx * Rz + Rw * Ry) * Z)
+								+ 2.0f* ((0.5f- qy * qy - qz * qz) * (node.WPX-WPX) + (qx * qy - qw * qz) * (node.WPY-WPY) + (qx * qz + qw * qy) * (node.WPZ-WPZ));
 						py[i] += 
-								+ 2.0 * ((Rx * Ry + Rw * Rz) * X + (0.5 - Rx * Rx - Rz * Rz) * Y + (Ry * Rz - Rw * Rx) * Z)
-								+ 2.0 * ((qx * qy + qw * qz) * (node.WPX-WPX) + (0.5 - qx * qx - qz * qz) * (node.WPY-WPY) + (qy * qz - qw * qx) * (node.WPZ-WPZ));
+								+ 2.0f* ((Rx * Ry + Rw * Rz) * X + (0.5f- Rx * Rx - Rz * Rz) * Y + (Ry * Rz - Rw * Rx) * Z)
+								+ 2.0f* ((qx * qy + qw * qz) * (node.WPX-WPX) + (0.5f- qx * qx - qz * qz) * (node.WPY-WPY) + (qy * qz - qw * qx) * (node.WPZ-WPZ));
 						pz[i] += 
-								+ 2.0 * ((Rx * Rz - Rw * Ry) * X + (Ry * Rz + Rw * Rx) * Y + (0.5 - (Rx * Rx + Ry * Ry)) * Z)
-								+ 2.0 * ((qx * qz - qw * qy) * (node.WPX-WPX) + (qy * qz + qw * qx) * (node.WPY-WPY) + (0.5 - qx * qx - qy * qy) * (node.WPZ-WPZ));
+								+ 2.0f* ((Rx * Rz - Rw * Ry) * X + (Ry * Rz + Rw * Rx) * Y + (0.5f- (Rx * Rx + Ry * Ry)) * Z)
+								+ 2.0f* ((qx * qz - qw * qy) * (node.WPX-WPX) + (qy * qz + qw * qx) * (node.WPY-WPY) + (0.5f- qx * qx - qy * qy) * (node.WPZ-WPZ));
 						rx[i] = qx * node.WRW + qy * node.WRZ - qz * node.WRY + qw * node.WRX;
 						ry[i] = -qx * node.WRZ + qy * node.WRW + qz * node.WRX + qw * node.WRY;
 						rz[i] = qx * node.WRY - qy * node.WRX + qz * node.WRW + qw * node.WRZ;
@@ -520,7 +521,7 @@ namespace BIOIK {
 			private void ComputeWorldTransformation() {
 				//WorldPosition = ParentPosition + ParentRotation*LocalPosition;
 				//WorldRotation = ParentRotation*LocalRotation;
-				double RX,RY,RZ,RW,X,Y,Z;
+				float RX,RY,RZ,RW,X,Y,Z;
 				if(Parent == null) {
 					WPX = Model.OPX;
 					WPY = Model.OPY;
@@ -544,9 +545,9 @@ namespace BIOIK {
 					Y = Parent.WSY*LPY;
 					Z = Parent.WSZ*LPZ;
 				}
-				WPX += 2.0 * ((0.5 - RY * RY - RZ * RZ) * X + (RX * RY - RW * RZ) * Y + (RX * RZ + RW * RY) * Z);
-				WPY += 2.0 * ((RX * RY + RW * RZ) * X + (0.5 - RX * RX - RZ * RZ) * Y + (RY * RZ - RW * RX) * Z);
-				WPZ += 2.0 * ((RX * RZ - RW * RY) * X + (RY * RZ + RW * RX) * Y + (0.5 - RX * RX - RY * RY) * Z);
+				WPX += 2.0f* ((0.5f- RY * RY - RZ * RZ) * X + (RX * RY - RW * RZ) * Y + (RX * RZ + RW * RY) * Z);
+				WPY += 2.0f* ((RX * RY + RW * RZ) * X + (0.5f- RX * RX - RZ * RZ) * Y + (RY * RZ - RW * RX) * Z);
+				WPZ += 2.0f* ((RX * RZ - RW * RY) * X + (RY * RZ + RW * RX) * Y + (0.5f- RX * RX - RY * RY) * Z);
 				WRX = RX * LRW + RY * LRZ - RZ * LRY + RW * LRX;
 				WRY = -RX * LRZ + RY * LRW + RZ * LRX + RW * LRY;
 				WRZ = RX * LRY - RY * LRX + RZ * LRW + RW * LRZ;

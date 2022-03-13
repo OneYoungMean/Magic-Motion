@@ -10,9 +10,9 @@ namespace BIOIK {
 		//相对于游戏对象法线到场景中其他可碰撞对象的投影变换。
 
 		[SerializeField] private Transform Target;
-		[SerializeField] private double TPX, TPY, TPZ;
-		[SerializeField] private double TRX, TRY, TRZ, TRW;
-		[SerializeField] private double MaximumError = 0.001;
+		[SerializeField] private float TPX, TPY, TPZ;
+		[SerializeField] private float TRX, TRY, TRZ, TRW;
+		[SerializeField] private float MaximumError = 0.001f;
 		[SerializeField] private Vector3 Normal = Vector3.up;
 		[SerializeField] private float Length;
 		[SerializeField] private float Sensitivity = 0.75f;
@@ -22,8 +22,8 @@ namespace BIOIK {
 
 		//private Vector3 Position;
 		//private Quaternion Rotation;
-		private double ChainLength;
-		private double Rescaling;
+		private float ChainLength;
+		private float Rescaling;
 
 		//public Correction[] Corrections = new Correction[0];
 
@@ -38,7 +38,7 @@ namespace BIOIK {
 				return;
 			}
 
-			ChainLength = 0.0;
+			ChainLength = 0.0f;
 			Transform[] chain = Segment.Character.Evolution.GetModel().FindObjectivePtr(this).Node.Chain;;
 			for(int i=0; i<chain.Length-1; i++) {
 				ChainLength += Vector3.Distance(chain[i].position, chain[i+1].position);
@@ -111,52 +111,52 @@ namespace BIOIK {
 			);
 		}
 
-		public override double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			/*
-			double d = System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
-			double s = System.Math.Sqrt((node.Chain.Length+d)*(System.Math.Sqrt((WPX-node.RootX)*(WPX-node.RootX) + (WPY-node.RootY)*(WPY-node.RootY) + (WPZ-node.RootZ)*(WPZ-node.RootZ))+d));
+			float d = System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
+			float s = System.Math.Sqrt((node.Chain.Length+d)*(System.Math.Sqrt((WPX-node.RootX)*(WPX-node.RootX) + (WPY-node.RootY)*(WPY-node.RootY) + (WPZ-node.RootZ)*(WPZ-node.RootZ))+d));
 			d = PI * d / s;
-			double o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
-			if(o < 0.0) {
+			float o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
+			if(o < 0.0f) {
 				o = -o;
 			}
-			if(o > 1.0) {
-				o = 1.0;
+			if(o > 1.0f) {
+				o = 1.0f;
 			}
-			o = 2.0 * System.Math.Acos(o);
-			return Weight * 0.5 * (d*d + o*o);
+			o = 2.0f* System.Math.Acos(o);
+			return Weight * 0.5f* (d*d + o*o);
 			*/
-			double d = Rescaling * ((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
-			double o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
-			if(o < 0.0) {
+			float d = Rescaling * ((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
+			float o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
+			if(o < 0.0f) {
 				o = -o;
-				if(o > 1.0) {
-					o = 1.0;
+				if(o > 1.0f) {
+					o = 1.0f;
 				}
-			} else if(o > 1.0) {
-				o = 1.0;
+			} else if(o > 1.0f) {
+				o = 1.0f;
 			}
-			o = 2.0 * System.Math.Acos(o);
-			return Weight * 0.5 * (d*d + o*o);
+			o =(float)( 2.0f* System.Math.Acos(o));
+			return (float)Weight * 0.5f * (d*d + o*o);
 		}
 
-		public override bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			double d = System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
-			double o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
-			if(o < 0.0) {
+		public override bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			float d = (float)System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
+			float o = WRX*TRX + WRY*TRY + WRZ*TRZ + WRW*TRW;
+			if(o < 0.0f) {
 				o = -o;
-				if(o > 1.0) {
-					o = 1.0;
+				if(o > 1.0f) {
+					o = 1.0f;
 				}
-			} else if(o > 1.0) {
-				o = 1.0;
+			} else if(o > 1.0f) {
+				o = 1.0f;
 			}
-			o = Utility.Rad2Deg * 2.0 * System.Math.Acos(o);
+			o =(float)( Utility.Rad2Deg * 2.0f* System.Math.Acos(o));
 			return d <= MaximumError && o <= MaximumError;
 		}
 
-		public override double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			return 0.0;
+		public override float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			return 0.0f;
 		}
 
 		public void SetTargetTransform(Transform target) {
@@ -196,11 +196,11 @@ namespace BIOIK {
 			return new Quaternion((float)TRX, (float)TRY, (float)TRZ, (float)TRW).eulerAngles;
 		}
 
-		public void SetMaximumError(double value) {
+		public void SetMaximumError(float value) {
 			MaximumError = value;
 		}
 
-		public double GetMaximumError() {
+		public float GetMaximumError() {
 			return MaximumError;
 		}
 

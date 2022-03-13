@@ -8,11 +8,11 @@ namespace BIOIK {
 	public class Position : BioObjective {
 		
 		[SerializeField] public Transform Target;
-		[SerializeField] public double TPX, TPY, TPZ;
-		[SerializeField] public double MaximumError = 0.001;
+		[SerializeField] public float TPX, TPY, TPZ;
+		[SerializeField] public float MaximumError = 0.001f;
 
-		private double ChainLength;
-		private double Rescaling;
+		private float ChainLength;
+		private float Rescaling;
 		//private Vector3 Root;
 
 		public override ObjectiveType GetObjectiveType() {
@@ -23,7 +23,7 @@ namespace BIOIK {
 			if(Segment.Character.Evolution == null) {
 				return;
 			}
-			ChainLength = 0.0;
+			ChainLength = 0.0f;
 			Transform[] chain = Segment.Character.Evolution.GetModel().FindObjectivePtr(this).Node.Chain;;
 			for(int i=0; i<chain.Length-1; i++) {
 				ChainLength += Vector3.Distance(chain[i].position, chain[i+1].position);
@@ -38,11 +38,11 @@ namespace BIOIK {
 			}
 		}
 
-		public override double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			//Adaptive
 			/*
-			double loss = System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
-			double s = System.Math.Sqrt(
+			float loss = System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
+			float s = System.Math.Sqrt(
 				(node.Chain.Length+loss)
 				*
 				(System.Math.Sqrt((WPX-Root.x)*(WPX-Root.x) + (WPY-Root.y)*(WPY-Root.y) + (WPZ-Root.z)*(WPZ-Root.z))+loss)
@@ -58,12 +58,12 @@ namespace BIOIK {
 			//return Weight * ((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
 		}
 
-		public override bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			return System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ)) <= MaximumError;
 		}
 
-		public override double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			return System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
+		public override float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			return (float)System.Math.Sqrt((TPX-WPX)*(TPX-WPX) + (TPY-WPY)*(TPY-WPY) + (TPZ-WPZ)*(TPZ-WPZ));
 		}
 
 		public void SetTargetTransform(Transform target) {
@@ -87,11 +87,11 @@ namespace BIOIK {
 			return new Vector3((float)TPX, (float)TPY, (float)TPZ);
 		}
 		
-		public void SetMaximumError(double units) {
+		public void SetMaximumError(float units) {
 			MaximumError = units;
 		}
 
-		public double GetMaximumError() {
+		public float GetMaximumError() {
 			return MaximumError;
 		}
 

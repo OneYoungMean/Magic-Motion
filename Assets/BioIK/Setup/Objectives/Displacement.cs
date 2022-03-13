@@ -20,24 +20,24 @@ namespace BIOIK {
 
 		}
 
-		public override double ComputeLoss(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			double loss = 0.0;
+		public override float ComputeLoss(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			float loss = 0.0f;
 			for(int i=0; i<configuration.Length; i++) {
-				double diff = System.Math.Abs(Segment.Character.Evolution.GetSolution()[i] - configuration[i]) / (Segment.Character.Evolution.GetUpperBounds()[i] - Segment.Character.Evolution.GetLowerBounds()[i]);
+				float diff = System.Math.Abs(Segment.Character.Evolution.GetSolution()[i] - configuration[i]) / (Segment.Character.Evolution.GetUpperBounds()[i] - Segment.Character.Evolution.GetLowerBounds()[i]);
 				loss += diff;
 			}
 			loss /= configuration.Length;
 			return Weight * loss * loss;
 		}
 
-		public override bool CheckConvergence(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
+		public override bool CheckConvergence(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
 			return true;
 		}
 
-		public override double ComputeValue(double WPX, double WPY, double WPZ, double WRX, double WRY, double WRZ, double WRW, Model.Node node, double[] configuration) {
-			double value = 0.0;
+		public override float ComputeValue(float WPX, float WPY, float WPZ, float WRX, float WRY, float WRZ, float WRW, Model.Node node, float[] configuration) {
+			float value = 0.0f;
 			for(int i=0; i<configuration.Length; i++) {
-				double diff = System.Math.Abs(Segment.Character.Evolution.GetSolution()[i] - configuration[i]) / (Segment.Character.Evolution.GetUpperBounds()[i] - Segment.Character.Evolution.GetLowerBounds()[i]);
+				float diff = System.Math.Abs(Segment.Character.Evolution.GetSolution()[i] - configuration[i]) / (Segment.Character.Evolution.GetUpperBounds()[i] - Segment.Character.Evolution.GetLowerBounds()[i]);
 				value += diff;
 			}
 			return value /= configuration.Length;
