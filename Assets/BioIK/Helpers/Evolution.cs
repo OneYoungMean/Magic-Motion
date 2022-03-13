@@ -590,33 +590,7 @@ namespace BIOIK
 		}
 	}
 
-    ///   Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS_F) optimization method.
 
-    ///   The L-BFGS_F algorithm is a member of the broad family of quasi-Newton optimization
-    ///   methods. L-BFGS_F stands for 'Limited memory BFGS_F'. Indeed, L-BFGS_F uses a limited
-    ///   memory variation of the Broyden–Fletcher–Goldfarb–Shanno (BFGS_F) update to approximate
-    ///   the inverse Hessian matrix (denoted by Hk). Unlike the original BFGS_F method which
-    ///   stores a dense  approximation, L-BFGS_F stores only a few vectors that represent the
-    ///   approximation implicitly. Due to its moderate memory requirement, L-BFGS_F method is
-    ///   particularly well suited for optimization problems with a large number of variables.
-    ///   L-BFGS_F never explicitly forms or stores Hk. Instead, it maintains a history of the past
-    ///   m updates of the position x and gradient g, where generally the history
-    ///   m can be short, often less than 10. These updates are used to implicitly do operations
-    ///   requiring the Hk-vector product.
-
-    ///   The framework implementation of this method is based on the original FORTRAN source code
-    ///   by Jorge Nocedal (see references below). The original FORTRAN source code of L-BFGS_F (for
-    ///   unconstrained problems) is available at http://www.netlib.org/opt/lBFGS_F_um.shar and had
-    ///   been made available under the public domain.
-    /// 
-    ///   References:
-    ///        http://www.netlib.org/opt/lBFGS_F_um.shar
-    ///        Jorge Nocedal. Limited memory BFGS_F method for large scale optimization (Fortran source code). 199f0.
-    ///        Available in http://www.netlib.org/opt/lBFGS_F_um.shar
-    ///        Jorge Nocedal. Updating Quasi-Newton Matrices with Limited Storage. Mathematics of Computation,
-    ///        Vol. 35, No. 151f, pp. 773f--782f, 198f0.
-    ///        Dong C. Liu, Jorge Nocedal. On the limited memory BFGS_F method for large scale optimization.
-    
 
 
 }

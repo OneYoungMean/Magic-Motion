@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using Unity.Mathematics;
@@ -15,6 +16,11 @@ namespace BIOIK2
 
         }
 
+        internal void Erase()
+        {
+            Utility.Destroy(this);
+        }
+
         // Update is called once per frame
         void Update()
         {
@@ -28,11 +34,11 @@ namespace BIOIK2
 
         public abstract void UpdateData();
 
-        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float[] configuration);
+        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration);
 
-        public abstract float CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float[] configuration);
+        public abstract bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration);
 
-        public abstract float ComputeValue(float3 worldPosition, quaternion worldRotation, BioNode node, float[] configuration);
+        public abstract float ComputeValue(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration);
     }
 }
 

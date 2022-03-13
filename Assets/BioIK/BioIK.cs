@@ -122,7 +122,7 @@ namespace BIOIK {
 		public int GetGenerations() {
 			return Generations;
 		}
-
+		  
 		public void SetPopulationSize(int populationSize) {
 			if(PopulationSize != populationSize) {
 				PopulationSize = System.Math.Max(1, populationSize);

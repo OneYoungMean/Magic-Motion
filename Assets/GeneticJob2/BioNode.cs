@@ -38,7 +38,7 @@ namespace BIOIK2
                 this.parent.AddChild(this);
             }
             transform = parentSegment.transform;
-            joint = parentSegment.Joint;
+            joint = parentSegment.joint;
             List<Transform> reverseChain = new List<Transform>();
             reverseChain.Add(transform);
             BioNode p = parent;
@@ -81,9 +81,9 @@ namespace BIOIK2
             float3 position;
             if (parent ==null)
             {
-                worldPosition = model.originPosition;
-                 rotation = model.originRotation;
-                 position = model.originScale * localPosition;
+                worldPosition = model.positionOffset;
+                 rotation = model.rotationOffset;
+                 position = model.scaleOffset * localPosition;
             }
             else
             {
@@ -104,6 +104,24 @@ namespace BIOIK2
             other.localRotation = localRotation;
 
             other.value = value;
+        }
+
+        internal void FeedForwardConfiguration(float3[] configuration, bool updateWorld = false)
+        {
+            bool updateLocal = math.any(enabled & configuration[index] != value);
+            if (updateLocal)
+            {
+                joint.ComputeLocalTransformation(value, out localPosition,out localRotation);
+                updateWorld = true;
+            }
+            if (updateWorld)
+            {
+                ComputeWorldTransformation();
+            }
+            foreach (BioNode child in childs)
+            {
+                child.FeedForwardConfiguration(configuration, updateWorld);
+            }
         }
     }
 

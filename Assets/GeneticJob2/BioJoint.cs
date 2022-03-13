@@ -32,8 +32,8 @@ namespace BIOIK2
         private quaternion lastrotation;
         private float3 scale;
 
-        private float AnimationWeight => segment.Character.animationWeight;
-        private MotionType motionType => segment.Character.motionType;
+        private float AnimationWeight => segment.character.animationWeight;
+        private MotionType motionType => segment.character.motionType;
         // Start is called before the first frame update
         void Start()
         {
@@ -55,9 +55,9 @@ namespace BIOIK2
             defaultRotation = transform.localRotation;
 
             Vector3 forward = Vector3.zero;
-            if (segment.Childs.Count == 1)
+            if (segment.childs.Count == 1)
             {
-                forward = segment.Childs[0].transform.localPosition;
+                forward = segment.childs[0].transform.localPosition;
             }
             else if (segment.parent != null)
             {
@@ -180,6 +180,13 @@ namespace BIOIK2
         {
             localRotation = math.mul(AnimatedDefaultRotation, quaternion.Euler(currentMotion));
             localPosition = ADPADRSA + math.mul(localRotation, LSA);
+        }
+
+        internal void Erase()
+        {
+            RestoreDefaultFrame();
+            segment.transform.hideFlags = HideFlags.None;
+            Utility.Destroy(this);
         }
     }
 }

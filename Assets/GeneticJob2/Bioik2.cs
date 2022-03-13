@@ -2,12 +2,16 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace BIOIK2
 {
     public class Bioik2 : MonoBehaviour
     {
+        #region  Field&Property
+
+
         [SerializeField] private bool UseThreading = true;
 
         [SerializeField] private int Generations = 2;
@@ -23,15 +27,20 @@ namespace BIOIK2
         public float maximumVelocity = 3;
         public float maximumAcceleration = 3;
 
-        public List< BioSegment> segments = new List<BioSegment>();
+        public List<BioSegment> segments = new List<BioSegment>();
         public BioSegment root = null;
         public BioEvolution evolution = null;
+        public float3[] solutions = null;
         // Start is called before the first frame update
 
         private bool Destoryed = false;
 
         public BioSegment selectedSegment = null;
         public Vector2 scroll = Vector2.zero;
+
+        #endregion
+
+        #region UnityFunc
 
         private void Awake()
         {
@@ -45,30 +54,103 @@ namespace BIOIK2
         // Update is called once per frame
         void Update()
         {
+            PrecaptureAnimation(root);
+        }
 
+        private void LateUpdate()
+        {
+            PostcaptureAnimation(root);
+
+            UpdateData(root);
+
+            for (int i = 0; i < solutions.Length; i++)
+            {
+                solutions[i] = evolution.GetModel().motionPtrs[i].Motion.GetTargetValue(true);
+            }
+            solutions = evolution.Optimise(Generations, solutions);
+        }
+
+        private void UpdateData(BioSegment segment)
+        {
+            if (segment.joint != null)
+            {
+                if (segment.joint.enabled)
+                {
+                    segment.joint.UpdateData();
+                }
+            }
+            for (int i = 0; i < segment.objectives.Length; i++)
+            {
+                if (segment.objectives[i].enabled)
+                {
+                    segment.objectives[i].UpdateData();
+                }
+            }
+            for (int i = 0; i < segment.childs.Count; i++)
+            {
+                UpdateData(segment.childs[i]);
+            }
         }
 
         private void OnDestroy()
         {
             Destoryed = true;
             DeInitialise();
-        }
-
-        private void DeInitialise()
-        {
-            if (evolution!=null)
-            {
-                evolution.Kill();
-            }
+            Utility.Cleanup(transform);
         }
         private void OnEnable()
         {
             Initialise();
         }
+        void OnDisable()
+        {
+            DeInitialise();
+        }
+
+        #endregion
+
+        #region LocalFunc
+        private void PostcaptureAnimation(BioSegment segment)
+        {
+            if (segment.joint != null)
+            {
+                if (segment.joint.enabled)
+                {
+                    segment.joint.PostcaptureAnimation();
+                }
+            }
+            for (int i = 0; i < segment.childs.Count; i++)
+            {
+                PostcaptureAnimation(segment.childs[i]);
+            }
+        }
+
+        private void PrecaptureAnimation(BioSegment segment)
+        {
+            if (segment.joint != null)
+            {
+                if (segment.joint.enabled)
+                {
+                    segment.joint.PrecaptureAnimation();
+                }
+            }
+            for (int i = 0; i < segment.childs.Count; i++)
+            {
+                PrecaptureAnimation(segment.childs[i]);
+            }
+        }
+        private void DeInitialise()
+        {
+            if (evolution != null)
+            {
+                evolution.Kill();
+                evolution = null;
+            }
+        }
 
         private void Initialise()
         {
-            if (evolution==null)
+            if (evolution == null)
             {
                 evolution = new BioEvolution(new BioModel(this), PopulationSize, Elites, UseThreading);
             }
@@ -77,7 +159,7 @@ namespace BIOIK2
         internal BioSegment FindSegment(Transform target
             )
         {
-            if (target!=null)
+            if (target != null)
             {
                 return segments.FirstOrDefault(x => x.transform == target);
             }
@@ -87,7 +169,7 @@ namespace BIOIK2
             }
         }
 
-        internal void Refresh()
+        internal void Refresh(bool isEvolution = true)
         {
             if (Destoryed)
             {
@@ -96,24 +178,33 @@ namespace BIOIK2
 
             for (int i = 0; i < segments.Count; i++)
             {
-                if (segments[i]==null)
+                if (segments[i] == null)
                 {
                     segments.RemoveAt(i);
                     i--;
                 }
             }
             Refresh(transform);
+            root = FindSegment(transform);
+
+            if (isEvolution && Application.isPlaying)
+            {
+                DeInitialise();
+                Initialise();
+                solutions = new float3[evolution.GetModel().GetDof3()];
+            }
         }
 
         private void Refresh(Transform targetTrans)
         {
             BioSegment segment = FindSegment(targetTrans);
 
-            if (segment==null)
+            if (segment == null)
             {
                 segment = targetTrans.gameObject.AddComponent<BioSegment>().Create(this);
                 segments.Add(segment);
             }
+            segment.character = this;
             segment.RenewRelation();
 
             for (int i = 0; i < targetTrans.childCount; i++)
@@ -121,8 +212,9 @@ namespace BIOIK2
                 Refresh(targetTrans.GetChild(i));
             }
         }
-
-        
+        #endregion
+        #region StaticFunc
+        #endregion
     }
 }
 

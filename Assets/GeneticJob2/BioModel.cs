@@ -11,17 +11,13 @@ namespace BIOIK2
 
         private BioSegment root;
 
-        private float3 positionOffset;
-        private quaternion rotationOffset;
-        private float3 scaleOffset;
+        public float3 positionOffset;
+        public quaternion rotationOffset;
+        public float3 scaleOffset;
 
         public List< BioNode> nodes = new List<BioNode>();
         public List<ObjectivePtr> objectivePtrs = new List<ObjectivePtr>();
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
-
-        internal float3 originPosition;
-        internal quaternion originRotation;
-        internal float3 originScale;
 
         private float3[] Configuration;
         private float3[] Gradient;
@@ -77,8 +73,62 @@ namespace BIOIK2
 
             Refresh();
         }
+        public void CopyFrom(BioModel model)
+        {
+            positionOffset=model.positionOffset;
+            rotationOffset=model.rotationOffset;
+            scaleOffset=model.scaleOffset;
 
-        private void Refresh()
+            Array.Copy(model.Configuration, Configuration, Dof3);
+            Array.Copy(model.Gradient, Gradient, Dof3);
+
+            Array.Copy(model.tempPositions, tempPositions, objectivePtrs.Count);
+            Array.Copy(model.tempRotation, tempRotation, objectivePtrs.Count);
+            Array.Copy(model.Losses, Losses, objectivePtrs.Count);
+            Array.Copy(model.SimulatedLosses, SimulatedLosses, objectivePtrs.Count);
+
+            for (int i = 0; i < nodes.Count; i++)
+            {
+                nodes[i].worldPosition=model.nodes[i].worldPosition;
+                nodes[i].worldRotation = model.nodes[i].worldRotation;
+                nodes[i].worldScale = model.nodes[i].worldScale;
+                nodes[i].localPosition = model.nodes[i].localPosition;
+                nodes[i].localRotation = model.nodes[i].localRotation;
+                nodes[i].value = model.nodes[i].value;
+            }
+        }
+        
+        internal float ComputeLoss(float3[] configuration)
+        {
+            FK(configuration);
+            float loss = 0.0f;
+            for (int i = 0; i < objectivePtrs.Count; i++)
+            {
+                BioNode node = objectivePtrs[i].Node;
+                Losses[i] = objectivePtrs[i].Objective.ComputeLoss(node.worldPosition, node.worldRotation, node, configuration);
+                loss += Losses[i];
+            }
+            return (float)System.Math.Sqrt(loss / (float)objectivePtrs.Count);
+        }
+        public bool CheckConvergence(float3[] configuration)
+        {
+            FK(configuration);
+            for (int i = 0; i < objectivePtrs.Count; i++)
+            {
+                BioNode node = objectivePtrs[i].Node;
+                if (!objectivePtrs[i].Objective.CheckConvergence(node.worldPosition, node.worldRotation, node, configuration))
+                {
+                    return false;
+                }
+            }
+            return true;
+        }
+        private void FK(float3[] configuration)
+        {
+            Array.Copy(configuration, Configuration, Configuration.Length);
+            nodes[0].FeedForwardConfiguration(configuration);
+        }
+            public void Refresh()
         {
             for (int i = 0; i < Configuration.Length; i++)
             {
@@ -87,16 +137,16 @@ namespace BIOIK2
 
             if (root.transform.root == Character.transform)
             {
-                originPosition = 0;
-                originRotation = quaternion.identity;
-                originScale = 1;
+                positionOffset = 0;
+                rotationOffset = quaternion.identity;
+                scaleOffset = 1;
             }
             else
             {
                 Transform parent = root.transform.parent;
-                originPosition = parent.position;
-                originRotation = parent.rotation;
-                originScale = parent.lossyScale;
+                positionOffset = parent.position;
+                rotationOffset = parent.rotation;
+                scaleOffset = parent.lossyScale;
             }
 
             nodes[0].Refresh();
@@ -122,9 +172,9 @@ namespace BIOIK2
                         targetNode.index = motionPtr.Index;
                     }
                 }
-                for (int i = 0; i < targetSegment.Objectives.Length; i++)
+                for (int i = 0; i < targetSegment.objectives.Length; i++)
                 {
-                    var targetObject = targetSegment.Objectives[i]; 
+                    var targetObject = targetSegment.objectives[i]; 
                     if (targetObject.enabled)
                     {
                         objectivePtrs.Add(new ObjectivePtr(targetObject, targetNode, objectivePtrs.Count));
@@ -151,17 +201,17 @@ namespace BIOIK2
         private  void CollectObjectives(BioSegment segment, List<BioObjective> objectiveList)
         {
             //这个....既不是广搜也不是深搜
-            for (int i = 0; i < segment.Objectives?.Length; i++)
+            for (int i = 0; i < segment.objectives?.Length; i++)
             {
-                if (segment.Objectives[i].enabled)
+                if (segment.objectives[i].enabled)
                 {
-                    objectiveList.Add(segment.Objectives[i]);
+                    objectiveList.Add(segment.objectives[i]);
                 }
                 
             }
-            for (int i = 0; i < segment.Childs.Count; i++)
+            for (int i = 0; i < segment.childs.Count; i++)
             {
-                CollectObjectives(segment.Childs[i], objectiveList);
+                CollectObjectives(segment.childs[i], objectiveList);
             }
         }
         internal List<BioSegment> GetChain(BioSegment root, BioSegment end)
@@ -192,9 +242,9 @@ namespace BIOIK2
         {
             BioModel model = new BioModel(Character);
 
-            model.originPosition = originPosition;
-            model.originRotation = originRotation;
-            model. originScale = originScale;
+            model.positionOffset = positionOffset;
+            model.rotationOffset = rotationOffset;
+            model. scaleOffset = scaleOffset;
 
             Array.Copy(Configuration, model.Configuration, Dof3);
             Array.Copy(Gradient, model.Gradient, Dof3);

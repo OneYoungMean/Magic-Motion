@@ -7,39 +7,39 @@ namespace BIOIK2
 {
     public class BioSegment : MonoBehaviour
     {
-        public Bioik2 Character;//OYM:角色本身
+        public Bioik2 character;//OYM:角色本身
         public BioSegment parent;//OYM:父节点
-        public List< BioSegment> Childs = new List<BioSegment>();//OYM:段
-        public BioJoint Joint = null;
-        public BioObjective[] Objectives = new BioObjective[0];//OYM:挂载的BioObject
+        public List< BioSegment> childs = new List<BioSegment>();//OYM:段
+        public BioJoint joint = null;
+        public BioObjective[] objectives = new BioObjective[0];//OYM:挂载的BioObject
                                                                // Start is called before the first frame update
         public BioSegment Create(Bioik2 character)
         {
-            Character = character;
+            this.character = character;
             hideFlags = HideFlags.HideInInspector;
             return this;
         }
 
         public Vector3 GetAnchoredPosition()
         {
-            return Joint == null ? transform.position : Joint.GetAnchorInWorldSpace();
+            return joint == null ? transform.position : joint.GetAnchorInWorldSpace();
         }
 
 
         public void RenewRelation()
         {
             parent = null;
-            Childs.Clear();
-            if (transform!=Character.transform)
+            childs.Clear();
+            if (transform!=character.transform)
             {
-                parent = Character.FindSegment(transform.parent);
+                parent = character.FindSegment(transform.parent);
                 parent.AddChild(this);
             }
         }
 
         private void AddChild(BioSegment bioSegment)
         {
-            Childs.Add(bioSegment);
+            childs.Add(bioSegment);
         }
     }
 

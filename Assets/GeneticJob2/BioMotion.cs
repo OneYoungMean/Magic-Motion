@@ -24,8 +24,8 @@ namespace BIOIK2
         public float3 currentVelocity;
         public float3 currentAcceleration;
         public float3x3 axisMat;
-        public float maximumVelocity => (joint.jointType == BioJointType.Rotational ? Mathf.Rad2Deg :1f)*joint.segment.Character.maximumVelocity;
-        public float maximumAcceleration => (joint.jointType == BioJointType.Rotational ? Mathf.Rad2Deg : 1f) * joint.segment.Character.maximumAcceleration;
+        public float maximumVelocity => (joint.jointType == BioJointType.Rotational ? Mathf.Rad2Deg :1f)*joint.segment.character.maximumVelocity;
+        public float maximumAcceleration => (joint.jointType == BioJointType.Rotational ? Mathf.Rad2Deg : 1f) * joint.segment.character.maximumAcceleration;
 
         public const float SPEEDUP = 1;
         public const float SLOWDOWN = 1;
@@ -58,19 +58,42 @@ namespace BIOIK2
             lowerLimit = min(0, value);
         }
 
-        public float3 GetLowerLimit(bool normalized = false)
+        public float3 GetLowerLimit(bool normalised = false)
         {
-            float3 constraintValue = (float3)constraint * float.MaxValue + new float3(1,1,1);
+            float3 constraintValue = (float3)(!constraint) * float.MinValue + 1;//OYM£ºfalse =minvalue ,true =1
+
+
             float3 result =0;
-            if (normalized && joint.jointType == BioJointType.Rotational)
+            if (normalised && joint.jointType == BioJointType.Rotational)
             {
-                result = Mathf.Deg2Rad * lowerLimit;
+                result = radians( lowerLimit);
             }
             else
             {
                 result = lowerLimit;
             }
-            result += constraintValue;
+            result *= constraintValue;
+            return result;
+        }
+
+        public void SetUpperLimit(float3 value)
+        {
+            upperLimit = max(0.0f, value);
+        }
+
+        public float3 GetUpperLimit(bool normalised = false)
+        {
+            float3 constraintValue = (float3)(!constraint) * float.MaxValue + 1;//OYM£ºfalse =maxvalue ,true =1
+            float3 result = 0;
+            if (normalised && joint.jointType == BioJointType.Rotational)
+            {
+                result = radians(upperLimit);
+            }
+            else
+            {
+                result = upperLimit;
+            }
+            result *= constraintValue;
             return result;
         }
 
