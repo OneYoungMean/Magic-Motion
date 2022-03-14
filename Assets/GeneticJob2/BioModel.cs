@@ -97,7 +97,26 @@ namespace BIOIK2
                 nodes[i].value = model.nodes[i].value;
             }
         }
-        
+
+        internal float[] ComputeGradient(float[] y, float v)
+        {
+            float oldLoss = ComputeLoss(configuration);
+            for (int j = 0; j < DoF; j++)
+            {
+                Configuration[j] += resolution;
+                MotionPtrs[j].Node.SimulateModification(Configuration);
+                Configuration[j] -= resolution;
+                float newLoss = 0.0f;
+                for (int i = 0; i < ObjectivePtrs.Length; i++)
+                {
+                    newLoss += SimulatedLosses[i];
+                }
+                newLoss = (float)System.Math.Sqrt(newLoss / (float)ObjectivePtrs.Length);
+                Gradient[j] = (float)((newLoss - oldLoss) / resolution);
+            }
+            return Gradient;
+        }
+
         internal float ComputeLoss(float3[] configuration)
         {
             FK(configuration);

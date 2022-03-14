@@ -6,13 +6,13 @@ namespace BIOIK
 
         public enum Task { None, Start, New_X, FG, FG_LN, FG_ST, Abnormal, Convergence, Error, Restart_LN, Warning };
 
-        public System.Func<float[], float> Function;
-        public System.Func<float[], float[]> Gradient;
+        public System.Func<float3[], float> FitnessFunction;
+        public System.Func<float3[], float3[]> GradientFunction;
         public int Dimensionality;
-        public float[] Solution;
+        public float3[] Solution;
         public float Value;
-        public float[] LowerBounds;
-        public float[] UpperBounds;
+        public float3[] LowerBounds;
+        public float3[] UpperBounds;
 
         private const float stpmin = math.EPSILON;
         private const float stpmax = 1/ math.EPSILON;
@@ -37,16 +37,16 @@ namespace BIOIK
         private Task _CSave;
 
         private float NewF;
-        private float[] NewG;
+        private float3[] NewG;
 
-        public BFGS_F(int dimensionality, System.Func<float[], float> function, System.Func<float[], float[]> gradient)
+        public BFGS_F(int dimensionality, System.Func<float3[], float> function, System.Func<float3[], float3[]> gradient)
         {
             Dimensionality = dimensionality;
-            Function = function;
-            Gradient = gradient;
-            UpperBounds = new float[Dimensionality];
-            LowerBounds = new float[Dimensionality];
-            Solution = new float[Dimensionality];
+            FitnessFunction = function;
+            GradientFunction = gradient;
+            UpperBounds = new float3[Dimensionality];
+            LowerBounds = new float3[Dimensionality];
+            Solution = new float3[Dimensionality];
 
             TotalSize = 2 * Corrections * Dimensionality + 11 * Corrections * Corrections + 5 * Dimensionality + 8 * Corrections;
             NBD = new int[Dimensionality];
@@ -67,7 +67,7 @@ namespace BIOIK
             NewF = 0;
             NewG = null;
         }
-        public void SetLowerBound(float3[] values)
+/*        public void SetLowerBound(float3[] values)
         {
             LowerBounds = new float[values.Length * 3];
             for (int i = 0; i < values.Length; i++)
@@ -86,7 +86,7 @@ namespace BIOIK
                 UpperBounds[i * 3 + 1] = values[i].y;
                 UpperBounds[i * 3 + 2] = values[i].z;
             }
-        }
+        }*/
         public void Minimise(float3[] values,float timeOut)
         {
             float[] newValues = new float[values.Length * 3];
@@ -138,8 +138,8 @@ namespace BIOIK
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
                 {
-                    NewF = Function(Solution);
-                    NewG = Gradient(Solution);
+                    NewF = FitnessFunction(Solution);
+                    NewG = GradientFunction(Solution);
                     F = NewF;
                     for (int i = 0; i < Dimensionality; i++)
                     {
@@ -148,7 +148,7 @@ namespace BIOIK
                 }
             }
 
-            Value = Function(Solution);
+            Value = FitnessFunction(Solution);
         }
 
         public void Minimise(float[] values, float timeout)
@@ -181,8 +181,8 @@ namespace BIOIK
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
                 {
-                    NewF = Function(Solution);
-                    NewG = Gradient(Solution);
+                    NewF = FitnessFunction(Solution);
+                    NewG = GradientFunction(Solution);
                     F = NewF;
                     for (int i = 0; i < Dimensionality; i++)
                     {
@@ -191,7 +191,7 @@ namespace BIOIK
                 }
             }
 
-            Value = Function(Solution);
+            Value = FitnessFunction(Solution);
         }
 
     }
@@ -3582,9 +3582,9 @@ namespace BIOIK
         // 
         private static void mainlb(int n,
             int m,
-            float[] x, int _x_offset,
-            float[] l, int _l_offset,
-            float[] u, int _u_offset,
+            float3[] x, int _x_offset,
+            float3[] l, int _l_offset,
+            float3[] u, int _u_offset,
             int[] nbd, int _nbd_offset,
             ref float f,
             float[] g, int _g_offset,
@@ -4511,9 +4511,9 @@ namespace BIOIK
         // 
         internal static void setulb(int n,
         int m,
-        float[] x, int _x_offset,
-        float[] l, int _l_offset,
-        float[] u, int _u_offset,
+        float3[] x, int _x_offset,
+        float3[] l, int _l_offset,
+        float3[] u, int _u_offset,
         int[] nbd, int _nbd_offset,
         ref float f,
         float[] g, int _g_offset,

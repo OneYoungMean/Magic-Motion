@@ -56,6 +56,34 @@ namespace BIOIK2
             this.populationSize = populationSize;
             this.elites = elites;
             this.useThreading = useThreading;
+            this.Dimensionality = bioModel.GetDof3();
+
+            population=new Individual[populationSize]; 
+            offSpring = new Individual[populationSize];
+            for (int i = 0; i < populationSize; i++)
+            {
+                population[i] = new Individual(Dimensionality);
+                offSpring[i] = new Individual(Dimensionality);
+            }
+
+            lowerBounds = new float3[Dimensionality];
+            upperBounds = new float3[Dimensionality];
+            constrained =new bool3[Dimensionality];
+            probabilities = new float[populationSize];
+            Solution = new float3[Dimensionality];
+
+
+            models =new BioModel[elites];
+            optimisers = new BFGS_F[elites];
+            improved = new bool[elites];
+            for (int i = 0; i < elites; i++)
+            {
+                int index = i;
+                models[index] = new BioModel(bioModel.GetCharacter());
+                optimisers[index] = new BFGS_F(Dimensionality, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y, 1e-5f));
+            }
+
+
             random = new Random(1); 
         }
 
