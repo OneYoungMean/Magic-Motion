@@ -26,9 +26,9 @@ namespace BIOIK2
 
         private float[] probabilities;
 
-        private double geneTemp;
+        private float3 geneTemp;
 
-        private double weight;
+        private float weight;
 
         private bool3[] constrained;
 
@@ -112,17 +112,17 @@ namespace BIOIK2
                     Individual prototype = Select(pool);
 
                     //Recombination and Adoption
-                    Reproduce(Offspring[i], parentA, parentB, prototype);
+                    Reproduce(offSpring[i], parentA, parentB, prototype);
 
                     //Pre-Selection Niching
-                    if (Offspring[i].Fitness < parentA.Fitness)
+                    if (offSpring[i].fitness < parentA.fitness)
                     {
-                        Pool.Remove(parentA);
-                        PoolCount -= 1;
+                        pool.Remove(parentA);
+                        poolCount -= 1;
                     }
-                    if (Offspring[i].Fitness < parentB.Fitness)
+                    if (offSpring[i].fitness < parentB.fitness)
                     {
-                        Pool.Remove(parentB);
+                        pool.Remove(parentB);
                         PoolCount -= 1;
                     }
                 }
@@ -133,15 +133,75 @@ namespace BIOIK2
                 }
             }
         }
+        //OYM：前处理
+        private void Reproduce(Individual offSpring, Individual parentA, Individual parentB, Individual prototype)
+        {
+            float mutationProbability = GetMutationProbability(parentA, parentB);
+            float mutationStrength = GetMutationStrength(parentA, parentB);
 
+            for (int i = 0; i < Dimensionality; i++)
+            {
+                weight = random.NextFloat();
+                float3 momentum = random.NextFloat3() *parentA.momentum[i]+ random.NextFloat3()* parentB.momentum[i];
+
+                offSpring.genes[i] = weight * parentA.genes[i] + (1.0f - weight) * parentB.genes[i] + momentum;
+
+                geneTemp = offSpring.genes[i];
+
+                if (constrained[i])
+                {
+                    if (random.NextFloat() < mutationProbability)
+                    {
+                        offspring.Genes[i] += (Random.value * (UpperBounds[i] - LowerBounds[i]) + LowerBounds[i]) * mutationStrength;
+                    }
+                }
+            }
+        }
+
+        private float GetMutationProbability(Individual parentA, Individual parentB)
+        {
+            float extinction = 0.5f * (parentA.extinction + parentB.extinction);
+            float inverse = 1.0f / (float)Dimensionality;
+            return extinction * (1.0f - inverse) + inverse;
+        }
+        private float GetMutationStrength(Individual parentA, Individual parentB)
+        {
+            return 0.5f * (parentA.extinction + parentB.extinction);
+        }
+        //OYM：选择权重
         private Individual Select(List<Individual> pool)
         {
-            float rankSum = (float)(poolCount * (poolCount + 1)) / 2.0f;
+            float rankSum = (poolCount * (poolCount + 1)) / 2.0f;//OYM：等差数列求和
             for (int i = 0; i < poolCount; i++)
             {
-                probabilities[i] = (float)(PoolCount - i) / rankSum;
+                probabilities[i] = (float)(poolCount - i) / rankSum; //OYM：归一化之后的值
             }
-            return pool[GetRandomWeightedIndex(Probabilities, PoolCount)];
+            return pool[GetRandomWeightedIndex(probabilities,poolCount)];
+        }
+        /// <summary>
+        /// 依次递减直到rVal为零为止
+        /// 话说这东西不应该有个通项之类的吗。。。。
+        /// </summary>
+        /// <param name="probabilities"></param>
+        /// <param name="poolCount"></param>
+        /// <returns></returns>
+        private int GetRandomWeightedIndex(float[] probabilities, int poolCount)
+        {
+            float weightSum = 0.0f;
+            for (int i = 0; i < poolCount; i++)
+            {
+                weightSum += probabilities[i]; //OYM：这里应该是1对吧
+            }
+            float rVal =random.NextFloat() * weightSum;
+            for (int i = 0; i < poolCount; i++)
+            {
+                rVal -= probabilities[i];
+                if (rVal <= 0.0f)
+                {
+                    return i;
+                }
+            }
+            return poolCount - 1;
         }
 
         private void Initialise(float3[] seeds)
