@@ -1,8 +1,10 @@
 ﻿using BIOIK;
 using System.Collections.Generic;
 using System.Linq;
+using System;
 using System.Threading;
 using Unity.Mathematics;
+using Random = Unity.Mathematics.Random;
 
 namespace BIOIK2
 {
@@ -85,8 +87,8 @@ namespace BIOIK2
                 for (int i = 0; i < elites; i++)
                 {
                     models[i].CopyFrom(bioModel);
-                    optimisers[i].LowerBounds = lowerBounds.SelectMany(x=>new float[] { x.x,x.y,x.z}).ToArray();
-                    optimisers[i].UpperBounds = upperBounds.SelectMany(x => new float[] { x.x, x.y, x.z }).ToArray();
+                    optimisers[i].SetLowerBound(lowerBounds);
+                    optimisers[i].SetUpperBound(upperBounds);
                 }
                 for (int i = 0; i < generations; i++)
                 {
@@ -94,7 +96,9 @@ namespace BIOIK2
                     Evolve();
                 }
             }
+            return Solution;
         }
+
 
         private void Evolve()
         {
@@ -123,39 +127,122 @@ namespace BIOIK2
                     if (offSpring[i].fitness < parentB.fitness)
                     {
                         pool.Remove(parentB);
-                        PoolCount -= 1;
+                        poolCount -= 1;
                     }
                 }
                 else
                 {
                     //Fill the population
-                    Reroll(Offspring[i]);
+                    Reroll(offSpring[i]);
                 }
             }
+            float duration = Utility.GetElapsedTime(timestamp);
+            for (int i = 0; i < elites; i++)
+            {
+                SurviveSequential(i, duration);
+            }
+            for (int i = 0; i < elites; i++)
+            {
+                if (!improved[i])
+                {
+                    Reroll(offSpring[i]); //OYM：无法优化了，创建一个新的基因
+                }
+            }
+            Swap(ref population, ref offSpring);
+            SortByFitness();
+
+            if (!TryUpdateSolution() && !HasAnyEliteImproved())
+            {
+                Initialise(Solution);
+            }
+            else
+            {
+                ComputeExtinctions();
+            }
         }
-        //OYM：前处理
-        private void Reproduce(Individual offSpring, Individual parentA, Individual parentB, Individual prototype)
+
+        private bool HasAnyEliteImproved()
+        {
+            for (int i = 0; i < elites; i++)
+            {
+                if (improved[i])
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private void Swap(ref Individual[] a, ref Individual[] b)
+        {
+            Individual[] tmp = a;
+            a = b;
+            b = tmp;
+        }
+
+        private void SurviveSequential(int index, float timeout)
+        {
+            //Copy elitist survivor
+            Individual survivor = population[index];
+            Individual elite = offSpring[index];
+
+            Array.Copy(survivor.genes, elite.genes, Dimensionality);
+            Array.Copy(survivor.momentum, elite.momentum, Dimensionality);
+            float fitness = models[index].ComputeLoss(elite.genes);
+            optimisers[index].Minimise(elite.genes, (float)timeout);
+
+            if (optimisers[index].Value < fitness)
+            {
+                for (int i = 0; i < Dimensionality; i++)
+                {
+                    elite.momentum[i] = optimisers[index].Solution[i] - elite.genes[i];
+                    elite.genes[i] = optimisers[index].Solution[i];
+                }
+                elite.fitness = optimisers[index].Value;
+                improved[index] = true;
+            }
+            else
+            {
+                elite.fitness = fitness;
+                improved[index] = false;
+            }
+        }
+
+            //OYM：前处理
+            private void Reproduce(Individual offSpring, Individual parentA, Individual parentB, Individual prototype)
         {
             float mutationProbability = GetMutationProbability(parentA, parentB);
             float mutationStrength = GetMutationStrength(parentA, parentB);
 
+            //OYM：Recombination
             for (int i = 0; i < Dimensionality; i++)
             {
                 weight = random.NextFloat();
                 float3 momentum = random.NextFloat3() *parentA.momentum[i]+ random.NextFloat3()* parentB.momentum[i];
 
-                offSpring.genes[i] = weight * parentA.genes[i] + (1.0f - weight) * parentB.genes[i] + momentum;
+                offSpring.genes[i] += math.lerp(parentA.genes[i] , parentB.genes[i], weight) + momentum;
 
+                //Store
                 geneTemp = offSpring.genes[i];
 
-                if (constrained[i])
+                //OYM：mutation
+                if (random.NextFloat() < mutationProbability)
                 {
-                    if (random.NextFloat() < mutationProbability)
-                    {
-                        offspring.Genes[i] += (Random.value * (UpperBounds[i] - LowerBounds[i]) + LowerBounds[i]) * mutationStrength;
-                    }
+                    float3 constraintedValue = (float3)constrained[i];
+                    offSpring.genes[i] += math.lerp(lowerBounds[i], upperBounds[i], random.NextFloat3()) * constraintedValue * mutationStrength;
                 }
+
+                //OYM：Adoption
+                weight = random.NextFloat();
+                float3 avgGeneLoss = 0.5f * (parentA.genes[i] + parentB.genes[i])- offSpring.genes[i];
+                float3 protoGeneLoss =  prototype.genes[i] - offSpring.genes[i];
+                offSpring.genes[i] += math.lerp(avgGeneLoss, protoGeneLoss, weight);
+                //Project
+
+                offSpring.genes[i]=math.clamp(offSpring.genes[i],lowerBounds[i], upperBounds[i]);
             }
+            //OYM：
+            offSpring.fitness = bioModel.ComputeLoss(offSpring.genes);
         }
 
         private float GetMutationProbability(Individual parentA, Individual parentB)

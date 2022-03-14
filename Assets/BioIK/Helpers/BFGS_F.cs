@@ -67,7 +67,48 @@ namespace BIOIK
             NewF = 0;
             NewG = null;
         }
-
+        public void SetLowerBound(float3[] values)
+        {
+            LowerBounds = new float[values.Length * 3];
+            for (int i = 0; i < values.Length; i++)
+            {
+                LowerBounds[i * 3] = values[i].x;
+                LowerBounds[i * 3 + 1] = values[i].y;
+                LowerBounds[i * 3 + 2] = values[i].z;
+            }
+        }
+        public void SetUpperBound(float3[] values)
+        {
+            UpperBounds = new float[values.Length * 3];
+            for (int i = 0; i < values.Length; i++)
+            {
+                UpperBounds[i * 3] = values[i].x;
+                UpperBounds[i * 3 + 1] = values[i].y;
+                UpperBounds[i * 3 + 2] = values[i].z;
+            }
+        }
+        public void Minimise(float3[] values,float timeOut)
+        {
+            float[] newValues = new float[values.Length * 3];
+            for (int i = 0; i < values.Length; i++)
+            {
+                newValues[i * 3] = values[i].x;
+                newValues[i * 3 + 1] = values[i].y;
+                newValues[i * 3 + 2] = values[i].z;
+            }
+            Minimise(newValues, timeOut);
+        }
+        public void Minimise(float3[] values, ref bool evolving)
+        {
+            float[] newValues = new float[values.Length*3];
+            for (int i = 0; i < values.Length; i++)
+            {
+                newValues[i * 3] = values[i].x; 
+                newValues[i*3+1]= values[i].y;
+                newValues[i*3+2]= values[i].z;
+            }
+            Minimise(newValues, ref evolving);
+        }
         public void Minimise(float[] values, ref bool evolving)
         {
             for (int i = 0; i < Dimensionality; i++)

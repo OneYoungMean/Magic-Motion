@@ -46,5 +46,10 @@ namespace BIOIK2
         {
             throw new System.NotImplementedException();
         }
+
+        internal static float GetElapsedTime(System.DateTime timestamp)
+        {
+			return (float)(System.DateTime.Now - timestamp).Duration().TotalSeconds;
+		}
     }
 }
