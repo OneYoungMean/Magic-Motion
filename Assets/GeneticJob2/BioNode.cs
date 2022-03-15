@@ -22,11 +22,11 @@ namespace BIOIK2
         public float3 localPosition;
         public quaternion localRotation;
 
-        public bool3 enabled;
+        public float3 enabled;
 
         public int index;
 
-        public float3 value;
+        public float3 currentValue;
 
         public bool[] ObjectiveImpacts; //表示整个运动树中哪些目标指标受到影响的布尔值
         public BioNode(BioModel model, BioNode parent, BioSegment parentSegment)
@@ -65,8 +65,8 @@ namespace BIOIK2
             }
             else
             {
-                value = joint.bioMotion.GetTargetValue(true);
-                joint.ComputeLocalTransformation(value, out localPosition, out localRotation);
+                currentValue = joint.bioMotion.GetTargetValue(true);
+                joint.ComputeLocalTransformation(currentValue, out localPosition, out localRotation);
 
                 worldScale = transform.lossyScale;
             }
@@ -103,15 +103,15 @@ namespace BIOIK2
             other.localPosition = localPosition;
             other.localRotation = localRotation;
 
-            other.value = value;
+            other.currentValue = currentValue;
         }
 
         internal void FeedForwardConfiguration(float3[] configuration, bool updateWorld = false)
         {
-            bool updateLocal = math.any(enabled & configuration[index] != value);
+            bool updateLocal = math.any((enabled ==1)& configuration[index] != currentValue);
             if (updateLocal)
             {
-                joint.ComputeLocalTransformation(value, out localPosition,out localRotation);
+                joint.ComputeLocalTransformation(currentValue, out localPosition,out localRotation);
                 updateWorld = true;
             }
             if (updateWorld)
@@ -121,6 +121,21 @@ namespace BIOIK2
             foreach (BioNode child in childs)
             {
                 child.FeedForwardConfiguration(configuration, updateWorld);
+            }
+        }
+
+        internal void SimulateModification(float3[] configuration)
+        {
+            float3[] positions = model.tempPositions;
+            quaternion[] rotations = model.tempRotation;
+            for (int i = 0; i < model.objectivePtrs.Count; i++)
+            {
+                var node = model.objectivePtrs[i].Node;
+                if (ObjectiveImpacts[i])
+                {
+                    float3 inputData=math.lerp(currentValue)
+                    joint.ComputeLocalTransformation()
+                }
             }
         }
     }

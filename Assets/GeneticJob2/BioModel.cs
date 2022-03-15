@@ -19,13 +19,13 @@ namespace BIOIK2
         public List<ObjectivePtr> objectivePtrs = new List<ObjectivePtr>();
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
 
-        private float3[] Configuration;
-        private float3[] Gradient;
-        private float[] Losses;
-        private float[] SimulatedLosses;
+        public float3[] Configuration;
+        public float3[] Gradient;
+        public float[] Losses;
+        public float[] SimulatedLosses;
 
-        private float3[] tempPositions;
-        private quaternion[] tempRotation;
+        public float3[] tempPositions;
+        public quaternion[] tempRotation;
 
 
 
@@ -94,17 +94,17 @@ namespace BIOIK2
                 nodes[i].worldScale = model.nodes[i].worldScale;
                 nodes[i].localPosition = model.nodes[i].localPosition;
                 nodes[i].localRotation = model.nodes[i].localRotation;
-                nodes[i].value = model.nodes[i].value;
+                nodes[i].currentValue = model.nodes[i].currentValue;
             }
         }
 
-        internal float[] ComputeGradient(float[] y, float v)
+        internal float3[] ComputeGradient(float3[] configuration, float resolution)
         {
             float oldLoss = ComputeLoss(configuration);
-            for (int j = 0; j < DoF; j++)
+            for (int j = 0; j < Dof3; j++)
             {
                 Configuration[j] += resolution;
-                MotionPtrs[j].Node.SimulateModification(Configuration);
+                motionPtrs[j].Node.SimulateModification(Configuration);
                 Configuration[j] -= resolution;
                 float newLoss = 0.0f;
                 for (int i = 0; i < ObjectivePtrs.Length; i++)

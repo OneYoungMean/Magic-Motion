@@ -80,7 +80,7 @@ namespace BIOIK2
             {
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
-                optimisers[index] = new BFGS_F(Dimensionality, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y, 1e-5f));
+                optimisers[index] = new BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y.ToFloat3Array(), 1e-5f).ToFloatArray());
             }
 
 
@@ -115,8 +115,8 @@ namespace BIOIK2
                 for (int i = 0; i < elites; i++)
                 {
                     models[i].CopyFrom(bioModel);
-                    optimisers[i].SetLowerBound(lowerBounds);
-                    optimisers[i].SetUpperBound(upperBounds);
+                    optimisers[i].LowerBounds= lowerBounds.ToFloatArray();
+                    optimisers[i].UpperBounds= upperBounds.ToFloatArray();
                 }
                 for (int i = 0; i < generations; i++)
                 {

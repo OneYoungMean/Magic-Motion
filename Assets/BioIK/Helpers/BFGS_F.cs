@@ -6,28 +6,28 @@ namespace BIOIK
 
         public enum Task { None, Start, New_X, FG, FG_LN, FG_ST, Abnormal, Convergence, Error, Restart_LN, Warning };
 
-        public System.Func<float3[], float> FitnessFunction;
-        public System.Func<float3[], float3[]> GradientFunction;
+        public System.Func<float[], float> Function;
+        public System.Func<float[], float[]> Gradient;
         public int Dimensionality;
-        public float3[] Solution;
+        public float[] Solution;
         public float Value;
-        public float3[] LowerBounds;
-        public float3[] UpperBounds;
+        public float[] LowerBounds;
+        public float[] UpperBounds;
 
         private const float stpmin = math.EPSILON;
         private const float stpmax = 1/ math.EPSILON;
-        private int Corrections = 1;//OYM：更正？
-        private float Factor = 1e+5f;//OYM：因素
+        private int Corrections = 1;
+        private float Factor = 1e+5f;
         private float Tolerance = 0;
         private int IPrint = 101;
         private int TotalSize = 0;
 
-        private float oldFitness;
-        private float[] oldGradient;
+        private float F;
+        private float[] G;
 
-        private bool[] boolArray;
-        private int[] intArray;
-        private float[] floatArray;
+        private bool[] LSave;
+        private int[] ISave;
+        private float[] DSave;
 
         private int[] IWA;
         private int[] NBD;
@@ -37,16 +37,16 @@ namespace BIOIK
         private Task _CSave;
 
         private float NewF;
-        private float3[] NewG;
+        private float[] NewG;
 
-        public BFGS_F(int dimensionality, System.Func<float3[], float> function, System.Func<float3[], float3[]> gradient)
+        public BFGS_F(int dimensionality, System.Func<float[], float> function, System.Func<float[], float[]> gradient)
         {
             Dimensionality = dimensionality;
-            FitnessFunction = function;
-            GradientFunction = gradient;
-            UpperBounds = new float3[Dimensionality];
-            LowerBounds = new float3[Dimensionality];
-            Solution = new float3[Dimensionality];
+            Function = function;
+            Gradient = gradient;
+            UpperBounds = new float[Dimensionality];
+            LowerBounds = new float[Dimensionality];
+            Solution = new float[Dimensionality];
 
             TotalSize = 2 * Corrections * Dimensionality + 11 * Corrections * Corrections + 5 * Dimensionality + 8 * Corrections;
             NBD = new int[Dimensionality];
@@ -55,11 +55,11 @@ namespace BIOIK
                 NBD[i] = 2;
             }
 
-            oldFitness = 0;
-            oldGradient = new float[Dimensionality];
-            boolArray = new bool[4];
-            intArray = new int[44];
-            floatArray = new float[29];
+            F = 0;
+            G = new float[Dimensionality];
+            LSave = new bool[4];
+            ISave = new int[44];
+            DSave = new float[29];
             IWA = new int[3 * Dimensionality];
             Work = new float[TotalSize];
             _Task = Task.Start;
@@ -67,26 +67,6 @@ namespace BIOIK
             NewF = 0;
             NewG = null;
         }
-/*        public void SetLowerBound(float3[] values)
-        {
-            LowerBounds = new float[values.Length * 3];
-            for (int i = 0; i < values.Length; i++)
-            {
-                LowerBounds[i * 3] = values[i].x;
-                LowerBounds[i * 3 + 1] = values[i].y;
-                LowerBounds[i * 3 + 2] = values[i].z;
-            }
-        }
-        public void SetUpperBound(float3[] values)
-        {
-            UpperBounds = new float[values.Length * 3];
-            for (int i = 0; i < values.Length; i++)
-            {
-                UpperBounds[i * 3] = values[i].x;
-                UpperBounds[i * 3 + 1] = values[i].y;
-                UpperBounds[i * 3 + 2] = values[i].z;
-            }
-        }*/
         public void Minimise(float3[] values,float timeOut)
         {
             float[] newValues = new float[values.Length * 3];
@@ -116,11 +96,11 @@ namespace BIOIK
                 Solution[i] = values[i];
             }
 
-            oldFitness = 0;
-            System.Array.Clear(oldGradient, 0, oldGradient.Length);
-            System.Array.Clear(boolArray, 0, boolArray.Length);
-            System.Array.Clear(intArray, 0, intArray.Length);
-            System.Array.Clear(floatArray, 0, floatArray.Length);
+            F = 0;
+            System.Array.Clear(G, 0, G.Length);
+            System.Array.Clear(LSave, 0, LSave.Length);
+            System.Array.Clear(ISave, 0, ISave.Length);
+            System.Array.Clear(DSave, 0, DSave.Length);
             System.Array.Clear(IWA, 0, IWA.Length);
             System.Array.Clear(Work, 0, Work.Length);
             _Task = Task.Start;
@@ -131,24 +111,24 @@ namespace BIOIK
             while (evolving)
             {
                 setulb(
-                    Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref oldFitness, oldGradient, 0,
+                    Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref F, G, 0,
                     Factor, Tolerance, Work, 0, IWA, 0, ref _Task, IPrint, ref _CSave,
-                    boolArray, 0, intArray, 0, floatArray, 0
+                    LSave, 0, ISave, 0, DSave, 0
                     );
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
                 {
-                    NewF = FitnessFunction(Solution);
-                    NewG = GradientFunction(Solution);
-                    oldFitness = NewF;
+                    NewF = Function(Solution);
+                    NewG = Gradient(Solution);
+                    F = NewF;
                     for (int i = 0; i < Dimensionality; i++)
                     {
-                        oldGradient[i] = NewG[i];
+                        G[i] = NewG[i];
                     }
                 }
             }
 
-            Value = FitnessFunction(Solution);
+            Value = Function(Solution);
         }
 
         public void Minimise(float[] values, float timeout)
@@ -158,11 +138,11 @@ namespace BIOIK
                 Solution[i] = values[i];
             }
 
-            oldFitness = 0;
-            System.Array.Clear(oldGradient, 0, oldGradient.Length);
-            System.Array.Clear(boolArray, 0, boolArray.Length);
-            System.Array.Clear(intArray, 0, intArray.Length);
-            System.Array.Clear(floatArray, 0, floatArray.Length);
+            F = 0;
+            System.Array.Clear(G, 0, G.Length);
+            System.Array.Clear(LSave, 0, LSave.Length);
+            System.Array.Clear(ISave, 0, ISave.Length);
+            System.Array.Clear(DSave, 0, DSave.Length);
             System.Array.Clear(IWA, 0, IWA.Length);
             System.Array.Clear(Work, 0, Work.Length);
             _Task = Task.Start;
@@ -174,24 +154,24 @@ namespace BIOIK
             while (Utility.GetElapsedTime(timestamp) < timeout)
             {
                 setulb(
-                    Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref oldFitness, oldGradient, 0,
+                    Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref F, G, 0,
                     Factor, Tolerance, Work, 0, IWA, 0, ref _Task, IPrint, ref _CSave,
-                    boolArray, 0, intArray, 0, floatArray, 0
+                    LSave, 0, ISave, 0, DSave, 0
                     );
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
                 {
-                    NewF = FitnessFunction(Solution);
-                    NewG = GradientFunction(Solution);
-                    oldFitness = NewF;
+                    NewF = Function(Solution);
+                    NewG = Gradient(Solution);
+                    F = NewF;
                     for (int i = 0; i < Dimensionality; i++)
                     {
-                        oldGradient[i] = NewG[i];
+                        G[i] = NewG[i];
                     }
                 }
             }
 
-            Value = FitnessFunction(Solution);
+            Value = Function(Solution);
         }
 
     }
@@ -3582,9 +3562,9 @@ namespace BIOIK
         // 
         private static void mainlb(int n,
             int m,
-            float3[] x, int _x_offset,
-            float3[] l, int _l_offset,
-            float3[] u, int _u_offset,
+            float[] x, int _x_offset,
+            float[] l, int _l_offset,
+            float[] u, int _u_offset,
             int[] nbd, int _nbd_offset,
             ref float f,
             float[] g, int _g_offset,
@@ -4511,9 +4491,9 @@ namespace BIOIK
         // 
         internal static void setulb(int n,
         int m,
-        float3[] x, int _x_offset,
-        float3[] l, int _l_offset,
-        float3[] u, int _u_offset,
+        float[] x, int _x_offset,
+        float[] l, int _l_offset,
+        float[] u, int _u_offset,
         int[] nbd, int _nbd_offset,
         ref float f,
         float[] g, int _g_offset,

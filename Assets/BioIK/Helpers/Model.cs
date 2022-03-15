@@ -480,7 +480,7 @@ namespace BIOIK {
 							Y = Parent.WSY*lpY;
 							Z = Parent.WSZ*lpZ;
 						}
-						float qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
+                        float qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
 						float qy = -Rx * lrZ + Ry * lrW + Rz * lrX + Rw * lrY;
 						float qz = Rx * lrY - Ry * lrX + Rz * lrW + Rw * lrZ;
 						float qw = -Rx * lrX - Ry * lrY - Rz * lrZ + Rw * lrW;
