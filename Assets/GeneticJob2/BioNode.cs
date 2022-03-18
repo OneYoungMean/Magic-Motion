@@ -133,8 +133,39 @@ namespace BIOIK2
                 var node = model.objectivePtrs[i].Node;
                 if (ObjectiveImpacts[i])
                 {
-                    float3 inputData=math.lerp(currentValue)
-                    joint.ComputeLocalTransformation()
+                    bool3 b = new bool3(false, true, false);
+                    float3 f = math.lerp(0, 1, (float3)b);
+
+                    float3 inputData = math.lerp(currentValue, configuration[index], enabled);
+                    joint.ComputeLocalTransformation(inputData, out float3 localPosition, out quaternion localRotation);
+                    float3 _tempPosition, _tempDirection;
+                    quaternion _tempRotation;
+                    if (parent == null)
+                    {
+                        positions[i] = model.positionOffset;
+                        _tempRotation = model.rotationOffset;
+                        _tempPosition = model.scaleOffset * localPosition;
+                    }
+                    else
+                    {
+                        positions[i] = parent.worldPosition;
+                        _tempRotation = parent.worldRotation;
+                        _tempPosition = parent.worldScale * localPosition;
+                    }
+
+                    _tempRotation = math.mul(math.mul(_tempRotation, localRotation), math.inverse(worldRotation));
+                    _tempDirection = node.worldPosition - worldPosition;
+                    _tempPosition = math.mul(_tempRotation, _tempPosition) + math.mul(node.worldRotation, _tempDirection);
+                    positions[i] = _tempPosition;
+                    rotations[i] = math.mul(_tempRotation, node.worldRotation);
+                    //OYM：这里一长串本质上就是在求当前节点的坐标和旋转
+                    model.SimulatedLosses[i] = model.objectivePtrs[i].Objective.ComputeLoss(positions[i], rotations[i], node, configuration);
+                }
+                else
+                {
+                    positions[i] = node.worldPosition;
+                    rotations[i] = node.worldRotation;
+                    model.SimulatedLosses[i] = model.Losses[i];
                 }
             }
         }

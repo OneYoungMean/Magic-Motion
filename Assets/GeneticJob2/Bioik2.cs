@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace BIOIK2
 {
-    public class Bioik2 : MonoBehaviour
+    public class BIOIK2 : MonoBehaviour
     {
         #region  Field&Property
 
@@ -68,6 +68,18 @@ namespace BIOIK2
                 solutions[i] = evolution.GetModel().motionPtrs[i].Motion.GetTargetValue(true);
             }
             solutions = evolution.Optimise(Generations, solutions);
+            for (int i = 0; i < solutions.Length; i++)
+            {
+                BioMotion motion = evolution.GetModel().motionPtrs[i].Motion;
+                motion.SetTargetValue(solutions[i], true);
+            }
+
+            ProcessMotion(root);
+        }
+
+        public void SetGenerations(int generations)
+        {
+            Generations = generations;
         }
 
         private void UpdateData(BioSegment segment)
@@ -143,7 +155,6 @@ namespace BIOIK2
         {
             if (evolution != null)
             {
-                evolution.Kill();
                 evolution = null;
             }
         }
@@ -212,6 +223,22 @@ namespace BIOIK2
                 Refresh(targetTrans.GetChild(i));
             }
         }
+
+        private void ProcessMotion(BioSegment segment)
+        {
+            if (segment.joint != null)
+            {
+                if (segment.joint.enabled)
+                {
+                    segment.joint.ProcessMotion();
+                }
+            }
+            for (int i = 0; i < segment.childs.Count; i++)
+            {
+                ProcessMotion(segment.childs[i]);
+            }
+        }
+
         #endregion
         #region StaticFunc
         #endregion

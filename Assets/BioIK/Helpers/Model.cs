@@ -480,7 +480,14 @@ namespace BIOIK {
 							Y = Parent.WSY*lpY;
 							Z = Parent.WSZ*lpZ;
 						}
-                        float qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
+						Quaternion temp = new Quaternion(Rx, Ry, Rz, Rw);
+						Quaternion temp0 = temp * new Quaternion(lrX, lrY, lrZ, lrW) * Quaternion.Inverse(new Quaternion(WRX, WRY, WRZ, WRW));
+						Vector3 temp1 = new Vector3(X, Y, Z);
+						Vector3 temp2 = new Vector3(node.WPX - WPX, node.WPY - WPY, node.WPZ - WPZ);
+						Vector3 temp5 = temp * temp1 + temp0 * temp2;
+						temp0 = temp0 * new Quaternion(node.WRX, node.WRY, node.WRZ, node.WRW);
+
+						float qx = Rx * lrW + Ry * lrZ - Rz * lrY + Rw * lrX;
 						float qy = -Rx * lrZ + Ry * lrW + Rz * lrX + Rw * lrY;
 						float qz = Rx * lrY - Ry * lrX + Rz * lrW + Rw * lrZ;
 						float qw = -Rx * lrX - Ry * lrY - Rz * lrZ + Rw * lrW;

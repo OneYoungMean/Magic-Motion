@@ -14,7 +14,7 @@ namespace BIOIK2
     public class BioMotion : MonoBehaviour
     {
         public BioJoint joint;
-        public bool3 isEnable;
+        public float3 isEnable;
         public bool3 constraint = true;//OYM:Ô¼Êø?Ô¼ÊøÉ¶?
         public float3 lowerLimit;
         public float3 upperLimit;

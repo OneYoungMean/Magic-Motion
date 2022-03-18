@@ -1,4 +1,4 @@
-﻿using BIOIK;
+﻿
 using System.Collections.Generic;
 using System.Linq;
 using System;
@@ -42,7 +42,7 @@ namespace BIOIK2
 
         private BioModel[] models = null;
 
-        private BFGS_F[] optimisers = null;
+        private BIOIK.BFGS_F[] optimisers = null;
 
         private float3[] Solution;                               
         private float Fitness;
@@ -74,26 +74,36 @@ namespace BIOIK2
 
 
             models =new BioModel[elites];
-            optimisers = new BFGS_F[elites];
+            optimisers = new BIOIK.BFGS_F[elites];
             improved = new bool[elites];
             for (int i = 0; i < elites; i++)
             {
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
-                optimisers[index] = new BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y.ToFloat3Array(), 1e-5f).ToFloatArray());
+                optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y.ToFloat3Array(), 1e-5f).ToFloatArray());
             }
 
 
             random = new Random(1); 
         }
 
-        internal void Kill()
-        {
-        }
-
         internal BioModel GetModel()
         {
             return bioModel;
+        }
+        public float3[] GetSolution()
+        {
+            return Solution;
+        }
+
+        public float3[] GetLowerBounds()
+        {
+            return lowerBounds;
+        }
+
+        public float3[] GetUpperBounds()
+        {
+            return upperBounds;
         }
 
         internal float3[] Optimise(int generations, float3[] seeds)

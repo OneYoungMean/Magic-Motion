@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -7,7 +8,7 @@ namespace BIOIK2
 {
     public class BioModel:ICloneable
     {
-        private Bioik2 Character;
+        private BIOIK2 Character;
 
         private BioSegment root;
 
@@ -31,7 +32,7 @@ namespace BIOIK2
 
         private int Dof3;
 
-        public BioModel(Bioik2 character)
+        public BioModel(BIOIK2 character)
         {
             this.Character = character;
             root = character.FindSegment(Character.transform);//OYM:找到root节点
@@ -73,6 +74,31 @@ namespace BIOIK2
 
             Refresh();
         }
+
+        public MotionPtr FindMotionPtr(BioMotion motion)
+        {
+            for (int i = 0; i < motionPtrs.Count; i++)
+            {
+                if (motionPtrs[i].Motion == motion)
+                {
+                    return motionPtrs[i];
+                }
+            }
+            return null;
+        }
+
+        internal ObjectivePtr FindObjectivePtr(BioObjective objective)
+        {
+            for (int i = 0; i < objectivePtrs.Count; i++)
+            {
+                if (objectivePtrs[i].Objective == objective)
+                {
+                    return objectivePtrs[i];
+                }
+            }
+            return null;
+        }
+
         public void CopyFrom(BioModel model)
         {
             positionOffset=model.positionOffset;
@@ -107,11 +133,11 @@ namespace BIOIK2
                 motionPtrs[j].Node.SimulateModification(Configuration);
                 Configuration[j] -= resolution;
                 float newLoss = 0.0f;
-                for (int i = 0; i < ObjectivePtrs.Length; i++)
+                for (int i = 0; i < objectivePtrs.Count; i++)
                 {
                     newLoss += SimulatedLosses[i];
                 }
-                newLoss = (float)System.Math.Sqrt(newLoss / (float)ObjectivePtrs.Length);
+                newLoss = (float)System.Math.Sqrt(newLoss / (float)objectivePtrs.Count);
                 Gradient[j] = (float)((newLoss - oldLoss) / resolution);
             }
             return Gradient;
@@ -252,7 +278,7 @@ namespace BIOIK2
 
         }
 
-        public Bioik2 GetCharacter()
+        public BIOIK2 GetCharacter()
         {
             return Character;
         }
