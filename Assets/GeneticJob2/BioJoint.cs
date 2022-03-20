@@ -50,7 +50,8 @@ namespace BIOIK2
         {
             this.segment = segment;
 
-            bioMotion = new BioMotion(this);
+            bioMotion = segment.transform.gameObject.AddComponent<BioMotion>();
+            bioMotion.Create(this);
             defaultPosition = transform.localPosition;
             defaultRotation = transform.localRotation;
 
@@ -109,15 +110,36 @@ namespace BIOIK2
             float3 currentMotion = bioMotion.ProcessMotion(motionType);
             if (jointType==BioJointType.Rotational)
             {
-                currentMotion *= Mathf.Rad2Deg;
                 ComputeLocalRotation(currentMotion, LSA, ADPADRSA, AnimatedDefaultRotation, out localPosition, out  localRotation);
+
             }
             else
             {
                 currentMotion /= scale;
                 ComputeLocalTranslational(currentMotion, bioMotion.axisMat, AnimatedDefaultPosition, AnimatedDefaultRotation, out localPosition, out localRotation);
             }
-            
+            //Apply local transformation
+            if (Application.isPlaying)
+            {
+                //Assigning transformation
+                transform.localPosition = math.lerp(localPosition,   lastPosition, segment.character.smoothing);
+                transform.localRotation = Quaternion.Slerp(localRotation, lastrotation, segment.character.smoothing);
+
+                //Blending animation
+                transform.localPosition = math.lerp(transform.localPosition, AnimationPosition, segment.character.animationBlend);
+                transform.localRotation = Quaternion.Slerp(transform.localRotation, AnimationRotation, segment.character.animationBlend);
+            }
+            else
+            {
+                transform.localPosition = localPosition;
+                transform.localRotation = localRotation;
+            }
+
+            //Remember transformation
+            lastPosition = transform.localPosition;
+            lastrotation = transform.localRotation;
+
+            transform.hasChanged = false;
         }
         public Vector3 GetAnchorInWorldSpace()
         {
@@ -146,7 +168,7 @@ namespace BIOIK2
         }
         public int GetDof()
         {
-            return math.csum((int3)bioMotion.isEnable);
+            return math.csum((int3)bioMotion.isEnableValue);
         }
         public void SetDefaultFrame(Vector3 localPosition, Quaternion localRotation)
         {

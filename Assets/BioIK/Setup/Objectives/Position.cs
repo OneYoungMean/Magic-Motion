@@ -24,7 +24,7 @@ namespace BIOIK {
 				return;
 			}
 			ChainLength = 0.0f;
-			Transform[] chain = Segment.Character.Evolution.GetModel().FindObjectivePtr(this).Node.Chain;;
+			Transform[] chain = Segment.Character.Evolution.GetModel().FindObjectivePtr(this).Node.Chain;
 			for(int i=0; i<chain.Length-1; i++) {
 				ChainLength += Vector3.Distance(chain[i].position, chain[i+1].position);
 			}

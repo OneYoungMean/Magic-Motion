@@ -1,13 +1,15 @@
 ﻿
+using Unity.Mathematics;
 using UnityEditor;
 using UnityEngine;
+using Unity.Collections.LowLevel.Unsafe;
 
 namespace BIOIK2
 {
-    internal class Utility
-    {
-        internal static void Cleanup(Transform transform)
-        {
+	internal unsafe static class Utility
+	{
+		internal static void Cleanup(Transform transform)
+		{
 			foreach (BioJoint joint in transform.GetComponentsInChildren<BioJoint>())
 			{
 				joint.Erase();
@@ -22,8 +24,8 @@ namespace BIOIK2
 			}
 		}
 
-        internal static void Destroy(Component c)
-        {
+		internal static void Destroy(Component c)
+		{
 			if (c == null)
 			{
 				return;
@@ -42,14 +44,39 @@ namespace BIOIK2
 #endif
 		}
 
-        internal static System.DateTime GetTimestamp()
-        {
-            throw new System.NotImplementedException();
-        }
+		internal static System.DateTime GetTimestamp()
+		{
+			return System.DateTime.Now;
+		}
 
-        internal static float GetElapsedTime(System.DateTime timestamp)
-        {
+		internal static float GetElapsedTime(System.DateTime timestamp)
+		{
 			return (float)(System.DateTime.Now - timestamp).Duration().TotalSeconds;
 		}
-    }
+
+		internal static float[] ToFloatArray(this float3[] values)
+        {
+			var result = new float[values.Length * 3];
+			for (int i = 0; i < values.Length; i++)
+			{
+				result[i * 3] = values[i].x;
+				result[i * 3 + 1] = values[i].y;
+				result[i * 3 + 2] = values[i].z;
+			}
+			return result;
+        }
+		internal static float3[] ToFloat3Array(this float[] values)
+		{
+			var result = new float3[values.Length / 3];
+			for (int i = 0; i < result.Length; i++)
+			{
+				float3 f3 = 0;
+				f3 .x= values[i * 3];
+				f3.y = values[i * 3 + 1];
+				f3 .z= values[i * 3 + 2];
+				result[i] = f3;
+			}
+			return result;
+		}
+	}
 }

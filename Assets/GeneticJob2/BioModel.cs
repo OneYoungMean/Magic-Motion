@@ -1,4 +1,5 @@
-﻿using System;
+﻿
+using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
@@ -7,7 +8,7 @@ namespace BIOIK2
 {
     public class BioModel:ICloneable
     {
-        private Bioik2 Character;
+        private BIOIK2 Character;
 
         private BioSegment root;
 
@@ -19,19 +20,19 @@ namespace BIOIK2
         public List<ObjectivePtr> objectivePtrs = new List<ObjectivePtr>();
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
 
-        private float3[] Configuration;
-        private float3[] Gradient;
-        private float[] Losses;
-        private float[] SimulatedLosses;
+        public float[] Configuration;
+        public float[] Gradient;
+        public float[] Losses;
+        public float[] SimulatedLosses;
 
-        private float3[] tempPositions;
-        private quaternion[] tempRotation;
+        public float3[] tempPositions;
+        public quaternion[] tempRotation;
 
 
 
         private int Dof3;
 
-        public BioModel(Bioik2 character)
+        public BioModel(BIOIK2 character)
         {
             this.Character = character;
             root = character.FindSegment(Character.transform);//OYM:找到root节点
@@ -56,10 +57,13 @@ namespace BIOIK2
             }
             tempPositions = new float3[objectivePtrs.Count];
             tempRotation = new quaternion[objectivePtrs.Count];
-            Configuration = new float3[objectivePtrs.Count];
-            Gradient = new float3[objectivePtrs.Count];
             Losses = new float[objectivePtrs.Count];
             SimulatedLosses = new float[objectivePtrs.Count];
+
+            Configuration = new float[motionPtrs.Count*3];
+            Gradient = new float[motionPtrs.Count*3];
+
+
 
             for (int i = 0; i < objectivePtrs.Count; i++)
             {
@@ -73,6 +77,31 @@ namespace BIOIK2
 
             Refresh();
         }
+
+        public MotionPtr FindMotionPtr(BioMotion motion)
+        {
+            for (int i = 0; i < motionPtrs.Count; i++)
+            {
+                if (motionPtrs[i].Motion == motion)
+                {
+                    return motionPtrs[i];
+                }
+            }
+            return null;
+        }
+
+        internal ObjectivePtr FindObjectivePtr(BioObjective objective)
+        {
+            for (int i = 0; i < objectivePtrs.Count; i++)
+            {
+                if (objectivePtrs[i].Objective == objective)
+                {
+                    return objectivePtrs[i];
+                }
+            }
+            return null;
+        }
+
         public void CopyFrom(BioModel model)
         {
             positionOffset=model.positionOffset;
@@ -94,10 +123,29 @@ namespace BIOIK2
                 nodes[i].worldScale = model.nodes[i].worldScale;
                 nodes[i].localPosition = model.nodes[i].localPosition;
                 nodes[i].localRotation = model.nodes[i].localRotation;
-                nodes[i].value = model.nodes[i].value;
+                nodes[i].currentValue = model.nodes[i].currentValue;
             }
         }
-        
+
+        internal float[] ComputeGradient(float[] configuration, float resolution)
+        {
+            float oldLoss = ComputeLoss(configuration.ToFloat3Array());
+            for (int j = 0; j < configuration.Length; j++)
+            {
+                Configuration[j] += resolution;
+                motionPtrs[j/3].Node.SimulateModification(Configuration.ToFloat3Array());
+                Configuration[j] -= resolution;
+                float newLoss = 0.0f;
+                for (int i = 0; i < objectivePtrs.Count; i++)
+                {
+                    newLoss += SimulatedLosses[i];
+                }
+                newLoss = (float)System.Math.Sqrt(newLoss / (float)objectivePtrs.Count);
+                Gradient[j] = (float)((newLoss - oldLoss) / resolution);
+            }
+            return Gradient;
+        }
+
         internal float ComputeLoss(float3[] configuration)
         {
             FK(configuration);
@@ -125,14 +173,18 @@ namespace BIOIK2
         }
         private void FK(float3[] configuration)
         {
-            Array.Copy(configuration, Configuration, Configuration.Length);
+            Array.Copy(configuration.ToFloatArray(), Configuration, Configuration.Length);
             nodes[0].FeedForwardConfiguration(configuration);
         }
-            public void Refresh()
+
+        public void Refresh()
         {
-            for (int i = 0; i < Configuration.Length; i++)
+            for (int i = 0; i < motionPtrs.Count; i++)
             {
-                Configuration[i] = motionPtrs[i].Motion.GetTargetValue(true);
+                float3 value = motionPtrs[i].Motion.GetTargetValue(true);
+                Configuration[i*3] = value.x;
+                Configuration[i*3 + 1] = value.y;
+                Configuration[i*3 + 2] = value.z;
             }
 
             if (root.transform.root == Character.transform)
@@ -168,7 +220,7 @@ namespace BIOIK2
                         MotionPtr motionPtr = new MotionPtr(targetNode.joint.bioMotion, targetNode, motionPtrs.Count); //OYM:
 
                         motionPtrs.Add(motionPtr);
-                        targetNode.enabled = motionPtr.Motion.isEnable;
+                        targetNode.enabledValue = motionPtr.Motion.isEnableValue;
                         targetNode.index = motionPtr.Index;
                     }
                 }
@@ -233,7 +285,7 @@ namespace BIOIK2
 
         }
 
-        public Bioik2 GetCharacter()
+        public BIOIK2 GetCharacter()
         {
             return Character;
         }
