@@ -16,7 +16,8 @@ namespace BIOIK2
 
         public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
         {
-            return math.length(targetPosition - worldPosition)<= MaximumError;
+            //  return math.length(targetPosition - worldPosition)<= MaximumError;
+            return false;
         }
 
         public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
@@ -42,7 +43,7 @@ namespace BIOIK2
             {
                 ChainLength += Vector3.Distance(chain[i].position, chain[i + 1].position);
             }
-            Rescaling = (math.PI) / (ChainLength * ChainLength);
+            Rescaling = (math.PI* math.PI) / (ChainLength * ChainLength);
             //Root = chain[0].position;
             targetPosition = Target != null ? Target.position : segment.character.evolution.GetModel().FindObjectivePtr(this).Node.transform.position;
         }

@@ -30,12 +30,6 @@ namespace BIOIK2
             Utility.Destroy(this);
         }
 
-        // Update is called once per frame
-        void Update()
-        {
-
-        }
-
         public void Create(BioSegment segment)
         {
             this.segment = segment;

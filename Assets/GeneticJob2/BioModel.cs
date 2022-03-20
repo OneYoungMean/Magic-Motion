@@ -20,8 +20,8 @@ namespace BIOIK2
         public List<ObjectivePtr> objectivePtrs = new List<ObjectivePtr>();
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
 
-        public float3[] Configuration;
-        public float3[] Gradient;
+        public float[] Configuration;
+        public float[] Gradient;
         public float[] Losses;
         public float[] SimulatedLosses;
 
@@ -57,10 +57,13 @@ namespace BIOIK2
             }
             tempPositions = new float3[objectivePtrs.Count];
             tempRotation = new quaternion[objectivePtrs.Count];
-            Configuration = new float3[objectivePtrs.Count];
-            Gradient = new float3[objectivePtrs.Count];
             Losses = new float[objectivePtrs.Count];
             SimulatedLosses = new float[objectivePtrs.Count];
+
+            Configuration = new float[motionPtrs.Count*3];
+            Gradient = new float[motionPtrs.Count*3];
+
+
 
             for (int i = 0; i < objectivePtrs.Count; i++)
             {
@@ -124,13 +127,13 @@ namespace BIOIK2
             }
         }
 
-        internal float3[] ComputeGradient(float3[] configuration, float resolution)
+        internal float[] ComputeGradient(float[] configuration, float resolution)
         {
-            float oldLoss = ComputeLoss(configuration);
-            for (int j = 0; j < Dof3; j++)
+            float oldLoss = ComputeLoss(configuration.ToFloat3Array());
+            for (int j = 0; j < configuration.Length; j++)
             {
                 Configuration[j] += resolution;
-                motionPtrs[j].Node.SimulateModification(Configuration);
+                motionPtrs[j/3].Node.SimulateModification(Configuration.ToFloat3Array());
                 Configuration[j] -= resolution;
                 float newLoss = 0.0f;
                 for (int i = 0; i < objectivePtrs.Count; i++)
@@ -170,14 +173,18 @@ namespace BIOIK2
         }
         private void FK(float3[] configuration)
         {
-            Array.Copy(configuration, Configuration, Configuration.Length);
+            Array.Copy(configuration.ToFloatArray(), Configuration, Configuration.Length);
             nodes[0].FeedForwardConfiguration(configuration);
         }
-            public void Refresh()
+
+        public void Refresh()
         {
-            for (int i = 0; i < Configuration.Length; i++)
+            for (int i = 0; i < motionPtrs.Count; i++)
             {
-                Configuration[i] = motionPtrs[i].Motion.GetTargetValue(true);
+                float3 value = motionPtrs[i].Motion.GetTargetValue(true);
+                Configuration[i*3] = value.x;
+                Configuration[i*3 + 1] = value.y;
+                Configuration[i*3 + 2] = value.z;
             }
 
             if (root.transform.root == Character.transform)
@@ -213,7 +220,7 @@ namespace BIOIK2
                         MotionPtr motionPtr = new MotionPtr(targetNode.joint.bioMotion, targetNode, motionPtrs.Count); //OYM:
 
                         motionPtrs.Add(motionPtr);
-                        targetNode.enabled = motionPtr.Motion.isEnable;
+                        targetNode.enabledValue = motionPtr.Motion.isEnableValue;
                         targetNode.index = motionPtr.Index;
                     }
                 }

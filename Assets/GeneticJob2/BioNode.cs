@@ -22,14 +22,14 @@ namespace BIOIK2
         public float3 localPosition;
         public quaternion localRotation;
 
-        public float3 enabled;
+        public float3 enabledValue;
 
         public int index;
 
         public float3 currentValue;
 
         public bool[] ObjectiveImpacts; //表示整个运动树中哪些目标指标受到影响的布尔值
-        public BioNode(BioModel model, BioNode parent, BioSegment parentSegment)
+        public BioNode(BioModel model, BioNode parent, BioSegment segment)
         {
             this.model = model;
             this.parent = parent;
@@ -37,8 +37,9 @@ namespace BIOIK2
             {
                 this.parent.AddChild(this);
             }
-            transform = parentSegment.transform;
-            joint = parentSegment.joint;
+            transform = segment.transform;
+            joint = segment.joint;
+            enabledValue = joint == null ? 0 : 1;
             List<Transform> reverseChain = new List<Transform>();
             reverseChain.Add(transform);
             BioNode p = parent;
@@ -68,10 +69,16 @@ namespace BIOIK2
                 currentValue = joint.bioMotion.GetTargetValue(true);
                 joint.ComputeLocalTransformation(currentValue, out localPosition, out localRotation);
 
-                worldScale = transform.lossyScale;
+
             }
+            worldScale = transform.lossyScale;
+            ComputeWorldTransformation();
 
-
+            //Feed Forward
+            foreach (BioNode child in childs)
+            {
+                child.Refresh();
+            }
 
         }
 
@@ -91,7 +98,7 @@ namespace BIOIK2
                  rotation = parent.worldRotation;
                  position = parent.worldScale * localPosition;
             }
-            worldPosition =math.mul( rotation , position);
+            worldPosition +=math.mul( rotation , position);
             worldRotation = math.mul(rotation, localRotation);
         }
 
@@ -108,9 +115,10 @@ namespace BIOIK2
 
         internal void FeedForwardConfiguration(float3[] configuration, bool updateWorld = false)
         {
-            bool updateLocal = math.any((enabled ==1)& configuration[index] != currentValue);
+            bool updateLocal = math.any((enabledValue == 1)& configuration[index] != currentValue);
             if (updateLocal)
             {
+                currentValue = configuration[index];
                 joint.ComputeLocalTransformation(currentValue, out localPosition,out localRotation);
                 updateWorld = true;
             }
@@ -133,10 +141,7 @@ namespace BIOIK2
                 var node = model.objectivePtrs[i].Node;
                 if (ObjectiveImpacts[i])
                 {
-                    bool3 b = new bool3(false, true, false);
-                    float3 f = math.lerp(0, 1, (float3)b);
-
-                    float3 inputData = math.lerp(currentValue, configuration[index], enabled);
+                    float3 inputData = math.lerp(currentValue, configuration[index], enabledValue);
                     joint.ComputeLocalTransformation(inputData, out float3 localPosition, out quaternion localRotation);
                     float3 _tempPosition, _tempDirection;
                     quaternion _tempRotation;
@@ -153,11 +158,11 @@ namespace BIOIK2
                         _tempPosition = parent.worldScale * localPosition;
                     }
 
-                    _tempRotation = math.mul(math.mul(_tempRotation, localRotation), math.inverse(worldRotation));
+                    var _tempWorldRotation = math.mul(math.mul(_tempRotation, localRotation), math.inverse(worldRotation));
                     _tempDirection = node.worldPosition - worldPosition;
-                    _tempPosition = math.mul(_tempRotation, _tempPosition) + math.mul(node.worldRotation, _tempDirection);
-                    positions[i] = _tempPosition;
-                    rotations[i] = math.mul(_tempRotation, node.worldRotation);
+                    _tempPosition = math.mul(_tempRotation, _tempPosition) + math.mul(_tempWorldRotation, _tempDirection);
+                    positions[i] += _tempPosition;
+                    rotations[i] = math.mul(_tempWorldRotation, node.worldRotation);
                     //OYM：这里一长串本质上就是在求当前节点的坐标和旋转
                     model.SimulatedLosses[i] = model.objectivePtrs[i].Objective.ComputeLoss(positions[i], rotations[i], node, configuration);
                 }

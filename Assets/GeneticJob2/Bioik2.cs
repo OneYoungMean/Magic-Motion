@@ -67,7 +67,7 @@ namespace BIOIK2
             {
                 solutions[i] = evolution.GetModel().motionPtrs[i].Motion.GetTargetValue(true);
             }
-            solutions = evolution.Optimise(Generations, solutions);
+            solutions = evolution.Optimise(Generations);
             for (int i = 0; i < solutions.Length; i++)
             {
                 BioMotion motion = evolution.GetModel().motionPtrs[i].Motion;

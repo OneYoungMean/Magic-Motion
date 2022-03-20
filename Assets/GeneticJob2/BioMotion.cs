@@ -14,10 +14,12 @@ namespace BIOIK2
     public class BioMotion : MonoBehaviour
     {
         public BioJoint joint;
-        public float3 isEnable;
-        public bool3 constraint = true;//OYM:约束?约束啥?
-        public float3 lowerLimit;
-        public float3 upperLimit;
+        public float3 isEnableValue=1;
+        public float3 constraintValue = 1;//OYM:约束?约束啥?
+        [SerializeField]
+        private float3 lowerLimit=-15;
+        [SerializeField]
+        private float3 upperLimit=15;
         public float3 targetValue;
         public float3 currentValue;
         public float3 currentError;
@@ -30,7 +32,7 @@ namespace BIOIK2
         public const float SPEEDUP = 1;
         public const float SLOWDOWN = 1;
 
-        public BioMotion(BioJoint joint)
+        public void Create(BioJoint joint)
         {
             this.joint = joint;
             Transform target = joint.transform;
@@ -50,7 +52,7 @@ namespace BIOIK2
                     out currentValue, out currentError, out currentVelocity, out currentAcceleration);
             }
 
-            return currentValue*(float3)isEnable;
+            return currentValue*(float3)isEnableValue;
         }
 
         public void SetLowerLimit(float3 value)
@@ -58,13 +60,13 @@ namespace BIOIK2
             lowerLimit = min(0, value);
         }
 
-        public float3 GetLowerLimit(bool normalised = false)
+        public float3 GetLowerLimit()
         {
-            float3 constraintValue = (float3)(!constraint) * float.MinValue + 1;//OYM：false =minvalue ,true =1
+            float3 constraintMul = (1- constraintValue) * float.MinValue + 1;//OYM：false =minvalue ,true =1
 
 
             float3 result =0;
-            if (normalised && joint.jointType == BioJointType.Rotational)
+            if (joint.jointType == BioJointType.Rotational)
             {
                 result = radians( lowerLimit);
             }
@@ -72,7 +74,7 @@ namespace BIOIK2
             {
                 result = lowerLimit;
             }
-            result *= constraintValue;
+            result *= constraintMul;
             return result;
         }
 
@@ -81,11 +83,11 @@ namespace BIOIK2
             upperLimit = max(0.0f, value);
         }
 
-        public float3 GetUpperLimit(bool normalised = false)
+        public float3 GetUpperLimit()
         {
-            float3 constraintValue = (float3)(!constraint) * float.MaxValue + 1;//OYM：false =maxvalue ,true =1
+            float3 constraintMul = (1 - constraintValue) * float.MaxValue + 1;//OYM：false =maxvalue ,true =1
             float3 result = 0;
-            if (normalised && joint.jointType == BioJointType.Rotational)
+            if  (joint.jointType == BioJointType.Rotational)
             {
                 result = radians(upperLimit);
             }
@@ -99,27 +101,16 @@ namespace BIOIK2
 
         public void SetTargetValue(float3 value, bool normalised = false)
         {
-            float3 constraintValue = (float3)constraint * float.MaxValue + new float3(1, 1, 1);
+            float3 constraintMul = (1-constraintValue) * float.MaxValue +1;
 
-            if (normalised && joint.jointType == BioJointType.Rotational)
-            {
-                value *= Mathf.Rad2Deg;
-            }
-            value = math.clamp(value, lowerLimit * constraintValue, upperLimit * constraintValue);
+            value = math.clamp(value, GetLowerLimit() * constraintValue, GetUpperLimit() * constraintValue);
 
             targetValue = value;
         }
 
         public float3 GetTargetValue(bool normalized = false)
         {
-            if (normalized&&joint.jointType==BioJointType.Rotational)
-            {
-                return Mathf.Deg2Rad * targetValue;
-            }
-            else
-            {
-                return targetValue;
-            }
+            return targetValue;
         }
         private static void UpdateInstantaneous(float3 targetValue, out float3 currentValue, out float3 currentError, out float3 currentVelocity, out float3 currentAcceleration)
         {

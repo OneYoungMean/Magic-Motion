@@ -17,6 +17,16 @@ namespace BIOIK2
         {
             this.character = character;
             hideFlags = HideFlags.HideInInspector;
+            joint=GetComponent<BioJoint>();
+            objectives = GetComponents<BioObjective>();
+            for (int i = 0; i < objectives.Length; i++)
+            {
+                objectives[i].Create(this); 
+            }
+            if (joint!=null)
+            {
+                joint.Initialize(this);
+            }
             return this;
         }
 

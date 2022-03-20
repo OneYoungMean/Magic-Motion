@@ -67,35 +67,13 @@ namespace BIOIK
             NewF = 0;
             NewG = null;
         }
-        public void Minimise(float3[] values,float timeOut)
-        {
-            float[] newValues = new float[values.Length * 3];
-            for (int i = 0; i < values.Length; i++)
-            {
-                newValues[i * 3] = values[i].x;
-                newValues[i * 3 + 1] = values[i].y;
-                newValues[i * 3 + 2] = values[i].z;
-            }
-            Minimise(newValues, timeOut);
-        }
-        public void Minimise(float3[] values, ref bool evolving)
-        {
-            float[] newValues = new float[values.Length*3];
-            for (int i = 0; i < values.Length; i++)
-            {
-                newValues[i * 3] = values[i].x; 
-                newValues[i*3+1]= values[i].y;
-                newValues[i*3+2]= values[i].z;
-            }
-            Minimise(newValues, ref evolving);
-        }
+
         public void Minimise(float[] values, ref bool evolving)
         {
             for (int i = 0; i < Dimensionality; i++)
             {
                 Solution[i] = values[i];
             }
-
             F = 0;
             System.Array.Clear(G, 0, G.Length);
             System.Array.Clear(LSave, 0, LSave.Length);
@@ -137,7 +115,6 @@ namespace BIOIK
             {
                 Solution[i] = values[i];
             }
-
             F = 0;
             System.Array.Clear(G, 0, G.Length);
             System.Array.Clear(LSave, 0, LSave.Length);

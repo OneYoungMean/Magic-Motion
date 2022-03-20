@@ -46,7 +46,7 @@ namespace BIOIK2
 
 		internal static System.DateTime GetTimestamp()
 		{
-			throw new System.NotImplementedException();
+			return System.DateTime.Now;
 		}
 
 		internal static float GetElapsedTime(System.DateTime timestamp)
@@ -68,11 +68,13 @@ namespace BIOIK2
 		internal static float3[] ToFloat3Array(this float[] values)
 		{
 			var result = new float3[values.Length / 3];
-			for (int i = 0; i < values.Length; i++)
+			for (int i = 0; i < result.Length; i++)
 			{
-				result[i].x = values[i * 3];
-				result[i].y = values[i * 3 + 1];
-				result[i].z = values[i * 3 + 2];
+				float3 f3 = 0;
+				f3 .x= values[i * 3];
+				f3.y = values[i * 3 + 1];
+				f3 .z= values[i * 3 + 2];
+				result[i] = f3;
 			}
 			return result;
 		}
