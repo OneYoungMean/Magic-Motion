@@ -291,7 +291,7 @@ MonoBehaviour:
   weight: 1
   Target: {fileID: 389388109}
   targetPositon: {x: 0, y: 0, z: 0}
-  ViewingDirection: {x: 0, y: 0, z: 1}
+  ViewingDirection: {x: -0.25, y: 1, z: 0}
   MaximumError: 0.1
 --- !u!1 &452642153
 GameObject:
@@ -738,6 +738,34 @@ MonoBehaviour:
   solutions: []
   selectedSegment: {fileID: 0}
   scroll: {x: 0, y: 0}
+--- !u!114 &493056839
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493056835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4ad63e04dd1adde458e838c2c24a4510, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  segment: {fileID: 0}
+  weight: 1
+--- !u!114 &493056840
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 493056835}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 96a00a5cf4d288f40b43a7eb2ba8a6dd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  segment: {fileID: 0}
+  weight: 1
 --- !u!114 &493056842
 MonoBehaviour:
   m_ObjectHideFlags: 0

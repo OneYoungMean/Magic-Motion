@@ -18,7 +18,8 @@ namespace BIOIK2
 
         public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
         {
-            return math.degrees(ComputeValue(worldPosition, worldRotation, node, configuration));
+            float loss = ComputeValue(worldPosition, worldRotation, node, configuration);
+            return loss* loss* weight;
         }
 
         public override ObjectiveType GetObjectiveType()
@@ -35,14 +36,16 @@ namespace BIOIK2
             if (Target != null)
             {
                 targetPositon= Target.position;
+
             }
         }
 
         public  float ComputeValue(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
         {
             float3 targetForward = math.mul(worldRotation, ViewingDirection);
-            float3 targetDirection = worldPosition - (float3)targetPositon;
-            float cosA = math.clamp(-1, 1, math.dot(targetForward, ViewingDirection) / math.length(targetForward));
+            float3 targetDirection =   (float3)targetPositon- worldPosition;
+            float cosA = math.dot(targetForward, targetDirection) / (math.length(targetForward) * math.length(targetDirection));
+            cosA= math.clamp(cosA, - 1, 1);
             return math.acos(cosA);
         }
     }
