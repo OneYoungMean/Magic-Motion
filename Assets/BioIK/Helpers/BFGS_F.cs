@@ -25,9 +25,9 @@ namespace BIOIK
         private float F;
         private float[] G;
 
-        private bool[] LSave;
-        private int[] ISave;
-        private float[] DSave;
+        private bool[] boolSave;
+        private int[] IntSave;
+        private float[] doubleSave;
 
         private int[] IWA;
         private int[] NBD;
@@ -57,9 +57,9 @@ namespace BIOIK
 
             F = 0;
             G = new float[Dimensionality];
-            LSave = new bool[4];
-            ISave = new int[44];
-            DSave = new float[29];
+            boolSave = new bool[4];
+            IntSave = new int[44];
+            doubleSave = new float[29];
             IWA = new int[3 * Dimensionality];
             Work = new float[TotalSize];
             _Task = Task.Start;
@@ -76,9 +76,9 @@ namespace BIOIK
             }
             F = 0;
             System.Array.Clear(G, 0, G.Length);
-            System.Array.Clear(LSave, 0, LSave.Length);
-            System.Array.Clear(ISave, 0, ISave.Length);
-            System.Array.Clear(DSave, 0, DSave.Length);
+            System.Array.Clear(boolSave, 0, boolSave.Length);
+            System.Array.Clear(IntSave, 0, IntSave.Length);
+            System.Array.Clear(doubleSave, 0, doubleSave.Length);
             System.Array.Clear(IWA, 0, IWA.Length);
             System.Array.Clear(Work, 0, Work.Length);
             _Task = Task.Start;
@@ -91,7 +91,7 @@ namespace BIOIK
                 setulb(
                     Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref F, G, 0,
                     Factor, Tolerance, Work, 0, IWA, 0, ref _Task, IPrint, ref _CSave,
-                    LSave, 0, ISave, 0, DSave, 0
+                    boolSave, 0, IntSave, 0, doubleSave, 0
                     );
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
@@ -117,9 +117,9 @@ namespace BIOIK
             }
             F = 0;
             System.Array.Clear(G, 0, G.Length);
-            System.Array.Clear(LSave, 0, LSave.Length);
-            System.Array.Clear(ISave, 0, ISave.Length);
-            System.Array.Clear(DSave, 0, DSave.Length);
+            System.Array.Clear(boolSave, 0, boolSave.Length);
+            System.Array.Clear(IntSave, 0, IntSave.Length);
+            System.Array.Clear(doubleSave, 0, doubleSave.Length);
             System.Array.Clear(IWA, 0, IWA.Length);
             System.Array.Clear(Work, 0, Work.Length);
             _Task = Task.Start;
@@ -133,7 +133,7 @@ namespace BIOIK
                 setulb(
                     Dimensionality, Corrections, Solution, 0, LowerBounds, 0, UpperBounds, 0, NBD, 0, ref F, G, 0,
                     Factor, Tolerance, Work, 0, IWA, 0, ref _Task, IPrint, ref _CSave,
-                    LSave, 0, ISave, 0, DSave, 0
+                    boolSave, 0, IntSave, 0, doubleSave, 0
                     );
 
                 if (_Task == Task.FG_LN || _Task == Task.FG_ST)
@@ -152,155 +152,6 @@ namespace BIOIK
         }
 
     }
-    /*
-    public partial class BFGS_F {
-
-        public enum Task{None, Start, New_X, FG, FG_LN, FG_ST, Abnormal, Convergence, Error, Restart_LN, Warning};
-        
-        public int NumberOfVariables { get; protected set; }
-        public System.Func<float[], float> Function { get; set; }
-        public System.Func<float[], float[]> Gradient { get; set; }
-        public float[] Solution;
-        public float Value;
-        public float[] UpperBounds;
-        public float[] LowerBounds;
-
-        private const float stpmin = 1e-20;
-        private const float stpmax = 1e20;
-        private int corrections = 1;
-        private float[] work;
-        private float factr = 1e+5;
-        private float pgtol = 0;
-        private int n;
-        private int m;
-        private Task task = Task.None;
-        private Task csave = Task.None;
-        private int totalSize;
-        private int iprint;
-        private bool[] lsave;
-        private int[] nbd;
-        private int[] iwa;
-        private int[] isave;
-        private float f;
-        private float[] l;
-        private float[] u;
-        private float[] g;
-        private float[] dsave;
-        private float newF;
-        private float[] newG;
-
-        public BFGS_F(int numberOfVariables, System.Func<float[], float> function, System.Func<float[], float[]> gradient) {
-            NumberOfVariables = numberOfVariables;
-            Function = function;
-            Gradient = gradient;
-            Solution = new float[numberOfVariables];
-            UpperBounds = new float[numberOfVariables];
-            LowerBounds = new float[numberOfVariables];
-
-            n = NumberOfVariables;
-            m = corrections;
-            totalSize = 2 * m * n + 11 * m * m + 5 * n + 8 * m;
-            iprint = 101;
-            lsave = new bool[4];
-            nbd = new int[n];
-            iwa = new int[3*n];
-            isave = new int[44];
-            l = new float[n];
-            u = new float[n];
-            g = new float[n];
-            dsave = new float[29];
-            work = new float[totalSize];
-        }
-
-        private void Prepare(float[] values) {
-            for(int i=0; i<NumberOfVariables; i++) {
-                Solution[i] = values[i];
-            }
-
-            task = Task.None;
-            csave = Task.None;
-            for(int i=0; i<4; i++) {
-                lsave[i] = false;
-            }
-            for(int i=0; i<n; i++) {
-                nbd[i] = 2;
-            }
-            for(int i=0; i<3*n; i++) {
-                iwa[i] = 0;
-            }
-            for(int i=0; i<44; i++) {
-                isave[i] = 0;
-            }
-            for(int i=0; i<n; i++) {
-                l[i] = LowerBounds[i];
-                u[i] = UpperBounds[i];
-            }
-            for(int i=0; i<29; i++) {
-                dsave[i] = 0;
-            }
-            for(int i=0; i<totalSize; i++) {
-                work[i] = 0;
-            }
-
-            f = 0f;
-            for(int i=0; i<n; i++) {
-                g[i] = 0;
-            }
-
-            newF = 0;
-            newG = null;
-        }
-
-        public void Minimise(float[] values, ref bool evolving) {
-            Prepare(values);
-            Optimise(ref evolving);
-            Value = Function(Solution);
-        }
-
-        private void Optimise(ref bool evolving) {
-            task = Task.Start;
-            while(evolving) {
-                setulb(n, m, Solution, 0, l, 0, u, 0, nbd, 0, ref f, g, 0,
-                    factr, pgtol, work, 0, iwa, 0, ref task, iprint, ref csave,
-                    lsave, 0, isave, 0, dsave, 0);
-
-                if (task == Task.FG_LN || task == Task.FG_ST) {
-                    newF = Function(Solution);
-                    newG = Gradient(Solution);
-                    f = newF;
-                    for (int j = 0; j < newG.Length; j++) {
-                        g[j] = newG[j];
-                    }
-                }
-            }
-        }
-
-        public void Minimise(float[] values, float timeout) {
-            Prepare(values);
-            Optimise(timeout);
-            Value = Function(Solution);
-        }
-
-        private void Optimise(float timeout) {
-            System.DateTime then = System.DateTime.Now;
-            task = Task.Start;
-            while((System.DateTime.Now-then).Duration().TotalSeconds < timeout) {
-                setulb(n, m, Solution, 0, l, 0, u, 0, nbd, 0, ref f, g, 0,
-                    factr, pgtol, work, 0, iwa, 0, ref task, iprint, ref csave,
-                    lsave, 0, isave, 0, dsave, 0);
-
-                if (task == Task.FG_LN || task == Task.FG_ST) {
-                    newF = Function(Solution);
-                    newG = Gradient(Solution);
-                    f = newF;
-                    for (int j = 0; j < newG.Length; j++) {
-                        g[j] = newG[j];
-                    }
-                }
-            }
-        }
-    }
-    */
 
     partial class BFGS_F
     {
@@ -4466,24 +4317,26 @@ namespace BIOIK
         // c
         // c     ************
         // 
-        internal static void setulb(int n,
-        int m,
-        float[] x, int _x_offset,
-        float[] l, int _l_offset,
-        float[] u, int _u_offset,
+        internal static void setulb(
+        int dimensionality,
+        int corrections,
+        float[] solution, int solution_offset,
+        float[] lowerBound, int _lowerBound_offset,
+        float[] upperBound, int _upperBound_offset,
         int[] nbd, int _nbd_offset,
-        ref float f,
-        float[] g, int _g_offset,
-        float factr,
-        float pgtol,
-        float[] wa, int _wa_offset,
+        ref float f,//OYM: fitness?
+        float[] g,//OYM: gradient?
+        int _g_offset,//OYM: gradientoffset?
+        float factor,
+        float torlerance,
+        float[] work, int _work_offset,
         int[] iwa, int _iwa_offset,
         ref Task task,
         int iprint,
         ref Task csave,
-        bool[] lsave, int _lsave_offset,
-        int[] isave, int _isave_offset,
-        float[] dsave, int _dsave_offset)
+        bool[] boolSave, int _boolsave_offset,
+        int[] intsave, int _intsave_offset,
+        float[] floatSave, int _floatSave_offset)
         {
 
             int lws = 0;
@@ -4502,49 +4355,49 @@ namespace BIOIK
 
             if (task == Task.Start)
             {
-                isave[(1 - (1)) + _isave_offset] = (m * n);
-                isave[(2 - (1)) + _isave_offset] = ((int)math.pow(m, 2));
-                isave[(3 - (1)) + _isave_offset] = (4 * ((int)math.pow(m, 2)));
-                isave[(4 - (1)) + _isave_offset] = 1;
-                isave[(5 - (1)) + _isave_offset] = (isave[(4 - (1)) + _isave_offset] + isave[(1 - (1)) + _isave_offset]);
-                isave[(6 - (1)) + _isave_offset] = (isave[(5 - (1)) + _isave_offset] + isave[(1 - (1)) + _isave_offset]);
-                isave[(7 - (1)) + _isave_offset] = (isave[(6 - (1)) + _isave_offset] + isave[(2 - (1)) + _isave_offset]);
-                isave[(8 - (1)) + _isave_offset] = (isave[(7 - (1)) + _isave_offset] + isave[(2 - (1)) + _isave_offset]);
-                isave[(9 - (1)) + _isave_offset] = (isave[(8 - (1)) + _isave_offset] + isave[(2 - (1)) + _isave_offset]);
-                isave[(10 - (1)) + _isave_offset] = (isave[(9 - (1)) + _isave_offset] + isave[(3 - (1)) + _isave_offset]);
-                isave[(11 - (1)) + _isave_offset] = (isave[(10 - (1)) + _isave_offset] + isave[(3 - (1)) + _isave_offset]);
-                isave[(12 - (1)) + _isave_offset] = (isave[(11 - (1)) + _isave_offset] + n);
-                isave[(13 - (1)) + _isave_offset] = (isave[(12 - (1)) + _isave_offset] + n);
-                isave[(14 - (1)) + _isave_offset] = (isave[(13 - (1)) + _isave_offset] + n);
-                isave[(15 - (1)) + _isave_offset] = (isave[(14 - (1)) + _isave_offset] + n);
-                isave[(16 - (1)) + _isave_offset] = (isave[(15 - (1)) + _isave_offset] + n);
+                intsave[(1 - (1)) + _intsave_offset] = (corrections * dimensionality);
+                intsave[(2 - (1)) + _intsave_offset] = ((int)math.pow(corrections, 2));
+                intsave[(3 - (1)) + _intsave_offset] = (4 * ((int)math.pow(corrections, 2)));
+                intsave[(4 - (1)) + _intsave_offset] = 1;
+                intsave[(5 - (1)) + _intsave_offset] = (intsave[(4 - (1)) + _intsave_offset] + intsave[(1 - (1)) + _intsave_offset]);
+                intsave[(6 - (1)) + _intsave_offset] = (intsave[(5 - (1)) + _intsave_offset] + intsave[(1 - (1)) + _intsave_offset]);
+                intsave[(7 - (1)) + _intsave_offset] = (intsave[(6 - (1)) + _intsave_offset] + intsave[(2 - (1)) + _intsave_offset]);
+                intsave[(8 - (1)) + _intsave_offset] = (intsave[(7 - (1)) + _intsave_offset] + intsave[(2 - (1)) + _intsave_offset]);
+                intsave[(9 - (1)) + _intsave_offset] = (intsave[(8 - (1)) + _intsave_offset] + intsave[(2 - (1)) + _intsave_offset]);
+                intsave[(10 - (1)) + _intsave_offset] = (intsave[(9 - (1)) + _intsave_offset] + intsave[(3 - (1)) + _intsave_offset]);
+                intsave[(11 - (1)) + _intsave_offset] = (intsave[(10 - (1)) + _intsave_offset] + intsave[(3 - (1)) + _intsave_offset]);
+                intsave[(12 - (1)) + _intsave_offset] = (intsave[(11 - (1)) + _intsave_offset] + dimensionality);
+                intsave[(13 - (1)) + _intsave_offset] = (intsave[(12 - (1)) + _intsave_offset] + dimensionality);
+                intsave[(14 - (1)) + _intsave_offset] = (intsave[(13 - (1)) + _intsave_offset] + dimensionality);
+                intsave[(15 - (1)) + _intsave_offset] = (intsave[(14 - (1)) + _intsave_offset] + dimensionality);
+                intsave[(16 - (1)) + _intsave_offset] = (intsave[(15 - (1)) + _intsave_offset] + dimensionality);
             }
-            lws = isave[(4 - (1)) + _isave_offset];
-            lwy = isave[(5 - (1)) + _isave_offset];
-            lsy = isave[(6 - (1)) + _isave_offset];
-            lss = isave[(7 - (1)) + _isave_offset];
-            lwt = isave[(8 - (1)) + _isave_offset];
-            lwn = isave[(9 - (1)) + _isave_offset];
-            lsnd = isave[(10 - (1)) + _isave_offset];
-            lz = isave[(11 - (1)) + _isave_offset];
-            lr = isave[(12 - (1)) + _isave_offset];
-            ld = isave[(13 - (1)) + _isave_offset];
-            lt = isave[(14 - (1)) + _isave_offset];
-            lxp = isave[(15 - (1)) + _isave_offset];
-            lwa = isave[(16 - (1)) + _isave_offset];
+            lws = intsave[(4 - (1)) + _intsave_offset];
+            lwy = intsave[(5 - (1)) + _intsave_offset];
+            lsy = intsave[(6 - (1)) + _intsave_offset];
+            lss = intsave[(7 - (1)) + _intsave_offset];
+            lwt = intsave[(8 - (1)) + _intsave_offset];
+            lwn = intsave[(9 - (1)) + _intsave_offset];
+            lsnd = intsave[(10 - (1)) + _intsave_offset];
+            lz = intsave[(11 - (1)) + _intsave_offset];
+            lr = intsave[(12 - (1)) + _intsave_offset];
+            ld = intsave[(13 - (1)) + _intsave_offset];
+            lt = intsave[(14 - (1)) + _intsave_offset];
+            lxp = intsave[(15 - (1)) + _intsave_offset];
+            lwa = intsave[(16 - (1)) + _intsave_offset];
             // 
-            mainlb(n, m, x, _x_offset, l, _l_offset, u, _u_offset, nbd,
-                _nbd_offset, ref f, g, _g_offset, factr, pgtol, wa, (lws - (1)) + _wa_offset,
-                wa, (lwy - (1)) + _wa_offset, wa, (lsy - (1)) + _wa_offset, wa,
-                (lss - (1)) + _wa_offset, wa, (lwt - (1)) + _wa_offset, wa,
-                (lwn - (1)) + _wa_offset, wa, (lsnd - (1)) + _wa_offset, wa,
-                (lz - (1)) + _wa_offset, wa, (lr - (1)) + _wa_offset, wa,
-                (ld - (1)) + _wa_offset, wa, (lt - (1)) + _wa_offset, wa,
-                (lxp - (1)) + _wa_offset, wa, (lwa - (1)) + _wa_offset, iwa,
-                (1 - (1)) + _iwa_offset, iwa, ((n + 1) - (1)) + _iwa_offset,
-                iwa, (((2 * n) + 1) - (1)) + _iwa_offset, ref task, iprint, ref csave,
-                lsave, _lsave_offset, isave, (22 - (1)) + _isave_offset, dsave,
-                _dsave_offset);
+            mainlb(dimensionality, corrections, solution, solution_offset, lowerBound, _lowerBound_offset, upperBound, _upperBound_offset, nbd,
+                _nbd_offset, ref f, g, _g_offset, factor, torlerance, work, (lws - (1)) + _work_offset,
+                work, (lwy - (1)) + _work_offset, work, (lsy - (1)) + _work_offset, work,
+                (lss - (1)) + _work_offset, work, (lwt - (1)) + _work_offset, work,
+                (lwn - (1)) + _work_offset, work, (lsnd - (1)) + _work_offset, work,
+                (lz - (1)) + _work_offset, work, (lr - (1)) + _work_offset, work,
+                (ld - (1)) + _work_offset, work, (lt - (1)) + _work_offset, work,
+                (lxp - (1)) + _work_offset, work, (lwa - (1)) + _work_offset, iwa,
+                (1 - (1)) + _iwa_offset, iwa, ((dimensionality + 1) - (1)) + _iwa_offset,
+                iwa, (((2 * dimensionality) + 1) - (1)) + _iwa_offset, ref task, iprint, ref csave,
+                boolSave, _boolsave_offset, intsave, (22 - (1)) + _intsave_offset, floatSave,
+                _floatSave_offset);
         }
 
         // 
