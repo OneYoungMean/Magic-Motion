@@ -3388,17 +3388,18 @@ namespace BIOIK
         // c     ************
         // 
         // 
-        private static void mainlb(int n,
-            int m,
-            float[] x, int _x_offset,
-            float[] l, int _l_offset,
-            float[] u, int _u_offset,
+        private static void mainlb(
+            int dimensionality,
+            int corrections,
+            float[] solution, int _solution_offset,
+            float[] lowerBound, int _lowerBound_offset,
+            float[] upperBound, int _u_offset,
             int[] nbd, int _nbd_offset,
-            ref float f,
-            float[] g, int _g_offset,
-            float factr,
-            float pgtol,
-            float[] ws, int _ws_offset,
+            ref float f,//OYM: fitness?
+            float[] g, int _g_offset,//OYM: gradient?
+            float factor,
+            float torlerance,
+            float[] work, int _work_offset,
             float[] wy, int _wy_offset,
             float[] sy, int _sy_offset,
             float[] ss, int _ss_offset,
@@ -3511,15 +3512,15 @@ namespace BIOIK
                 nseg = 0;
                 nintol = 0;
                 nskip = 0;
-                nfree = n;
+                nfree = dimensionality;
                 ifun = 0;
                 // c           for stopping tolerance:
-                tol = (factr * epsmch);
+                tol = (factor * epsmch);
                 // 
                 // c           for measuring running time:
-                cachyt = (float)(0);
-                sbtime = (float)(0);
-                lnscht = (float)(0);
+                cachyt = 0;
+                sbtime = 0;
+                lnscht = 0;
 
                 // 
                 // c           'info' records the termination information.
@@ -3534,7 +3535,7 @@ namespace BIOIK
                 // 
                 // c        Check the input arguments for errors.
                 // 
-                errclb(n, m, factr, l, _l_offset, u, _u_offset,
+                errclb(dimensionality, corrections, factor, lowerBound, _lowerBound_offset, upperBound, _u_offset,
                     nbd, _nbd_offset, ref task, ref info, ref k);
 
                 if (task == Task.Error)
@@ -3553,8 +3554,8 @@ namespace BIOIK
                 // 
                 // c        Initialize iwhere & project x onto the feasible set.
                 // 
-                active(n, l, _l_offset, u, _u_offset, nbd, _nbd_offset, x,
-                    _x_offset, iwhere, _iwhere_offset, iprint, ref prjctd, ref cnstnd, ref boxed);
+                active(dimensionality, lowerBound, _lowerBound_offset, upperBound, _u_offset, nbd, _nbd_offset, solution,
+                    _solution_offset, iwhere, _iwhere_offset, iprint, ref prjctd, ref cnstnd, ref boxed);
                 // 
                 // c        The end of the initialization.
                 // 
@@ -3638,10 +3639,10 @@ namespace BIOIK
             // 
             // c     Compute the infinity norm of the (-) projected gradient.
             // 
-            projgr(n, l, _l_offset, u, _u_offset, nbd, _nbd_offset,
-                x, _x_offset, g, _g_offset, ref sbgnrm);
+            projgr(dimensionality, lowerBound, _lowerBound_offset, upperBound, _u_offset, nbd, _nbd_offset,
+                solution, _solution_offset, g, _g_offset, ref sbgnrm);
 
-            if ((sbgnrm <= pgtol))
+            if ((sbgnrm <= torlerance))
             {
                 // terminate the algorithm.
                 task = Task.Convergence;
@@ -3653,20 +3654,20 @@ namespace BIOIK
         L222:
             iword = -1;
             //Compute the Generalized Cauchy Point (GCP).
-            cauchy(n, x, _x_offset, l, _l_offset, u, _u_offset, nbd, _nbd_offset,
+            cauchy(dimensionality, solution, _solution_offset, lowerBound, _lowerBound_offset, upperBound, _u_offset, nbd, _nbd_offset,
                 g, _g_offset, indx2, _indx2_offset, iwhere, _iwhere_offset, t, _t_offset,
-                d, _d_offset, z, _z_offset, m, wy, _wy_offset, ws, _ws_offset, sy, _sy_offset,
+                d, _d_offset, z, _z_offset, corrections, wy, _wy_offset, work, _work_offset, sy, _sy_offset,
                 wt, _wt_offset, theta, col, head, wa, (1 - (1)) + _wa_offset, wa,
-                (((2 * m) + 1) - (1)) + _wa_offset, wa, (((4 * m) + 1) - (1)) + _wa_offset, wa,
-                (((6 * m) + 1) - (1)) + _wa_offset, ref nseg, iprint, sbgnrm, ref info, epsmch);
+                (((2 * corrections) + 1) - (1)) + _wa_offset, wa, (((4 * corrections) + 1) - (1)) + _wa_offset, wa,
+                (((6 * corrections) + 1) - (1)) + _wa_offset, ref nseg, iprint, sbgnrm, ref info, epsmch);
 
             cachyt = cachyt + cpu2 - cpu1;
             nintol = nintol + nseg;
             // Count the entering and leaving variables for iter > 0; 
             // find the index set of free and active variables at the GCP.
-            freev(n, ref nfree, index, _index_offset, ref nenter, ref ileave, indx2, _indx2_offset,
+            freev(dimensionality, ref nfree, index, _index_offset, ref nenter, ref ileave, indx2, _indx2_offset,
                 iwhere, _iwhere_offset, ref wrk, updatd, cnstnd, iprint, iter);
-            nact = (n - nfree);
+            nact = (dimensionality - nfree);
             // If there are no free variables or B=theta*I, 
             // then skip the subspace minimization.
             // 
@@ -3680,30 +3681,30 @@ namespace BIOIK
             // c       where     E = [-I  0]
             // c                     [ 0  I]
             if (wrk) {
-                formk(n, nfree, index, _index_offset, nenter,
+                formk(dimensionality, nfree, index, _index_offset, nenter,
                     ileave, indx2, _indx2_offset, iupdat, updatd, wn, _wn_offset,
-                    snd, _snd_offset, m, ws, _ws_offset, wy, _wy_offset, sy, _sy_offset,
+                    snd, _snd_offset, corrections, work, _work_offset, wy, _wy_offset, sy, _sy_offset,
                     theta, col, head, ref info);
             }
             // compute r=-Z'B(xcp-xk)-Z'g   (using wa(2m+1)=W'(xcp-x) from 'cauchy')
-            cmprlb(n, m, x, _x_offset, g, _g_offset, ws, _ws_offset, wy, _wy_offset,
+            cmprlb(dimensionality, corrections, solution, _solution_offset, g, _g_offset, work, _work_offset, wy, _wy_offset,
                 sy, _sy_offset, wt, _wt_offset, z, _z_offset, r, _r_offset, wa, _wa_offset,
                 index, _index_offset, theta, col, head, nfree, cnstnd, ref info);
             // c-jlm-jn   call the direct method. 
-            subsm(n, m, nfree, index, _index_offset, l, _l_offset, u, _u_offset,
-                nbd, _nbd_offset, z, _z_offset, r, _r_offset, xp, _xp_offset, ws, _ws_offset,
-                wy, _wy_offset, theta, x, _x_offset, g, _g_offset, col, head,
+            subsm(dimensionality, corrections, nfree, index, _index_offset, lowerBound, _lowerBound_offset, upperBound, _u_offset,
+                nbd, _nbd_offset, z, _z_offset, r, _r_offset, xp, _xp_offset, work, _work_offset,
+                wy, _wy_offset, theta, solution, _solution_offset, g, _g_offset, col, head,
                 ref iword, wa, _wa_offset, wn, _wn_offset, iprint, ref info);          
 
         L555:
             // c     Line search and optimality tests.
             // c     Generate the search direction d:=z-x.
-            for (i = 1; i <= n; i++) {
-                d[(i - (1)) + _d_offset] = (z[(i - (1)) + _z_offset] - x[(i - (1)) + _x_offset]);
+            for (i = 1; i <= dimensionality; i++) {
+                d[(i - (1)) + _d_offset] = (z[(i - (1)) + _z_offset] - solution[(i - (1)) + _solution_offset]);
             }
 
         L666:
-            lnsrlb(n, l, _l_offset, u, _u_offset, nbd, _nbd_offset, x, _x_offset,
+            lnsrlb(dimensionality, lowerBound, _lowerBound_offset, upperBound, _u_offset, nbd, _nbd_offset, solution, _solution_offset,
                 f, ref fold, ref gd, ref gdold, g, _g_offset, d, _d_offset, r, _r_offset, t, _t_offset,
                 z, _z_offset, ref stp, ref dnorm, ref dtd, ref xstep, ref stpmx, iter, ref ifun,
                 ref iback, ref nfgv, ref info, ref task, boxed, cnstnd, ref csave, isave,
@@ -3712,8 +3713,8 @@ namespace BIOIK
             if (iback >= 20)
             {
                 // restore the previous iterate.
-                dcopy(n, t, _t_offset, 1, x, _x_offset, 1);
-                dcopy(n, r, _r_offset, 1, g, _g_offset, 1);
+                dcopy(dimensionality, t, _t_offset, 1, solution, _solution_offset, 1);
+                dcopy(dimensionality, r, _r_offset, 1, g, _g_offset, 1);
                 f = fold;
                 if ((col == 0))
                 {
@@ -3749,13 +3750,13 @@ namespace BIOIK
                 // calculate and print out the quantities related to the new X.
                 iter = (iter + 1);
                 // Compute the infinity norm of the projected (-)gradient.
-                projgr(n, l, _l_offset, u, _u_offset, nbd, _nbd_offset, x, _x_offset, g, _g_offset, ref sbgnrm);
+                projgr(dimensionality, lowerBound, _lowerBound_offset, upperBound, _u_offset, nbd, _nbd_offset, solution, _solution_offset, g, _g_offset, ref sbgnrm);
                 goto L1000;
             }
 
         L777:
             // c     Test for termination.
-            if ((sbgnrm <= pgtol))
+            if ((sbgnrm <= torlerance))
             {
                 // terminate the algorithm.
                 task = Task.Convergence;
@@ -3781,12 +3782,12 @@ namespace BIOIK
             // 
             // Compute d=newx-oldx, r=newg-oldg, rr=y'y and dr=y's.
             // 
-            for (i = 1; i <= n; i++)
+            for (i = 1; i <= dimensionality; i++)
             {
                 r[(i - (1)) + _r_offset] = (g[(i - (1)) + _g_offset] - r[(i - (1)) + _r_offset]);
             }
 
-            rr = ddot(n, r, _r_offset, 1, r, _r_offset, 1);
+            rr = ddot(dimensionality, r, _r_offset, 1, r, _r_offset, 1);
 
             if ((stp == 1.0f))
             {
@@ -3796,7 +3797,7 @@ namespace BIOIK
             else
             {
                 dr = (((gd - gdold)) * stp);
-                dscal(n, stp, d, _d_offset, 1);
+                dscal(dimensionality, stp, d, _d_offset, 1);
                 ddum = (-((gdold * stp)));
             }
 
@@ -3829,7 +3830,7 @@ namespace BIOIK
             // 
             // c     Update matrices WS and WY and form the middle matrix in B.
             // 
-            matupd(n, m, ws, _ws_offset, wy, _wy_offset, sy, _sy_offset,
+            matupd(dimensionality, corrections, work, _work_offset, wy, _wy_offset, sy, _sy_offset,
                 ss, _ss_offset, d, _d_offset, r, _r_offset, ref itail, iupdat, ref col,
                 ref head, ref theta, rr, dr, stp, dtd);
 
@@ -3839,7 +3840,7 @@ namespace BIOIK
             // c        Cholesky factorize T to J*J' with
             // c           J' stored in the upper triangular of wt.
             // 
-            formt(m, wt, _wt_offset, sy, _sy_offset, ss,
+            formt(corrections, wt, _wt_offset, sy, _sy_offset, ss,
                 _ss_offset, col, theta, ref info);
 
         // 
@@ -4355,6 +4356,7 @@ namespace BIOIK
 
             if (task == Task.Start)
             {
+                //OYM：initialize int
                 intsave[(1 - (1)) + _intsave_offset] = (corrections * dimensionality);
                 intsave[(2 - (1)) + _intsave_offset] = ((int)math.pow(corrections, 2));
                 intsave[(3 - (1)) + _intsave_offset] = (4 * ((int)math.pow(corrections, 2)));
@@ -4366,12 +4368,14 @@ namespace BIOIK
                 intsave[(9 - (1)) + _intsave_offset] = (intsave[(8 - (1)) + _intsave_offset] + intsave[(2 - (1)) + _intsave_offset]);
                 intsave[(10 - (1)) + _intsave_offset] = (intsave[(9 - (1)) + _intsave_offset] + intsave[(3 - (1)) + _intsave_offset]);
                 intsave[(11 - (1)) + _intsave_offset] = (intsave[(10 - (1)) + _intsave_offset] + intsave[(3 - (1)) + _intsave_offset]);
+
                 intsave[(12 - (1)) + _intsave_offset] = (intsave[(11 - (1)) + _intsave_offset] + dimensionality);
                 intsave[(13 - (1)) + _intsave_offset] = (intsave[(12 - (1)) + _intsave_offset] + dimensionality);
                 intsave[(14 - (1)) + _intsave_offset] = (intsave[(13 - (1)) + _intsave_offset] + dimensionality);
                 intsave[(15 - (1)) + _intsave_offset] = (intsave[(14 - (1)) + _intsave_offset] + dimensionality);
                 intsave[(16 - (1)) + _intsave_offset] = (intsave[(15 - (1)) + _intsave_offset] + dimensionality);
             }
+            //OYM：取出参数
             lws = intsave[(4 - (1)) + _intsave_offset];
             lwy = intsave[(5 - (1)) + _intsave_offset];
             lsy = intsave[(6 - (1)) + _intsave_offset];
@@ -4385,7 +4389,7 @@ namespace BIOIK
             lt = intsave[(14 - (1)) + _intsave_offset];
             lxp = intsave[(15 - (1)) + _intsave_offset];
             lwa = intsave[(16 - (1)) + _intsave_offset];
-            // 
+            // 主函数
             mainlb(dimensionality, corrections, solution, solution_offset, lowerBound, _lowerBound_offset, upperBound, _upperBound_offset, nbd,
                 _nbd_offset, ref f, g, _g_offset, factor, torlerance, work, (lws - (1)) + _work_offset,
                 work, (lwy - (1)) + _work_offset, work, (lsy - (1)) + _work_offset, work,
