@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 // Accord Math Library
 // The Accord.NET Framework
@@ -27,6 +26,7 @@ using UnityEngine;
 //    Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 //
 using System;
+using Unity.Mathematics;
 
 /// <summary>
 ///   Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) optimization method.
@@ -83,7 +83,7 @@ using System;
 /// // method, an anonymous method or as a lambda function:
 /// 
 /// Func&lt;double[], double> f = (x) =>
-///     -Math.Exp(-Math.Pow(x[0] - 1, 2)) - Math.Exp(-0.5 * Math.Pow(x[1] - 2, 2));
+///     -math.Exp(-math.Pow(x[0] - 1, 2)) - math.Exp(-0.5 * math.Pow(x[1] - 2, 2));
 /// 
 /// // Now, we need to write its gradient, which is just the
 /// // vector of first partial derivatives del_f / del_x, as:
@@ -94,17 +94,17 @@ using System;
 /// Func&lt;double[], double[]> g = (x) => new double[] 
 /// {
 ///     // df/dx = {-2 e^(-    (x-1)^2) (x-1)}
-///     2 * Math.Exp(-Math.Pow(x[0] - 1, 2)) * (x[0] - 1),
+///     2 * math.Exp(-math.Pow(x[0] - 1, 2)) * (x[0] - 1),
 /// 
 ///     // df/dy = {-  e^(-1/2 (y-2)^2) (y-2)}
-///     Math.Exp(-0.5 * Math.Pow(x[1] - 2, 2)) * (x[1] - 2)
+///     math.Exp(-0.5 * math.Pow(x[1] - 2, 2)) * (x[1] - 2)
 /// };
 /// 
 /// // Finally, we can create the L-BFGS solver, passing the functions as arguments
 /// var lbfgs = new BroydenFletcherGoldfarbShanno(numberOfVariables: 2, function: f, gradient: g);
 /// 
 /// // And then minimize the function:
-/// double minValue = lbfgs.Minimize();
+/// double minValue = lbfgs.minimize();
 /// double[] solution = lbfgs.Solution;
 /// 
 /// // The resultant minimum value should be -2, and the solution
@@ -119,30 +119,30 @@ using System;
 public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 {
     // those values need not be modified
-    private const double ftol = 0.0001;
-    private const double xtol = 1e-16; // machine precision
-    private const double stpmin = 1e-20;
-    private const double stpmax = 1e20;
+    private const float ftol = 0.0001f;
+    private const float xtol = 1e-16f; // machine precision
+    private const float stpmin = 1e-20f;
+    private const float stpmax = 1e20f;
 
     // Line search parameters
-    private double gtol = 1e-5;
+    private float gtol = 1e-5f;
     private int maxfev = 40;
 
-    private double tolerance = 1e-2;
+    private float tolerance = 1;
     private int iterations;
     private int evaluations;
 
     private int numberOfVariables;
     private int corrections = 5;
 
-    private double[] x; // current solution x
-    private double f;   // value at current solution f(x)
-    double[] g;         // gradient at current solution
+    private float[] x; // current solution x
+    private float f;   // value at current solution f(x)
+    float[] g;         // gradient at current solution
 
-    private double[] lowerBound;
-    private double[] upperBound;
+    private float[] lowerBound;
+    private float[] upperBound;
 
-    private double[] work;
+    private float[] work;
 
 
     #region Properties
@@ -159,7 +159,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>The function to be optimized.</value>
     /// 
-    public Func<double[], double> Function { get; set; }
+    public Func<float[], float> Function { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the gradient
@@ -169,7 +169,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>The gradient function.</value>
     /// 
-    public Func<double[], double[]> Gradient { get; set; }
+    public Func<float[], float[]> Gradient { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the Hessian
@@ -178,7 +178,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>A function for the Hessian diagonal.</value>
     /// 
-    public Func<double[]> Diagonal { get; set; }
+    public Func<float[]> Diagonal { get; set; }
 
     /// <summary>
     ///   Gets the number of variables (free parameters)
@@ -258,9 +258,10 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   in which the solution must be found.
     /// </summary>
     /// 
-    public double[] UpperBounds
+    public float[] UpperBounds
     {
         get { return upperBound; }
+        set { upperBound = value; }
     }
 
     /// <summary>
@@ -268,9 +269,10 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   in which the solution must be found.
     /// </summary>
     /// 
-    public double[] LowerBounds
+    public float[] LowerBounds
     {
         get { return lowerBound; }
+        set { lowerBound = value; }
     }
 
     /// <summary>
@@ -284,7 +286,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   property.
     /// </remarks>
     /// 
-    public double Tolerance
+    public float Tolerance
     {
         get { return tolerance; }
         set { tolerance = value; }
@@ -299,7 +301,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   is 0.1. This value should be greater than 1e-4. Default is 0.9.
     /// </summary>
     /// 
-    public double Precision
+    public float Precision
     {
         get { return gtol; }
         set
@@ -316,7 +318,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   parameters which optimizes the function.
     /// </summary>
     /// 
-    public double[] Solution
+    public float[] Solution
     {
         get { return x; }
     }
@@ -325,7 +327,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   Gets the output of the function at the current solution.
     /// </summary>
     /// 
-    public double Value
+    public float Value
     {
         get { return f; }
     }
@@ -349,18 +351,18 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
         this.createWorkVector();
 
-        this.upperBound = new double[numberOfVariables];
-        this.lowerBound = new double[numberOfVariables];
+        this.upperBound = new float[numberOfVariables];
+        this.lowerBound = new float[numberOfVariables];
 
         for (int i = 0; i < upperBound.Length; i++)
-            lowerBound[i] = Double.NegativeInfinity;
+            lowerBound[i] = float.NegativeInfinity;
 
         for (int i = 0; i < upperBound.Length; i++)
-            upperBound[i] = Double.PositiveInfinity;
+            upperBound[i] = float.PositiveInfinity;
 
-        x = new double[numberOfVariables];
+        x = new float[numberOfVariables];
         for (int i = 0; i < x.Length; i++)
-            x[i] = UnityEngine.Random.Range(0, 1) * 2.0 - 1.0;
+            x[i] = Unity.Mathematics.Random.CreateFromIndex(0).NextFloat() * 2.0f - 1.0f;
     }
 
     /// <summary>
@@ -371,7 +373,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// <param name="function">The function to be optimized.</param>
     /// <param name="gradient">The gradient of the function.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<double[], double> function, Func<double[], double[]> gradient)
+    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<float[], float> function, Func<float[], float[]> gradient)
         : this(numberOfVariables)
     {
         if (function == null)
@@ -394,7 +396,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// <param name="gradient">The gradient of the function.</param>
     /// <param name="diagonal">The diagonal of the Hessian.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<double[], double> function, Func<double[], double[]> gradient, Func<double[]> diagonal)
+    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<float[], float> function, Func<float[], float[]> gradient, Func<float[]> diagonal)
         : this(numberOfVariables, function, gradient)
     {
         this.Diagonal = diagonal;
@@ -408,7 +410,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <returns>The minimum value found at the <see cref="Solution"/>.</returns>
     /// 
-    public double Minimize()
+    public float Minimize()
     {
         return minimize();
     }
@@ -421,7 +423,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <returns>The minimum value found at the <see cref="Solution"/>.</returns>
     /// 
-    public double Minimize(double[] values)
+    public float Minimize(float[] values)
     {
         if (values == null)
             throw new ArgumentNullException("values");
@@ -436,7 +438,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         return minimize();
     }
 
-    private unsafe double minimize()
+    private unsafe float minimize()
     {
         if (Function == null) throw new InvalidOperationException(
             "The function to be minimized has not been defined.");
@@ -457,7 +459,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
         // Obtain initial Hessian
-        double[] diagonal = null;
+        float[] diagonal = null;
 
         if (Diagonal != null)
         {
@@ -465,32 +467,33 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         }
         else
         {
-            diagonal = new double[n];
+            diagonal = new float[n];
             for (int i = 0; i < diagonal.Length; i++)
-                diagonal[i] = 1.0;
+                diagonal[i] = 1.0f;
         }
 
 
-        fixed (double* w = work)
+        fixed (float* w = work)
         {
             // The first N locations of the work vector are used to
             //  store the gradient and other temporary information.
 
-            double* rho = &w[n];                   // Stores the scalars rho.
-            double* alpha = &w[n + m];             // Stores the alphas in computation of H*g.
-            double* steps = &w[n + 2 * m];         // Stores the last M search steps.
-            double* delta = &w[n + 2 * m + n * m]; // Stores the last M gradient differences.
+            float* rho = &w[n];                   // Stores the scalars rho.
+            float* alpha = &w[n + m];             // Stores the alphas in computation of H*g.
+            float* steps = &w[n + 2 * m];         // Stores the last M search steps.
+            float* delta = &w[n + 2 * m + n * m]; // Stores the last M gradient differences.
 
 
             // Initialize work vector
             for (int i = 0; i < g.Length; i++)
                 steps[i] = -g[i] * diagonal[i];
 
+
             // Initialize statistics
-            double gnorm = Norm.Euclidean(g);
-            double xnorm = Norm.Euclidean(x);
-            double stp = 1.0 / gnorm;
-            double stp1 = stp;
+            float gnorm = Norm.Euclidean(g);
+            float xnorm = Norm.Euclidean(x);
+            float stp = 1.0f / gnorm;
+            float stp1 = stp;
 
             // Initialize loop
             int nfev, point = 0;
@@ -500,36 +503,38 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             // Make initial progress report with initialization parameters
             if (Progress != null) Progress(this, new OptimizationProgressEventArgs
                 (iterations, evaluations, g, gnorm, x, xnorm, f, stp, finish));
-
+            float ys = 0;
 
             // Start main
             while (!finish)
             {
                 iterations++;
-                double bound = iterations - 1;
+                float bound = iterations - 1;
 
                 if (iterations != 1)
                 {
                     if (iterations > m)
                         bound = m;
 
-                    double ys = 0;
-                    for (int i = 0; i < n; i++)
-                        ys += delta[npt + i] * steps[npt + i];
+
+
 
                     // Compute the diagonal of the Hessian
                     // or use an approximation by the user.
-
+                    if (ys==0)
+                    {
+                        break ;
+                    }
                     if (Diagonal != null)
                     {
                         diagonal = getDiagonal();
                     }
                     else
                     {
-                        double yy = 0;
+                        float yy = 0;
                         for (int i = 0; i < n; i++)
                             yy += delta[npt + i] * delta[npt + i];
-                        double d = ys / yy;
+                        float d = ys / yy;
 
                         for (int i = 0; i < n; i++)
                             diagonal[i] = d;
@@ -541,7 +546,8 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                     //   Mathematics of Computation, Vol.24, No.151, pp. 773-782.
 
                     cp = (point == 0) ? m : point;
-                    rho[cp - 1] = 1.0 / ys;
+
+                    rho[cp - 1] = 1.0f / ys;
                     for (int i = 0; i < n; i++)
                         w[i] = -g[i];
 
@@ -550,11 +556,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                     {
                         if (--cp == -1) cp = m - 1;
 
-                        double sq = 0;
+                        float sq = 0;
                         for (int j = 0; j < n; j++)
                             sq += steps[cp * n + j] * w[j];
 
-                        double beta = alpha[cp] = rho[cp] * sq;
+                        float beta = alpha[cp] = rho[cp] * sq;
                         for (int j = 0; j < n; j++)
                             w[j] -= beta * delta[cp * n + j];
                     }
@@ -564,11 +570,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
                     for (int i = 1; i <= bound; i += 1)
                     {
-                        double yr = 0;
+                        float yr = 0;
                         for (int j = 0; j < n; j++)
                             yr += delta[cp * n + j] * w[j];
 
-                        double beta = alpha[cp] - rho[cp] * yr;
+                        float beta = alpha[cp] - rho[cp] * yr;
                         for (int j = 0; j < n; j++)
                             w[j] += beta * steps[cp * n + j];
 
@@ -590,7 +596,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
                 // Obtain the one-dimensional minimizer of f by computing a line search
-                mcsrch(x, ref f, ref g, &steps[point * n], ref stp, out nfev, diagonal);
+               bool isContinue= mcsrch(x, ref f, ref g, &steps[point * n], ref stp, out nfev, diagonal);
 
                 // Register evaluations
                 evaluations += nfev;
@@ -609,10 +615,21 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                 // Check for termination
                 gnorm = Norm.Euclidean(g);
                 xnorm = Norm.Euclidean(x);
-                xnorm = Math.Max(1.0, xnorm);
+                xnorm = math.max(1f, xnorm);
 
-                if (gnorm / xnorm <= tolerance)
+
+
+
+                if (!isContinue&&gnorm / xnorm <= tolerance)
                     finish = true;
+
+/*                for (int i = 0; i < n; i++)
+                    ys += delta[npt + i] * steps[npt + i];
+
+                if (ys==0)
+                {
+                    finish = true;
+                }*/
 
                 if (Progress != null) Progress(this, new OptimizationProgressEventArgs
                     (iterations, evaluations, g, gnorm, x, xnorm, f, stp, finish));
@@ -629,11 +646,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   Finds a step which satisfies a sufficient decrease and curvature condition.
     /// </summary>
     /// 
-    private unsafe void mcsrch(double[] x, ref double f, ref double[] g, double* s,
-        ref double stp, out int nfev, double[] wa)
+    private unsafe bool mcsrch(float[] x, ref float f, ref float[] g, float* s,
+        ref float stp, out int nfev, float[] wa)
     {
         int n = numberOfVariables;
-        double ftest1 = 0;
+        float ftest1 = 0;
         int infoc = 1;
 
         nfev = 0;
@@ -644,21 +661,25 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         // Compute the initial gradient in the search direction
         // and check that s is a descent direction.
 
-        double dginit = 0;
+        float dginit = 0;
 
         for (int j = 0; j < g.Length; j++)
             dginit = dginit + g[j] * s[j];
 
         if (dginit >= 0)
-            throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
+        {
+           // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
+        }
+
+
 
         bool brackt = false;
         bool stage1 = true;
 
-        double finit = f;
-        double dgtest = ftol * dginit;
-        double width = stpmax - stpmin;
-        double width1 = width / 0.5;
+        float finit = f;
+        float dgtest = ftol * dginit;
+        float width = stpmax - stpmin;
+        float width1 = width / 0.5f;
 
         for (int j = 0; j < x.Length; j++)
             wa[j] = x[j];
@@ -667,22 +688,22 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         // step, function, and directional derivative at the best
         // step.
 
-        double stx = 0;
-        double fx = finit;
-        double dgx = dginit;
+        float stx = 0;
+        float fx = finit;
+        float dgx = dginit;
 
         // The variables sty, fy, dgy contain the value of the
         // step, function, and derivative at the other endpoint
         // of the interval of uncertainty.
 
-        double sty = 0;
-        double fy = finit;
-        double dgy = dginit;
+        float sty = 0;
+        float fy = finit;
+        float dgy = dginit;
 
         // The variables stp, f, dg contain the values of the step,
         // function, and derivative at the current step.
 
-        double dg = 0;
+        float dg = 0;
 
 
         while (true)
@@ -690,23 +711,23 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             // Set the minimum and maximum steps to correspond
             // to the present interval of uncertainty.
 
-            double stmin, stmax;
+            float stmin, stmax;
 
             if (brackt)
             {
-                stmin = Math.Min(stx, sty);
-                stmax = Math.Max(stx, sty);
+                stmin = math.min(stx, sty);
+                stmax = math.max(stx, sty);
             }
             else
             {
                 stmin = stx;
-                stmax = stp + 4.0 * (stp - stx);
+                stmax = stp + 4.0f * (stp - stx);
             }
 
             // Force the step to be within the bounds stpmax and stpmin.
 
-            stp = Math.Max(stp, stpmin);
-            stp = Math.Min(stp, stpmax);
+            stp = math.max(stp, stpmin);
+            stp = math.min(stp, stpmax);
 
             // If an unusual termination is to occur then let
             // stp be the lowest point obtained so far.
@@ -746,33 +767,50 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             // Test for convergence.
 
             if (nfev >= maxfev)
-                throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
+            {
+                return false;
+                //throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
+            }
+
 
             if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0)
             {
-                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
+                return false;
+/*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
                                                        "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
-                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());
+                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
             }
 
             if (stp == stpmax && f <= ftest1 && dg <= dgtest)
+            {
+                return false;
                 throw new LineSearchFailedException(5, "The step size has reached the upper bound.");
+            }
+
 
             if (stp == stpmin && (f > ftest1 || dg >= dgtest))
+            {
+                return false;
                 throw new LineSearchFailedException(4, "The step size has reached the lower bound.");
+            }
+
 
             if (brackt && stmax - stmin <= xtol * stmax)
+            {
+                return false;
                 throw new LineSearchFailedException(2, "Relative width of the interval of uncertainty is at machine precision.");
+            }
 
-            if (f <= ftest1 && Math.Abs(dg) <= gtol * (-dginit))
-                return;
+
+            if (f <= ftest1 && math.abs(dg) <= gtol * (-dginit))
+                return true ;
 
             // Not converged yet. Continuing with the search.
 
             // In the first stage we seek a step for which the modified
             // function has a nonpositive value and nonnegative derivative.
 
-            if (stage1 && f <= ftest1 && dg >= Math.Min(ftol, gtol) * dginit)
+            if (stage1 && f <= ftest1 && dg >= math.min(ftol, gtol) * dginit)
                 stage1 = false;
 
             // A modified function is used to predict the step only if we
@@ -785,13 +823,13 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             {
                 // Define the modified function and derivative values.
 
-                double fm = f - stp * dgtest;
-                double fxm = fx - stx * dgtest;
-                double fym = fy - sty * dgtest;
+                float fm = f - stp * dgtest;
+                float fxm = fx - stx * dgtest;
+                float fym = fy - sty * dgtest;
 
-                double dgm = dg - dgtest;
-                double dgxm = dgx - dgtest;
-                double dgym = dgy - dgtest;
+                float dgm = dg - dgtest;
+                float dgxm = dgx - dgtest;
+                float dgym = dgy - dgtest;
 
                 // Call cstep to update the interval of uncertainty
                 // and to compute the new step.
@@ -821,32 +859,32 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             if (brackt)
             {
-                if (Math.Abs(sty - stx) >= 0.66 * width1)
-                    stp = stx + 0.5 * (sty - stx);
+                if (math.abs(sty - stx) >= 0.66 * width1)
+                    stp = stx + 0.5f * (sty - stx);
 
                 width1 = width;
-                width = Math.Abs(sty - stx);
+                width = math.abs(sty - stx);
             }
 
         }
     }
 
     // TODO: Move to separate classes
-    internal static void SearchStep(ref double stx, ref double fx, ref double dx,
-                                ref double sty, ref double fy, ref double dy,
-                                ref double stp, double fp, double dp,
+    internal static void SearchStep(ref float stx, ref float fx, ref float dx,
+                                ref float sty, ref float fy, ref float dy,
+                                ref float stp, float fp, float dp,
                                 ref bool brackt, out int info)
     {
         bool bound;
-        double stpc, stpf, stpq;
+        float stpc, stpf, stpq;
 
         info = 0;
 
-        if ((brackt && (stp <= Math.Min(stx, sty) || stp >= Math.Max(stx, sty))) ||
+        if ((brackt && (stp <= math.min(stx, sty) || stp >= math.max(stx, sty))) ||
             (dx * (stp - stx) >= 0.0) || (stpmax < stpmin)) return;
 
         // Determine if the derivatives have opposite sign.
-        double sgnd = dp * (dx / Math.Abs(dx));
+        float sgnd = dp * (dx / math.abs(dx));
 
         if (fp > fx)
         {
@@ -857,22 +895,22 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             info = 1;
             bound = true;
-            double theta = 3.0 * (fx - fp) / (stp - stx) + dx + dp;
-            double s = Math.Max(Math.Abs(theta), Math.Max(Math.Abs(dx), Math.Abs(dp)));
-            double gamma = s * Math.Sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            float theta = 3.0f * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
             if (stp < stx) gamma = -gamma;
 
-            double p = gamma - dx + theta;
-            double q = gamma - dx + gamma + dp;
-            double r = p / q;
+            float p = gamma - dx + theta;
+            float q = gamma - dx + gamma + dp;
+            float r = p / q;
             stpc = stx + r * (stp - stx);
             stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2) * (stp - stx);
 
-            if (Math.Abs(stpc - stx) < Math.Abs(stpq - stx))
+            if (math.abs(stpc - stx) < math.abs(stpq - stx))
                 stpf = stpc;
             else
-                stpf = stpc + (stpq - stpc) / 2.0;
+                stpf = stpc + (stpq - stpc) / 2.0f;
 
             brackt = true;
         }
@@ -885,25 +923,25 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             info = 2;
             bound = false;
-            double theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            double s = Math.Max(Math.Abs(theta), Math.Max(Math.Abs(dx), Math.Abs(dp)));
-            double gamma = s * Math.Sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
             if (stp > stx) gamma = -gamma;
 
-            double p = (gamma - dp) + theta;
-            double q = ((gamma - dp) + gamma) + dx;
-            double r = p / q;
+            float p = (gamma - dp) + theta;
+            float q = ((gamma - dp) + gamma) + dx;
+            float r = p / q;
             stpc = stp + r * (stx - stp);
             stpq = stp + (dp / (dp - dx)) * (stx - stp);
 
-            if (Math.Abs(stpc - stp) > Math.Abs(stpq - stp))
+            if (math.abs(stpc - stp) > math.abs(stpq - stp))
                 stpf = stpc;
             else stpf = stpq;
 
             brackt = true;
         }
-        else if (Math.Abs(dp) < Math.Abs(dx))
+        else if (math.abs(dp) < math.abs(dx))
         {
             // Third case. A lower function value, derivatives of the
             // same sign, and the magnitude of the derivative decreases.
@@ -916,15 +954,15 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             info = 3;
             bound = true;
-            double theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            double s = Math.Max(Math.Abs(theta), Math.Max(Math.Abs(dx), Math.Abs(dp)));
-            double gamma = s * Math.Sqrt(Math.Max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+            float  theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            float  s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float  gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
 
             if (stp > stx) gamma = -gamma;
 
-            double p = (gamma - dp) + theta;
-            double q = (gamma + (dx - dp)) + gamma;
-            double r = p / q;
+            float  p = (gamma - dp) + theta;
+            float  q = (gamma + (dx - dp)) + gamma;
+            float  r = p / q;
 
             if (r < 0.0 && gamma != 0.0)
                 stpc = stp + r * (stx - stp);
@@ -936,13 +974,13 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             if (brackt)
             {
-                if (Math.Abs(stp - stpc) < Math.Abs(stp - stpq))
+                if (math.abs(stp - stpc) < math.abs(stp - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
             else
             {
-                if (Math.Abs(stp - stpc) > Math.Abs(stp - stpq))
+                if (math.abs(stp - stpc) > math.abs(stp - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
@@ -959,15 +997,15 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             if (brackt)
             {
-                double theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
-                double s = Math.Max(Math.Abs(theta), Math.Max(Math.Abs(dy), Math.Abs(dp)));
-                double gamma = s * Math.Sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
+                float theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
+                float s = math.max(math.abs(theta), math.max(math.abs(dy), math.abs(dp)));
+                float gamma = s * math.sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
 
                 if (stp > sty) gamma = -gamma;
 
-                double p = (gamma - dp) + theta;
-                double q = ((gamma - dp) + gamma) + dy;
-                double r = p / q;
+                float p = (gamma - dp) + theta;
+                float q = ((gamma - dp) + gamma) + dy;
+                float r = p / q;
                 stpc = stp + r * (sty - stp);
                 stpf = stpc;
             }
@@ -999,16 +1037,16 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         }
 
         // Compute the new step and safeguard it.
-        stpf = Math.Min(stpmax, stpf);
-        stpf = Math.Max(stpmin, stpf);
+        stpf = math.min(stpmax, stpf);
+        stpf = math.max(stpmin, stpf);
         stp = stpf;
 
         if (brackt && bound)
         {
             if (sty > stx)
-                stp = Math.Min(stx + 0.66 * (sty - stx), stp);
+                stp = math.min(stx + 0.66f * (sty - stx), stp);
             else
-                stp = Math.Max(stx + 0.66 * (sty - stx), stp);
+                stp = math.max(stx + 0.66f * (sty - stx), stp);
         }
 
         return;
@@ -1018,9 +1056,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     #endregion
 
 
-    private double[] getDiagonal()
+    private float[] getDiagonal()
     {
-        double[] diag = Diagonal();
+        float[] diag = Diagonal();
         if (diag.Length != numberOfVariables) throw new ArgumentException(
             "The length of the Hessian diagonal vector does not match the" +
             " number of free parameters in the optimization poblem.");
@@ -1031,19 +1069,19 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         return diag;
     }
 
-    private double[] getGradient(double[] args)
+    private float[] getGradient(float[] args)
     {
-        double[] grad = Gradient(args);
+        float[] grad = Gradient(args);
         if (grad.Length != numberOfVariables) throw new ArgumentException(
             "The length of the gradient vector does not match the" +
             " number of free parameters in the optimization problem.");
         return grad;
     }
 
-    private double getFunction(double[] args)
+    private float getFunction(float[] args)
     {
-        double func = Function(args);
-        if (Double.IsNaN(func) || Double.IsInfinity(func))
+        float func = Function(args);
+        if (float.IsNaN(func) || float.IsInfinity(func))
             throw new NotFiniteNumberException(
                 "The function evaluation did not return a finite number.", func);
         return func;
@@ -1051,7 +1089,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
     private void createWorkVector()
     {
-        this.work = new double[numberOfVariables * (2 * corrections + 1) + 2 * corrections];
+        this.work = new float[numberOfVariables * (2 * corrections + 1) + 2 * corrections];
     }
 
 

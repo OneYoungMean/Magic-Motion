@@ -1,7 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
+using Unity.Mathematics;
 
 /// <summary>
 ///   Common interface for function optimization methods.
@@ -21,13 +21,13 @@ public interface IOptimizationMethod
     /// 
     /// <param name="values">The initial guess values for the parameters.</param>
     /// 
-    double Minimize(double[] values);
+    float Minimize(float[] values);
 
     /// <summary>
     ///   Gets the solution found, the values of the parameters which
     ///   optimizes the function.
     /// </summary>
-    double[] Solution { get; }
+    float[] Solution { get; }
 
 }
 
@@ -45,7 +45,7 @@ public interface IGradientOptimizationMethod : IOptimizationMethod
     /// 
     /// <value>The function to be optimized.</value>
     /// 
-    Func<double[], double> Function { get; set; }
+    Func<float[], float> Function { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the gradient
@@ -55,7 +55,7 @@ public interface IGradientOptimizationMethod : IOptimizationMethod
     /// 
     /// <value>The gradient function.</value>
     /// 
-    Func<double[], double[]> Gradient { get; set; }
+    Func<float[], float[]> Gradient { get; set; }
 
     /// <summary>
     ///   Gets the number of variables (free parameters)
@@ -88,38 +88,38 @@ public class OptimizationProgressEventArgs : EventArgs
     ///   Gets the current gradient of the function being optimized.
     /// </summary>
     /// 
-    public double[] Gradient { get; private set; }
+    public float[] Gradient { get; private set; }
 
     /// <summary>
     ///   Gets the norm of the current <see cref="Gradient"/>.
     /// </summary>
     /// 
-    public double GradientNorm { get; private set; }
+    public float GradientNorm { get; private set; }
 
     /// <summary>
     ///   Gets the current solution parameters for the problem.
     /// </summary>
     /// 
-    public double[] Solution { get; private set; }
+    public float[] Solution { get; private set; }
 
     /// <summary>
     ///   Gets the norm of the current <see cref="Solution"/>.
     /// </summary>
     /// 
-    public double SolutionNorm { get; private set; }
+    public float SolutionNorm { get; private set; }
 
     /// <summary>
     ///   Gets the value of the function to be optimized
     ///   at the current proposed <see cref="Solution"/>.
     /// </summary>
     /// 
-    public double Value { get; private set; }
+    public float Value { get; private set; }
 
     /// <summary>
     ///   Gets the current step size.
     /// </summary>
     /// 
-    public double Step { get; private set; }
+    public float Step { get; private set; }
 
 
     /// <summary>
@@ -147,12 +147,12 @@ public class OptimizationProgressEventArgs : EventArgs
     /// 
     public OptimizationProgressEventArgs(
         int iteration, int evaluations,
-        double[] gradient, double gnorm,
-        double[] solution, double xnorm,
-        double value, double stp, bool finished)
+        float[] gradient, float gnorm,
+        float[] solution, float xnorm,
+        float value, float stp, bool finished)
     {
-        this.Gradient = (double[])gradient.Clone();
-        this.Solution = (double[])solution.Clone();
+        this.Gradient = (float[])gradient.Clone();
+        this.Solution = (float[])solution.Clone();
         this.Value = value;
         this.GradientNorm = gnorm;
         this.SolutionNorm = xnorm;
@@ -189,7 +189,7 @@ public static class Norm
             }
         }
 
-        return System.Math.Sqrt(norm);
+        return math.sqrt(norm);
     }
 
     /// <summary>
@@ -222,7 +222,7 @@ public static class Norm
     /// 
     public static float Euclidean(this float[] a)
     {
-        return (float)Math.Sqrt(SquareEuclidean(a));
+        return (float)math.sqrt(SquareEuclidean(a));
     }
 
     /// <summary>
@@ -231,7 +231,7 @@ public static class Norm
     /// 
     public static double Euclidean(this double[] a)
     {
-        return System.Math.Sqrt(SquareEuclidean(a));
+        return math.sqrt(SquareEuclidean(a));
     }
 
     /// <summary>
@@ -306,7 +306,7 @@ public static class Norm
         double[] norm = Norm.SquareEuclidean(a, dimension);
 
         for (int i = 0; i < norm.Length; i++)
-            norm[i] = System.Math.Sqrt(norm[i]);
+            norm[i] = math.sqrt(norm[i]);
 
         return norm;
     }
@@ -374,7 +374,7 @@ public static class Norm
         float[] norm = Norm.SquareEuclidean(a, dimension);
 
         for (int i = 0; i < norm.Length; i++)
-            norm[i] = (float)System.Math.Sqrt(norm[i]);
+            norm[i] = (float)math.sqrt(norm[i]);
 
         return norm;
     }

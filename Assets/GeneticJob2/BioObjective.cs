@@ -7,7 +7,7 @@ using UnityEngine;
 namespace BIOIK2
 {
     public enum ObjectiveType { Position, Orientation, LookAt, Distance, Displacement, JointValue, Projection }
-    public abstract class BioObjective : MonoBehaviour
+    public abstract unsafe class BioObjective : MonoBehaviour
     {
       
         public BioSegment segment;
@@ -37,9 +37,9 @@ namespace BIOIK2
         public abstract ObjectiveType GetObjectiveType();
         public abstract void UpdateData();
 
-        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration);
+        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration);
 
-        public abstract bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration);
+        public abstract bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration);
     }
 }
 

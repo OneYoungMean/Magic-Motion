@@ -45,7 +45,7 @@ namespace BIOIK2
         private BioModel[] models = null;
 
         private BIOIK.BFGS_F[] optimisers = null;
-                         
+        private BroydenFletcherGoldfarbShanno[] optimisers2 = null;
         private float Fitness;
         private Random random;
         //OYM: threading;
@@ -76,12 +76,14 @@ namespace BIOIK2
 
             models =new BioModel[elites];
             optimisers = new BIOIK.BFGS_F[elites];
+            optimisers2 = new BroydenFletcherGoldfarbShanno[elites];
             improved = new bool[elites];
             for (int i = 0; i < elites; i++)
             {
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
                 optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));
+                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));
             }
 
 
@@ -127,6 +129,9 @@ namespace BIOIK2
                     models[i].CopyFrom(bioModel);
                     optimisers[i].LowerBounds= lowerBounds.ToFloatArray();
                     optimisers[i].UpperBounds= upperBounds.ToFloatArray();
+
+                    optimisers2[i].UpperBounds = upperBounds.ToFloatArray();
+                    optimisers2[i].LowerBounds = lowerBounds.ToFloatArray();
                 }
                 for (int i = 0; i < generations; i++)
                 {
@@ -227,17 +232,39 @@ namespace BIOIK2
             Array.Copy(survivor.genes, elite.genes, Dimensionality);
             Array.Copy(survivor.momentum, elite.momentum, Dimensionality);
             float fitness = models[index].ComputeLoss(elite.genes);
-            optimisers[index].Minimise(elite.genes.ToFloatArray(), (float)timeout);
 
-            if (optimisers[index].Value < fitness)
+            //OYM：两者之间收敛速度差不多
+            //OYM：但是后者可读性吊打前者
+            //OYM：我要做一下nativeArray，修一下GC
+            /*            optimisers[index].Minimise(elite.genes.ToFloatArray(), (float)timeout);
+
+                        if (optimisers[index].Value < fitness)
+                        {
+                            var optimGene = optimisers[index].Solution.ToFloat3Array();
+                            for (int i = 0; i < Dimensionality; i++)
+                            {
+                                elite.momentum[i] = optimGene[i] - elite.genes[i];
+                                elite.genes[i] = optimGene[i];
+                            }
+                            elite.fitness = optimisers[index].Value;
+                            improved[index] = true;
+                        }
+                        else
+                        {
+                            elite.fitness = fitness;
+                            improved[index] = false;
+                        }*/
+            optimisers2[index].Minimize(elite.genes.ToFloatArray());
+
+            if (optimisers2[index].Value < fitness)
             {
-                var optimGene = optimisers[index].Solution.ToFloat3Array();
+                var optimGene = optimisers2[index].Solution.ToFloat3Array();
                 for (int i = 0; i < Dimensionality; i++)
                 {
                     elite.momentum[i] = optimGene[i] - elite.genes[i];
                     elite.genes[i] = optimGene[i];
                 }
-                elite.fitness = optimisers[index].Value;
+                elite.fitness = optimisers2[index].Value;
                 improved[index] = true;
             }
             else

@@ -725,9 +725,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   UseThreading: 1
-  Generations: 2
+  Generations: 1
   PopulationSize: 50
-  Elites: 2
+  Elites: 1
   smoothing: 0.5
   animationWeight: 0
   animationBlend: 0
@@ -745,7 +745,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 493056835}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 4ad63e04dd1adde458e838c2c24a4510, type: 3}
   m_Name: 

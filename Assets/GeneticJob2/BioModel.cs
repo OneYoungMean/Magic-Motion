@@ -3,10 +3,10 @@ using System;
 using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
-
+using Unity.Collections.LowLevel.Unsafe;
 namespace BIOIK2
 {
-    public class BioModel:ICloneable
+    public unsafe class BioModel:ICloneable
     {
         private BIOIK2 Character;
 
@@ -127,10 +127,10 @@ namespace BIOIK2
             }
         }
 
-        internal float[] ComputeGradient(float[] configuration, float resolution)
+        internal float[] ComputeGradient(float* configuration, float resolution)
         {
-            float oldLoss = ComputeLoss(configuration.ToFloat3Array());
-            for (int j = 0; j < configuration.Length; j++)
+            float oldLoss = ComputeLoss((float3*)configuration);
+            for (int j = 0; j <Dof3*3; j++)
             {
                 Configuration[j] += resolution;
                 motionPtrs[j/3].Node.SimulateModification(Configuration.ToFloat3Array());
@@ -146,7 +146,7 @@ namespace BIOIK2
             return Gradient;
         }
 
-        internal float ComputeLoss(float3[] configuration)
+        internal float ComputeLoss(float3* configuration)
         {
             FK(configuration);
             float loss = 0.0f;
@@ -158,7 +158,7 @@ namespace BIOIK2
             }
             return (float)System.Math.Sqrt(loss / (float)objectivePtrs.Count);
         }
-        public bool CheckConvergence(float3[] configuration)
+        public bool CheckConvergence(float3* configuration)
         {
             FK(configuration);
             for (int i = 0; i < objectivePtrs.Count; i++)
@@ -171,9 +171,9 @@ namespace BIOIK2
             }
             return true;
         }
-        private void FK(float3[] configuration)
+        private void FK(float3* configuration)
         {
-            Array.Copy(configuration.ToFloatArray(), Configuration, Configuration.Length);
+            UnsafeUtility.MemCpy (configuration, Configuration, Configuration.Length);
             nodes[0].FeedForwardConfiguration(configuration);
         }
 

@@ -20,7 +20,7 @@ namespace BIOIK2
             float loss = 0.0f;
             for (int i = 0; i < configuration.Length; i++)
             {
-                float temp = configuration[i].y;
+                float temp =math.abs( configuration[i].y);
                 loss +=  temp;
             }
             loss = loss / configuration.Length;
