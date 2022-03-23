@@ -233,7 +233,7 @@ namespace BIOIK2
             Individual survivor = population[index];
             Individual elite = offSpring[index];
 
-            survivor.genes.CopyFrom(elite.genes);
+            elite.genes.CopyFrom( survivor.genes);
             Array.Copy(survivor.momentum, elite.momentum, Dimensionality);
             float fitness = models[index].ComputeLoss(elite.genes);
 

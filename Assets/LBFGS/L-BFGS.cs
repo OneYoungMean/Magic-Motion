@@ -464,11 +464,11 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
 
         // Initialization
-        int n = numberOfVariables, m = corrections;
+        int m_variableCount = numberOfVariables, m_corrections = corrections;
 
         // Make initial evaluation
-        fitness = getFunction(currentSolution);
-        gradient = getGradient(currentSolution);
+        fitness = GetFunction(currentSolution);
+        gradient = GetGradient(currentSolution);
 
         this.iterations = 0;
         this.evaluations = 1;
@@ -483,7 +483,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         }
         else
         {
-            diagonal = new NativeArray<float>(n, Allocator.Persistent);
+            diagonal = new NativeArray<float>(m_variableCount, Allocator.Persistent);
             for (int i = 0; i < diagonal.Length; i++)
                 diagonal[i] = 1.0f;
         }
@@ -494,10 +494,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // The first N locations of the work vector are used to
             //  store the gradient and other temporary information.
 
-            float* rho = &w[n];                   // Stores the scalars rho.
-            float* alpha = &w[n + m];             // Stores the alphas in computation of H*g.
-            float* steps = &w[n + 2 * m];         // Stores the last M search steps.
-            float* delta = &w[n + 2 * m + n * m]; // Stores the last M gradient differences.
+            float* rho = &w[m_variableCount];                   // Stores the scalars rho.
+            float* alpha = &w[m_variableCount + m_corrections];             // Stores the alphas in computation of H*g.
+            float* steps = &w[m_variableCount + 2 * m_corrections];         // Stores the last M search steps.
+            float* delta = &w[m_variableCount + 2 * m_corrections + m_variableCount * m_corrections]; // Stores the last M gradient differences.
 
 
             // Initialize work vector
@@ -529,8 +529,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                 if (iterations != 1)
                 {
-                    if (iterations > m)
-                        bound = m;
+                    if (iterations > m_corrections)
+                        bound = m_corrections;
 
 
 
@@ -548,11 +548,11 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     else
                     {
                         float yy = 0;
-                        for (int i = 0; i < n; i++)
+                        for (int i = 0; i < m_variableCount; i++)
                             yy += delta[npt + i] * delta[npt + i];
                         float d = ys / yy;
 
-                        for (int i = 0; i < n; i++)
+                        for (int i = 0; i < m_variableCount; i++)
                             diagonal[i] = d;
                     }
 
@@ -561,24 +561,24 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     //   Nocedal, J. 1980, "Updating quasi-Newton matrices with limited storage",
                     //   Mathematics of Computation, Vol.24, No.151, pp. 773-782.
 
-                    cp = (point == 0) ? m : point;
+                    cp = (point == 0) ? m_corrections : point;
 
                     rho[cp - 1] = 1.0f / ys;
-                    for (int i = 0; i < n; i++)
+                    for (int i = 0; i < m_variableCount; i++)
                         w[i] = -gradient[i];
 
                     cp = point;
                     for (int i = 1; i <= bound; i += 1)
                     {
-                        if (--cp == -1) cp = m - 1;
+                        if (--cp == -1) cp = m_corrections - 1;
 
                         float sq = 0;
-                        for (int j = 0; j < n; j++)
-                            sq += steps[cp * n + j] * w[j];
+                        for (int j = 0; j < m_variableCount; j++)
+                            sq += steps[cp * m_variableCount + j] * w[j];
 
                         float beta = alpha[cp] = rho[cp] * sq;
-                        for (int j = 0; j < n; j++)
-                            w[j] -= beta * delta[cp * n + j];
+                        for (int j = 0; j < m_variableCount; j++)
+                            w[j] -= beta * delta[cp * m_variableCount + j];
                     }
 
                     for (int i = 0; i < diagonal.Length; i++)
@@ -587,20 +587,20 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     for (int i = 1; i <= bound; i += 1)
                     {
                         float yr = 0;
-                        for (int j = 0; j < n; j++)
-                            yr += delta[cp * n + j] * w[j];
+                        for (int j = 0; j < m_variableCount; j++)
+                            yr += delta[cp * m_variableCount + j] * w[j];
 
                         float beta = alpha[cp] - rho[cp] * yr;
-                        for (int j = 0; j < n; j++)
-                            w[j] += beta * steps[cp * n + j];
+                        for (int j = 0; j < m_variableCount; j++)
+                            w[j] += beta * steps[cp * m_variableCount + j];
 
-                        if (++cp == m) cp = 0;
+                        if (++cp == m_corrections) cp = 0;
                     }
 
-                    npt = point * n;
+                    npt = point * m_variableCount;
 
                     // Store the search direction
-                    for (int i = 0; i < n; i++)
+                    for (int i = 0; i < m_variableCount; i++)
                         steps[npt + i] = w[i];
 
                     stp = 1;
@@ -612,7 +612,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
 
                 // Obtain the one-dimensional minimizer of f by computing a line search
-                bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * n], ref stp, out nfev, diagonal);
+                bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * m_variableCount], ref stp, out nfev, diagonal);
 
                 // Register evaluations
                 evaluations += nfev;
@@ -625,7 +625,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     delta[npt + i] = gradient[i] - w[i];
                 }
 
-                if (++point == m) point = 0;
+                if (++point == m_corrections) point = 0;
 
 
                 // Check for termination
@@ -769,8 +769,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
 
             // Reevaluate function and gradient
-            f = getFunction(x);
-            g = getGradient(x);
+            f = GetFunction(x);
+            g = GetGradient(x);
 
             nfev++;
             dg = 0;
@@ -1085,7 +1085,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return diag;
     }
 
-    private NativeArray<float> getGradient(NativeArray<float> args)
+    private NativeArray<float> GetGradient(NativeArray<float> args)
     {
         NativeArray<float> grad = Gradient(args);
         if (grad.Length != numberOfVariables) throw new ArgumentException(
@@ -1094,7 +1094,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return grad;
     }
 
-    private float getFunction(NativeArray<float> args)
+    private float GetFunction(NativeArray<float> args)
     {
         float func = Function(args);
         if (float.IsNaN(func) || float.IsInfinity(func))
