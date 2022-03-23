@@ -5,20 +5,23 @@ using System;
 using System.Threading;
 using Unity.Mathematics;
 using Random = Unity.Mathematics.Random;
+using Unity.Collections;
+using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
 namespace BIOIK2
 {
     using static Utility;
-    public class BioEvolution
+    public class BioEvolution:IDisposable
     {
         private BioModel bioModel;
         private int populationSize;
         private int elites;
         private int Dimensionality;
-        private float3[] lowerBounds;
-        private float3[] upperBounds;
-        public float3[] solutions;
+        private NativeArray< float3> lowerBounds;
+        private NativeArray< float3> upperBounds;
+        public  NativeArray< float3> solutions;
+
 
         private Individual[] population;
 
@@ -34,7 +37,7 @@ namespace BIOIK2
 
         private float weight;
 
-        private float3[] constrained;
+        private NativeArray<float3> constrained;
 
         private bool useThreading;
 
@@ -67,11 +70,11 @@ namespace BIOIK2
                 offSpring[i] = new Individual(Dimensionality);
             }
 
-            lowerBounds = new float3[Dimensionality];
-            upperBounds = new float3[Dimensionality];
-            constrained =new float3[Dimensionality];
+            lowerBounds = new NativeArray<float3>(Dimensionality,Allocator.Persistent);
+            upperBounds = new NativeArray<float3>(Dimensionality, Allocator.Persistent);
+            constrained = new NativeArray<float3>(Dimensionality, Allocator.Persistent);
             probabilities = new float[populationSize];
-            solutions = new float3[Dimensionality];
+            solutions = new NativeArray<float3>(Dimensionality, Allocator.Persistent);
 
 
             models =new BioModel[elites];
@@ -82,8 +85,8 @@ namespace BIOIK2
             {
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
-                optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));
-                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));
+/*                optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));*/
+                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y, 1e-5f));
             }
 
 
@@ -416,6 +419,11 @@ namespace BIOIK2
                 individual.genes[i] = random.NextFloat3(lowerBounds[i], upperBounds[i]);
             }
             individual.fitness = bioModel.ComputeLoss(individual.genes);
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

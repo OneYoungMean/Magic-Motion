@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System;
 using Unity.Mathematics;
+using Unity.Collections;
 
 /// <summary>
 ///   Common interface for function optimization methods.
@@ -21,13 +22,13 @@ public interface IOptimizationMethod
     /// 
     /// <param name="values">The initial guess values for the parameters.</param>
     /// 
-    float Minimize(float[] values);
+    float Minimize(NativeArray<float> values);
 
     /// <summary>
     ///   Gets the solution found, the values of the parameters which
     ///   optimizes the function.
     /// </summary>
-    float[] Solution { get; }
+    NativeArray<float> Solution { get; }
 
 }
 
@@ -204,6 +205,14 @@ public static class Norm
         return sum;
     }
 
+    public static float SquareEuclidean(this NativeArray<float> a)
+    {
+        float sum = 0;
+        for (int i = 0; i < a.Length; i++)
+            sum += a[i] * a[i];
+        return sum;
+    }
+
     /// <summary>
     ///   Gets the Squared Euclidean norm for a vector.
     /// </summary>
@@ -220,7 +229,7 @@ public static class Norm
     ///   Gets the Euclidean norm for a vector.
     /// </summary>
     /// 
-    public static float Euclidean(this float[] a)
+    public static float Euclidean(this NativeArray<float> a)
     {
         return (float)math.sqrt(SquareEuclidean(a));
     }

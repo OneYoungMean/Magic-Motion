@@ -1,6 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-
+using Unity.Collections;
 // Accord Math Library
 // The Accord.NET Framework
 // http://accord-framework.net
@@ -27,6 +27,7 @@ using System.Collections.Generic;
 //
 using System;
 using Unity.Mathematics;
+using Unity.Collections.LowLevel.Unsafe;
 
 /// <summary>
 ///   Limited-memory Broyden–Fletcher–Goldfarb–Shanno (L-BFGS) optimization method.
@@ -135,14 +136,14 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     private int numberOfVariables;
     private int corrections = 5;
 
-    private float[] x; // current solution x
-    private float f;   // value at current solution f(x)
-    float[] g;         // gradient at current solution
+    private NativeArray<float> currentSolution; // current solution x
+    private float fitness;   // value at current solution f(x)
+    NativeArray<float> gradient;         // gradient at current solution
 
-    private float[] lowerBound;
-    private float[] upperBound;
+    private NativeArray<float> lowerBound;
+    private NativeArray<float> upperBound;
 
-    private float[] work;
+    private NativeArray<float> work;
 
 
     #region Properties
@@ -159,7 +160,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>The function to be optimized.</value>
     /// 
-    public Func<float[], float> Function { get; set; }
+    public Func<NativeArray<float>, float> Function { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the gradient
@@ -169,7 +170,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>The gradient function.</value>
     /// 
-    public Func<float[], float[]> Gradient { get; set; }
+    public Func<NativeArray<float>, NativeArray<float>> Gradient { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the Hessian
@@ -178,7 +179,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <value>A function for the Hessian diagonal.</value>
     /// 
-    public Func<float[]> Diagonal { get; set; }
+    public Func<NativeArray<float>> Diagonal { get; set; }
 
     /// <summary>
     ///   Gets the number of variables (free parameters)
@@ -258,7 +259,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   in which the solution must be found.
     /// </summary>
     /// 
-    public float[] UpperBounds
+    public NativeArray<float> UpperBounds
     {
         get { return upperBound; }
         set { upperBound = value; }
@@ -269,7 +270,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   in which the solution must be found.
     /// </summary>
     /// 
-    public float[] LowerBounds
+    public NativeArray<float> LowerBounds
     {
         get { return lowerBound; }
         set { lowerBound = value; }
@@ -318,9 +319,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   parameters which optimizes the function.
     /// </summary>
     /// 
-    public float[] Solution
+    public NativeArray<float> Solution
     {
-        get { return x; }
+        get { return currentSolution; }
     }
 
     /// <summary>
@@ -329,7 +330,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     public float Value
     {
-        get { return f; }
+        get { return fitness; }
     }
 
     #endregion
@@ -351,8 +352,8 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
         this.createWorkVector();
 
-        this.upperBound = new float[numberOfVariables];
-        this.lowerBound = new float[numberOfVariables];
+        this.upperBound = new NativeArray<float>(numberOfVariables,Allocator.Persistent);
+        this.lowerBound = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
 
         for (int i = 0; i < upperBound.Length; i++)
             lowerBound[i] = float.NegativeInfinity;
@@ -360,9 +361,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         for (int i = 0; i < upperBound.Length; i++)
             upperBound[i] = float.PositiveInfinity;
 
-        x = new float[numberOfVariables];
-        for (int i = 0; i < x.Length; i++)
-            x[i] = Unity.Mathematics.Random.CreateFromIndex(0).NextFloat() * 2.0f - 1.0f;
+        currentSolution = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
+        for (int i = 0; i < currentSolution.Length; i++)
+            currentSolution[i] = Unity.Mathematics.Random.CreateFromIndex(0).NextFloat() * 2.0f - 1.0f;
     }
 
     /// <summary>
@@ -373,7 +374,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// <param name="function">The function to be optimized.</param>
     /// <param name="gradient">The gradient of the function.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<float[], float> function, Func<float[], float[]> gradient)
+    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, float> function, Func<NativeArray<float>, NativeArray<float>> gradient)
         : this(numberOfVariables)
     {
         if (function == null)
@@ -396,7 +397,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// <param name="gradient">The gradient of the function.</param>
     /// <param name="diagonal">The diagonal of the Hessian.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<float[], float> function, Func<float[], float[]> gradient, Func<float[]> diagonal)
+    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, float> function, Func<NativeArray<float>, NativeArray<float>> gradient, Func<NativeArray<float>> diagonal)
         : this(numberOfVariables, function, gradient)
     {
         this.Diagonal = diagonal;
@@ -432,8 +433,8 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             throw new DimensionMismatchException("values");
 
         // Copy initial guess for solution
-        for (int i = 0; i < x.Length; i++)
-            x[i] = values[i];
+        for (int i = 0; i < currentSolution.Length; i++)
+            currentSolution[i] = values[i];
 
         return minimize();
     }
@@ -451,15 +452,15 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         int n = numberOfVariables, m = corrections;
 
         // Make initial evaluation
-        f = getFunction(x);
-        g = getGradient(x);
+        fitness = getFunction(currentSolution);
+        gradient = getGradient(currentSolution);
 
         this.iterations = 0;
         this.evaluations = 1;
 
 
         // Obtain initial Hessian
-        float[] diagonal = null;
+        NativeArray<float> diagonal = default(NativeArray<float>);
 
         if (Diagonal != null)
         {
@@ -467,13 +468,13 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         }
         else
         {
-            diagonal = new float[n];
+            diagonal =new NativeArray<float>(n, Allocator.Persistent);
             for (int i = 0; i < diagonal.Length; i++)
                 diagonal[i] = 1.0f;
         }
 
 
-        fixed (float* w = work)
+        float* w = (float*)work.GetUnsafePtr();
         {
             // The first N locations of the work vector are used to
             //  store the gradient and other temporary information.
@@ -485,13 +486,13 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
             // Initialize work vector
-            for (int i = 0; i < g.Length; i++)
-                steps[i] = -g[i] * diagonal[i];
+            for (int i = 0; i < gradient.Length; i++)
+                steps[i] = -gradient[i] * diagonal[i];
 
 
             // Initialize statistics
-            float gnorm = Norm.Euclidean(g);
-            float xnorm = Norm.Euclidean(x);
+            float gnorm = Norm.Euclidean(gradient);
+            float xnorm = Norm.Euclidean(currentSolution);
             float stp = 1.0f / gnorm;
             float stp1 = stp;
 
@@ -502,7 +503,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             // Make initial progress report with initialization parameters
             if (Progress != null) Progress(this, new OptimizationProgressEventArgs
-                (iterations, evaluations, g, gnorm, x, xnorm, f, stp, finish));
+                (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, finish));
             float ys = 0;
 
             // Start main
@@ -549,7 +550,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
                     rho[cp - 1] = 1.0f / ys;
                     for (int i = 0; i < n; i++)
-                        w[i] = -g[i];
+                        w[i] = -gradient[i];
 
                     cp = point;
                     for (int i = 1; i <= bound; i += 1)
@@ -591,30 +592,30 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                 }
 
                 // Save original gradient
-                for (int i = 0; i < g.Length; i++)
-                    w[i] = g[i];
+                for (int i = 0; i < gradient.Length; i++)
+                    w[i] = gradient[i];
 
 
                 // Obtain the one-dimensional minimizer of f by computing a line search
-               bool isContinue= mcsrch(x, ref f, ref g, &steps[point * n], ref stp, out nfev, diagonal);
+               bool isContinue= mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * n], ref stp, out nfev, diagonal);
 
                 // Register evaluations
                 evaluations += nfev;
 
                 // Compute the new step and
                 // new gradient differences
-                for (int i = 0; i < g.Length; i++)
+                for (int i = 0; i < gradient.Length; i++)
                 {
                     steps[npt + i] *= stp;
-                    delta[npt + i] = g[i] - w[i];
+                    delta[npt + i] = gradient[i] - w[i];
                 }
 
                 if (++point == m) point = 0;
 
 
                 // Check for termination
-                gnorm = Norm.Euclidean(g);
-                xnorm = Norm.Euclidean(x);
+                gnorm = Norm.Euclidean(gradient);
+                xnorm = Norm.Euclidean(currentSolution);
                 xnorm = math.max(1f, xnorm);
 
 
@@ -632,11 +633,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
                 }*/
 
                 if (Progress != null) Progress(this, new OptimizationProgressEventArgs
-                    (iterations, evaluations, g, gnorm, x, xnorm, f, stp, finish));
+                    (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, finish));
             }
         }
 
-        return f; // return the minimum value found (at solution x)
+        return fitness; // return the minimum value found (at solution x)
     }
 
 
@@ -646,7 +647,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   Finds a step which satisfies a sufficient decrease and curvature condition.
     /// </summary>
     /// 
-    private unsafe bool mcsrch(float[] x, ref float f, ref float[] g, float* s,
+    private unsafe bool mcsrch(NativeArray< float> x, ref float f, ref NativeArray<float> g, float* s,
         ref float stp, out int nfev, float[] wa)
     {
         int n = numberOfVariables;
@@ -1056,9 +1057,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     #endregion
 
 
-    private float[] getDiagonal()
+    private NativeArray<float> getDiagonal()
     {
-        float[] diag = Diagonal();
+        NativeArray<float> diag = Diagonal();
         if (diag.Length != numberOfVariables) throw new ArgumentException(
             "The length of the Hessian diagonal vector does not match the" +
             " number of free parameters in the optimization poblem.");
@@ -1069,16 +1070,16 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         return diag;
     }
 
-    private float[] getGradient(float[] args)
+    private NativeArray<float> getGradient(NativeArray<float> args)
     {
-        float[] grad = Gradient(args);
+        NativeArray<float> grad = Gradient(args);
         if (grad.Length != numberOfVariables) throw new ArgumentException(
             "The length of the gradient vector does not match the" +
             " number of free parameters in the optimization problem.");
         return grad;
     }
 
-    private float getFunction(float[] args)
+    private float getFunction(NativeArray<float> args)
     {
         float func = Function(args);
         if (float.IsNaN(func) || float.IsInfinity(func))
@@ -1089,7 +1090,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
     private void createWorkVector()
     {
-        this.work = new float[numberOfVariables * (2 * corrections + 1) + 2 * corrections];
+        this.work = new NativeArray<float>(numberOfVariables * (2 * corrections + 1) + 2 * corrections,Allocator.Persistent);
     }
 
 

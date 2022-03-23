@@ -10,7 +10,7 @@ namespace BIOIK2
     //OYM：我觉得应该是引导向量垂直于当前的平面向量，并且在穿过碰撞体的时候试图修复。
     //OYM：并且它应当在执行完position与rotation校准之后执行
     //OYM：否则冲突将会难以抑制
-    public class Projection : BioObjective
+    public unsafe class Projection : BioObjective
     {
         [SerializeField] private Transform Target;
         [SerializeField] private float3 targetPosition;
@@ -29,12 +29,12 @@ namespace BIOIK2
         private float rescaling;
 
         private RaycastHit[] Hits;
-        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration)
         {
             return true;
         }
 
-        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration)
         {
             return 0;
         }

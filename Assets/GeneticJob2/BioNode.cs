@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace BIOIK2
 {
-    public class BioNode
+    public unsafe class BioNode
     {
         public BioModel model;
         public BioNode parent;
@@ -132,7 +132,7 @@ namespace BIOIK2
             }
         }
 
-        internal void SimulateModification(float3[] configuration)
+        internal void SimulateModification(float3* configuration)
         {
             float3[] positions = model.tempPositions;
             quaternion[] rotations = model.tempRotation;
