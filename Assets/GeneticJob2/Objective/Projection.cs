@@ -1,5 +1,6 @@
 ﻿using BIOIK2;
 using System.Collections;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -29,12 +30,12 @@ namespace BIOIK2
         private float rescaling;
 
         private RaycastHit[] Hits;
-        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration)
+        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             return true;
         }
 
-        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration)
+        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             return 0;
         }

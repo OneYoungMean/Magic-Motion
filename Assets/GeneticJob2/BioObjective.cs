@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -37,9 +38,9 @@ namespace BIOIK2
         public abstract ObjectiveType GetObjectiveType();
         public abstract void UpdateData();
 
-        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration);
+        public abstract float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration);
 
-        public abstract bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3* configuration);
+        public abstract bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration);
     }
 }
 

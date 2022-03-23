@@ -1,5 +1,6 @@
 ﻿using BIOIK2;
 using System.Collections;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -14,13 +15,13 @@ namespace BIOIK2
         private float ChainLength;
         private float Rescaling;//OYM：乘以了一个pi，貌似是用来保持和角度尺度一致的
 
-        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             //  return math.length(targetPosition - worldPosition)<= MaximumError;
             return false;
         }
 
-        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             return weight * Rescaling * math.lengthsq(targetPosition - worldPosition);
         }

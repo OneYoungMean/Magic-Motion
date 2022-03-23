@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -113,7 +114,7 @@ namespace BIOIK2
             other.currentValue = currentValue;
         }
 
-        internal void FeedForwardConfiguration(float3[] configuration, bool updateWorld = false)
+        internal void FeedForwardConfiguration(NativeArray<float3> configuration, bool updateWorld = false)
         {
             bool updateLocal = math.any((enabledValue == 1)& configuration[index] != currentValue);
             if (updateLocal)
@@ -131,11 +132,15 @@ namespace BIOIK2
                 child.FeedForwardConfiguration(configuration, updateWorld);
             }
         }
-
-        internal void SimulateModification(float3* configuration)
+        internal void SimulateModification(NativeArray<float> configuration)
         {
-            float3[] positions = model.tempPositions;
-            quaternion[] rotations = model.tempRotation;
+            var float3Data = configuration.Reinterpret<float3>();
+            SimulateModification(float3Data);
+        }
+        internal void SimulateModification(NativeArray<float3> configuration)
+        {
+            NativeArray<float3> positions = model.tempPositions;
+            NativeArray<quaternion> rotations = model.tempRotations;
             for (int i = 0; i < model.objectivePtrs.Count; i++)
             {
                 var node = model.objectivePtrs[i].Node;

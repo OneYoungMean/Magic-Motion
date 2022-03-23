@@ -46,7 +46,7 @@ public interface IGradientOptimizationMethod : IOptimizationMethod
     /// 
     /// <value>The function to be optimized.</value>
     /// 
-    Func<float[], float> Function { get; set; }
+    Func<NativeArray<float>, float> Function { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the gradient
@@ -56,7 +56,7 @@ public interface IGradientOptimizationMethod : IOptimizationMethod
     /// 
     /// <value>The gradient function.</value>
     /// 
-    Func<float[], float[]> Gradient { get; set; }
+    Func<NativeArray<float>, NativeArray<float>> Gradient { get; set; }
 
     /// <summary>
     ///   Gets the number of variables (free parameters)

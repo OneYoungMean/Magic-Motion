@@ -1,4 +1,5 @@
 ﻿using System.Collections;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -11,12 +12,12 @@ namespace BIOIK2
         [SerializeField] private Vector3 ViewingDirection = Vector3.forward;
         [SerializeField] private float MaximumError = 0.1f;
 
-        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             return ComputeValue(worldPosition,worldRotation,node,configuration) < math.radians(MaximumError);
         }
 
-        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             float loss = ComputeValue(worldPosition, worldRotation, node, configuration);
             return loss* loss* weight;
@@ -40,7 +41,7 @@ namespace BIOIK2
             }
         }
 
-        public  float ComputeValue(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public  float ComputeValue(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             float3 targetForward = math.mul(worldRotation, ViewingDirection);
             float3 targetDirection =   (float3)targetPositon- worldPosition;

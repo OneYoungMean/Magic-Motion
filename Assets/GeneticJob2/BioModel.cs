@@ -4,9 +4,11 @@ using System.Collections.Generic;
 using Unity.Mathematics;
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
+using Unity.Collections;
+
 namespace BIOIK2
 {
-    public unsafe class BioModel:ICloneable
+    public unsafe class BioModel:IDisposable
     {
         private BIOIK2 Character;
 
@@ -20,14 +22,15 @@ namespace BIOIK2
         public List<ObjectivePtr> objectivePtrs = new List<ObjectivePtr>();
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
 
-        public float[] Configuration;
-        public float[] Gradient;
-        public float[] Losses;
-        public float[] SimulatedLosses;
+        public NativeArray<float> Configuration;
+        public NativeArray<float> Gradient;
+        public NativeArray<float> Losses;
+        public NativeArray<float> SimulatedLosses;
 
-        public float3[] tempPositions;
-        public quaternion[] tempRotation;
+        public NativeArray<float3> tempPositions;
+        public NativeArray<quaternion> tempRotations;
 
+        public NativeArray<float3> tempConfiguration;
 
 
         private int Dof3;
@@ -55,14 +58,16 @@ namespace BIOIK2
             {
                 nodes[i].ObjectiveImpacts = new bool[objectivePtrs.Count];
             }
-            tempPositions = new float3[objectivePtrs.Count];
-            tempRotation = new quaternion[objectivePtrs.Count];
-            Losses = new float[objectivePtrs.Count];
-            SimulatedLosses = new float[objectivePtrs.Count];
+            tempPositions = new NativeArray<float3>(objectivePtrs.Count,Allocator.Persistent);
+            tempRotations = new NativeArray<quaternion>(objectivePtrs.Count, Allocator.Persistent);
 
-            Configuration = new float[motionPtrs.Count*3];
-            Gradient = new float[motionPtrs.Count*3];
 
+            Losses = new NativeArray<float>(objectivePtrs.Count * 3, Allocator.Persistent);
+            SimulatedLosses = new NativeArray<float>(objectivePtrs.Count * 3, Allocator.Persistent);
+
+            Configuration = new NativeArray<float>(motionPtrs.Count*3,Allocator.Persistent);
+            Gradient = new NativeArray<float>(motionPtrs.Count*3, Allocator.Persistent);
+            tempConfiguration = new NativeArray<float3>(motionPtrs.Count, Allocator.Persistent);
 
 
             for (int i = 0; i < objectivePtrs.Count; i++)
@@ -108,13 +113,12 @@ namespace BIOIK2
             rotationOffset=model.rotationOffset;
             scaleOffset=model.scaleOffset;
 
-            Array.Copy(model.Configuration, Configuration, Dof3);
-            Array.Copy(model.Gradient, Gradient, Dof3);
-
-            Array.Copy(model.tempPositions, tempPositions, objectivePtrs.Count);
-            Array.Copy(model.tempRotation, tempRotation, objectivePtrs.Count);
-            Array.Copy(model.Losses, Losses, objectivePtrs.Count);
-            Array.Copy(model.SimulatedLosses, SimulatedLosses, objectivePtrs.Count);
+            Configuration.CopyFrom(model.Configuration);
+            Gradient.CopyFrom(model.Gradient);
+            tempPositions.CopyFrom(model.tempPositions);
+            tempRotations.CopyFrom(model.tempRotations);
+            Losses.CopyFrom(model.Losses);
+            SimulatedLosses.CopyFrom(model.SimulatedLosses);
 
             for (int i = 0; i < nodes.Count; i++)
             {
@@ -127,13 +131,14 @@ namespace BIOIK2
             }
         }
 
-        internal float[] ComputeGradient(float* configuration, float resolution)
+        internal NativeArray<float> ComputeGradient(NativeArray<float> configuration, float resolution)
         {
-            float oldLoss = ComputeLoss((float3*)configuration);
+            float oldLoss = ComputeLoss(configuration);
             for (int j = 0; j <Dof3*3; j++)
             {
                 Configuration[j] += resolution;
-                motionPtrs[j/3].Node.SimulateModification(Configuration.ToFloat3Array());
+                UnsafeUtility.MemCpy(tempConfiguration.GetUnsafePtr(), Configuration.GetUnsafePtr(), tempConfiguration.Length * UnsafeUtility.SizeOf<float3>());
+                motionPtrs[j/3].Node.SimulateModification(tempConfiguration);
                 Configuration[j] -= resolution;
                 float newLoss = 0.0f;
                 for (int i = 0; i < objectivePtrs.Count; i++)
@@ -146,7 +151,13 @@ namespace BIOIK2
             return Gradient;
         }
 
-        internal float ComputeLoss(float3* configuration)
+        internal float ComputeLoss(NativeArray<float> configuration)
+        {
+            UnsafeUtility.MemCpy(tempConfiguration.GetUnsafePtr(), configuration.GetUnsafePtr(), tempConfiguration.Length * UnsafeUtility.SizeOf<float3>());
+
+            return ComputeLoss(tempConfiguration);
+        }
+        internal float ComputeLoss(NativeArray<float3> configuration)
         {
             FK(configuration);
             float loss = 0.0f;
@@ -158,7 +169,7 @@ namespace BIOIK2
             }
             return (float)System.Math.Sqrt(loss / (float)objectivePtrs.Count);
         }
-        public bool CheckConvergence(float3* configuration)
+        public bool CheckConvergence(NativeArray<float3> configuration)
         {
             FK(configuration);
             for (int i = 0; i < objectivePtrs.Count; i++)
@@ -171,9 +182,9 @@ namespace BIOIK2
             }
             return true;
         }
-        private void FK(float3* configuration)
+        private void FK(NativeArray<float3> configuration)
         {
-            UnsafeUtility.MemCpy (configuration, Configuration, Configuration.Length);
+            UnsafeUtility.MemCpy (Configuration.GetUnsafePtr(), configuration.GetUnsafePtr(), Configuration.Length*UnsafeUtility.SizeOf<float>());
             nodes[0].FeedForwardConfiguration(configuration);
         }
 
@@ -290,27 +301,16 @@ namespace BIOIK2
             return Character;
         }
 
-        public object Clone()
+        public void Dispose()
         {
-            BioModel model = new BioModel(Character);
+            Configuration.Dispose();
+            Gradient.Dispose();
+            Losses.Dispose();
+            SimulatedLosses.Dispose();
+            tempPositions.Dispose();
+            tempRotations.Dispose();
+            tempConfiguration.Dispose();
 
-            model.positionOffset = positionOffset;
-            model.rotationOffset = rotationOffset;
-            model. scaleOffset = scaleOffset;
-
-            Array.Copy(Configuration, model.Configuration, Dof3);
-            Array.Copy(Gradient, model.Gradient, Dof3);
-            Array.Copy(tempPositions, model.tempPositions, objectivePtrs.Count);
-            Array.Copy(tempRotation, model.tempRotation, objectivePtrs.Count);
-            Array.Copy(Losses, Losses, model.objectivePtrs.Count);
-            Array.Copy(SimulatedLosses, model.SimulatedLosses, objectivePtrs.Count);
-
-            for (int i = 0; i < nodes.Count; i++)
-            {
-                model.nodes[i].CopyFrom(nodes[i]);
-            }
-
-            return model;
         }
     }
 }

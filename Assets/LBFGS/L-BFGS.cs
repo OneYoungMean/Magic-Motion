@@ -117,7 +117,7 @@ using Unity.Collections.LowLevel.Unsafe;
 /// </code>
 /// </example>
 /// 
-public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
+public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod, IDisposable
 {
     // those values need not be modified
     private const float ftol = 0.0001f;
@@ -335,6 +335,11 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
     #endregion
 
+    ~BroydenFletcherGoldfarbShanno()
+    {
+        Dispose();
+    }
+
     #region Constructors
 
     /// <summary>
@@ -352,7 +357,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
         this.createWorkVector();
 
-        this.upperBound = new NativeArray<float>(numberOfVariables,Allocator.Persistent);
+        this.upperBound = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
         this.lowerBound = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
 
         for (int i = 0; i < upperBound.Length; i++)
@@ -424,7 +429,18 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     /// 
     /// <returns>The minimum value found at the <see cref="Solution"/>.</returns>
     /// 
-    public float Minimize(float[] values)
+    public float Minimize(NativeArray<float3> values)
+    {
+        if (values == null)
+            throw new ArgumentNullException("values");
+
+        if (values.Length*3 != numberOfVariables)
+            throw new DimensionMismatchException("values");
+
+        UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), values.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
+        return minimize();
+    }
+    public float Minimize(NativeArray<float> values)
     {
         if (values == null)
             throw new ArgumentNullException("values");
@@ -433,8 +449,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             throw new DimensionMismatchException("values");
 
         // Copy initial guess for solution
-        for (int i = 0; i < currentSolution.Length; i++)
-            currentSolution[i] = values[i];
+        UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), values.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
 
         return minimize();
     }
@@ -468,7 +483,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
         }
         else
         {
-            diagonal =new NativeArray<float>(n, Allocator.Persistent);
+            diagonal = new NativeArray<float>(n, Allocator.Persistent);
             for (int i = 0; i < diagonal.Length; i++)
                 diagonal[i] = 1.0f;
         }
@@ -522,9 +537,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
                     // Compute the diagonal of the Hessian
                     // or use an approximation by the user.
-                    if (ys==0)
+                    if (ys == 0)
                     {
-                        break ;
+                        break;
                     }
                     if (Diagonal != null)
                     {
@@ -597,7 +612,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
                 // Obtain the one-dimensional minimizer of f by computing a line search
-               bool isContinue= mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * n], ref stp, out nfev, diagonal);
+                bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * n], ref stp, out nfev, diagonal);
 
                 // Register evaluations
                 evaluations += nfev;
@@ -621,16 +636,16 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
 
-                if (!isContinue&&gnorm / xnorm <= tolerance)
+                if (!isContinue && gnorm / xnorm <= tolerance)
                     finish = true;
 
-/*                for (int i = 0; i < n; i++)
-                    ys += delta[npt + i] * steps[npt + i];
+                /*                for (int i = 0; i < n; i++)
+                                    ys += delta[npt + i] * steps[npt + i];
 
-                if (ys==0)
-                {
-                    finish = true;
-                }*/
+                                if (ys==0)
+                                {
+                                    finish = true;
+                                }*/
 
                 if (Progress != null) Progress(this, new OptimizationProgressEventArgs
                     (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, finish));
@@ -647,8 +662,8 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
     ///   Finds a step which satisfies a sufficient decrease and curvature condition.
     /// </summary>
     /// 
-    private unsafe bool mcsrch(NativeArray< float> x, ref float f, ref NativeArray<float> g, float* s,
-        ref float stp, out int nfev, float[] wa)
+    private unsafe bool mcsrch(NativeArray<float> x, ref float f, ref NativeArray<float> g, float* s,
+        ref float stp, out int nfev, NativeArray<float> wa)
     {
         int n = numberOfVariables;
         float ftest1 = 0;
@@ -669,7 +684,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
         if (dginit >= 0)
         {
-           // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
+            // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
         }
 
 
@@ -777,9 +792,9 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
             if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0)
             {
                 return false;
-/*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
-                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
-                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
+                /*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
+                                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
+                                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
             }
 
             if (stp == stpmax && f <= ftest1 && dg <= dgtest)
@@ -804,7 +819,7 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
 
             if (f <= ftest1 && math.abs(dg) <= gtol * (-dginit))
-                return true ;
+                return true;
 
             // Not converged yet. Continuing with the search.
 
@@ -955,15 +970,15 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
             info = 3;
             bound = true;
-            float  theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            float  s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float  gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
 
             if (stp > stx) gamma = -gamma;
 
-            float  p = (gamma - dp) + theta;
-            float  q = (gamma + (dx - dp)) + gamma;
-            float  r = p / q;
+            float p = (gamma - dp) + theta;
+            float q = (gamma + (dx - dp)) + gamma;
+            float r = p / q;
 
             if (r < 0.0 && gamma != 0.0)
                 stpc = stp + r * (stx - stp);
@@ -1090,9 +1105,16 @@ public class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod
 
     private void createWorkVector()
     {
-        this.work = new NativeArray<float>(numberOfVariables * (2 * corrections + 1) + 2 * corrections,Allocator.Persistent);
+        this.work = new NativeArray<float>(numberOfVariables * (2 * corrections + 1) + 2 * corrections, Allocator.Persistent);
     }
 
-
+    public void Dispose()
+    {
+        currentSolution.Dispose();
+        gradient.Dispose();
+        lowerBound.Dispose();
+        upperBound.Dispose();
+        work.Dispose();
+    }
 }
 

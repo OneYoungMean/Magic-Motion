@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -30,7 +31,7 @@ namespace BIOIK2
         public List<BioSegment> segments = new List<BioSegment>();
         public BioSegment root = null;
         public BioEvolution evolution = null;
-        public float3[] solutions = null;
+        public NativeArray<float3> solutions;
         // Start is called before the first frame update
 
         private bool Destoryed = false;
@@ -107,6 +108,7 @@ namespace BIOIK2
         private void OnDestroy()
         {
             Destoryed = true;
+            solutions.Dispose();
             DeInitialise();
             Utility.Cleanup(transform);
         }
@@ -202,7 +204,7 @@ namespace BIOIK2
             {
                 DeInitialise();
                 Initialise();
-                solutions = new float3[evolution.GetModel().GetDof3()];
+                solutions = new NativeArray<float3>(evolution.GetModel().GetDof3(),Allocator.Persistent);
             }
         }
 

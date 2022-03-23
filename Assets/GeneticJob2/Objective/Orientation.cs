@@ -1,5 +1,6 @@
 ﻿
 using System.Collections;
+using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -12,7 +13,7 @@ namespace BIOIK2
         private quaternion targetRotation;
         [SerializeField] private float MaximumRotationError = 0.1f;
 
-        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             float d = math.dot(worldRotation, targetRotation);
             if (d < 0.0f)
@@ -30,7 +31,7 @@ namespace BIOIK2
             return 2.0f * math.acos(d) <=math.radians( MaximumRotationError);
         }
 
-        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, float3[] configuration)
+        public override float ComputeLoss(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
         {
             float d = math.dot(worldRotation, targetRotation);
             if (d < 0.0f)

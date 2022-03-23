@@ -12,7 +12,7 @@ using UnityEngine;
 namespace BIOIK2
 {
     using static Utility;
-    public class BioEvolution:IDisposable
+    public unsafe class BioEvolution:IDisposable
     {
         private BioModel bioModel;
         private int populationSize;
@@ -21,7 +21,6 @@ namespace BIOIK2
         private NativeArray< float3> lowerBounds;
         private NativeArray< float3> upperBounds;
         public  NativeArray< float3> solutions;
-
 
         private Individual[] population;
 
@@ -76,7 +75,6 @@ namespace BIOIK2
             probabilities = new float[populationSize];
             solutions = new NativeArray<float3>(Dimensionality, Allocator.Persistent);
 
-
             models =new BioModel[elites];
             optimisers = new BIOIK.BFGS_F[elites];
             optimisers2 = new BroydenFletcherGoldfarbShanno[elites];
@@ -93,26 +91,31 @@ namespace BIOIK2
             random = new Random(1); 
         }
 
+        ~BioEvolution()
+        {
+            Dispose();
+        }
+
         internal BioModel GetModel()
         {
             return bioModel;
         }
-        public float3[] GetSolution()
+        public NativeArray<float3> GetSolution()
         {
             return solutions;
         }
 
-        public float3[] GetLowerBounds()
+        public NativeArray<float3> GetLowerBounds()
         {
             return lowerBounds;
         }
 
-        public float3[] GetUpperBounds()
+        public NativeArray<float3> GetUpperBounds()
         {
             return upperBounds;
         }
 
-        internal float3[] Optimise(int generations)
+        internal NativeArray<float3> Optimise(int generations)
         {
             bioModel.Refresh();
 
@@ -130,11 +133,9 @@ namespace BIOIK2
                 for (int i = 0; i < elites; i++)
                 {
                     models[i].CopyFrom(bioModel);
-                    optimisers[i].LowerBounds= lowerBounds.ToFloatArray();
-                    optimisers[i].UpperBounds= upperBounds.ToFloatArray();
 
-                    optimisers2[i].UpperBounds = upperBounds.ToFloatArray();
-                    optimisers2[i].LowerBounds = lowerBounds.ToFloatArray();
+                   UnsafeUtility.MemCpy( optimisers2[i].UpperBounds .GetUnsafePtr(),upperBounds.GetUnsafePtr(), upperBounds.Length*UnsafeUtility.SizeOf<float3>());
+                    UnsafeUtility.MemCpy(optimisers2[i].LowerBounds.GetUnsafePtr(), lowerBounds.GetUnsafePtr(), lowerBounds.Length * UnsafeUtility.SizeOf<float3>());
                 }
                 for (int i = 0; i < generations; i++)
                 {
@@ -232,7 +233,7 @@ namespace BIOIK2
             Individual survivor = population[index];
             Individual elite = offSpring[index];
 
-            Array.Copy(survivor.genes, elite.genes, Dimensionality);
+            survivor.genes.CopyFrom(elite.genes);
             Array.Copy(survivor.momentum, elite.momentum, Dimensionality);
             float fitness = models[index].ComputeLoss(elite.genes);
 
@@ -257,15 +258,16 @@ namespace BIOIK2
                             elite.fitness = fitness;
                             improved[index] = false;
                         }*/
-            optimisers2[index].Minimize(elite.genes.ToFloatArray());
+            optimisers2[index].Minimize(elite.genes);
 
             if (optimisers2[index].Value < fitness)
             {
-                var optimGene = optimisers2[index].Solution.ToFloat3Array();
+                var newSolution = optimisers2[index].Solution;
                 for (int i = 0; i < Dimensionality; i++)
                 {
-                    elite.momentum[i] = optimGene[i] - elite.genes[i];
-                    elite.genes[i] = optimGene[i];
+                    float3 target = new float3(newSolution[i * 3], newSolution[i * 3 + 1], newSolution[i * 3 + 2]);
+                    elite.momentum[i] =  - elite.genes[i];
+                    elite.genes[i] = target;
                 }
                 elite.fitness = optimisers2[index].Value;
                 improved[index] = true;
@@ -360,7 +362,7 @@ namespace BIOIK2
             return poolCount - 1;
         }
 
-        private void Initialise(float3[] seeds)
+        private void Initialise(NativeArray<float3> seeds)
         {
             for (int i = 0; i < Dimensionality; i++)
             {
@@ -400,7 +402,7 @@ namespace BIOIK2
             float candidateFitness = population[0].fitness;
             if (candidateFitness < Fitness)
             {
-                Array.Copy(population[0].genes, solutions, Dimensionality);
+                solutions.CopyFrom(population[0].genes) ;
                 Debug.Log(Fitness + "~" + candidateFitness);
                 Fitness = candidateFitness;
 
@@ -423,7 +425,10 @@ namespace BIOIK2
 
         public void Dispose()
         {
-            throw new NotImplementedException();
+            lowerBounds.Dispose();
+            upperBounds.Dispose();
+            solutions.Dispose();
+            constrained.Dispose();
         }
     }
 }
