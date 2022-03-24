@@ -120,14 +120,14 @@ using Unity.Collections.LowLevel.Unsafe;
 public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod, IDisposable
 {
     // those values need not be modified
-    private const float ftol = 0.0001f;
-    private const float xtol = 1e-16f; // machine precision
-    private const float stpmin = 1e-20f;
-    private const float stpmax = 1e20f;
+    private const float FITNESS_TOLERENCE = 0.0001f;
+    private const float xTolerance = 1e-16f; // machine precision
+    private const float STEP_MIN = math.EPSILON;
+    private const float STEP_MAX = 1e20f;
 
     // Line search parameters
-    private float gtol = 1e-5f;
-    private int maxfev = 40;
+    private float grandientTolerence = 1e-5f;
+    private int maxInnerLoop = 40;
 
     private float tolerance = 1;
     private int iterations;
@@ -304,13 +304,13 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public float Precision
     {
-        get { return gtol; }
+        get { return grandientTolerence; }
         set
         {
             if (value <= 1e-4)
                 throw new ArgumentOutOfRangeException("value");
 
-            gtol = value;
+            grandientTolerence = value;
         }
     }
 
@@ -491,15 +491,15 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         }
 
 
-        float* w = (float*)work.GetUnsafePtr();
+        float* workArea = (float*)work.GetUnsafePtr();
         {
             // The first N locations of the work vector are used to
             //  store the gradient and other temporary information.
             //OYM：暂时不知道这里是啥
-            float* rho = &w[m_variableCount];                   // Stores the scalars rho.
-            float* alpha = &w[m_variableCount + m_corrections];             // Stores the alphas in computation of H*g.
-            float* steps = &w[m_variableCount + 2 * m_corrections];         // Stores the last M search steps.
-            float* delta = &w[m_variableCount + 2 * m_corrections + m_variableCount * m_corrections]; // Stores the last M gradient differences.
+            float* rho = &workArea[m_variableCount];                   // Stores the scalars rho.
+            float* alpha = &workArea[m_variableCount + m_corrections];             // Stores the alphas in computation of H*g.
+            float* steps = &workArea[m_variableCount + 2 * m_corrections];         // Stores the last M search steps.
+            float* delta = &workArea[m_variableCount + 2 * m_corrections + m_variableCount * m_corrections]; // Stores the last M gradient differences.
 
 
             // Initialize work vector
@@ -538,7 +538,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                     float sumY = 0;
                     for (int i = 0; i < m_variableCount; i++)
+                    {
                         sumY += delta[nowPoint + i] * steps[nowPoint + i];
+                    }
+
 
 
                     // Compute the diagonal of the Hessian
@@ -574,7 +577,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                     rho[cp - 1] = 1.0f /math.max((float)sumY,math.EPSILON);
                     for (int i = 0; i < m_variableCount; i++)
-                        w[i] = -gradient[i];
+                    {
+                        workArea[i] = -gradient[i];
+                    }
+
 
                     cp = point;
                     for (int i = 1; i <= bound; i += 1)
@@ -583,25 +589,28 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                         float sq = 0;
                         for (int j = 0; j < m_variableCount; j++)
-                            sq += steps[cp * m_variableCount + j] * w[j];
+                            sq += steps[cp * m_variableCount + j] * workArea[j];
 
                         float beta = alpha[cp] = rho[cp] * sq;
                         for (int j = 0; j < m_variableCount; j++)
-                            w[j] -= beta * delta[cp * m_variableCount + j];
+                            workArea[j] -= beta * delta[cp * m_variableCount + j];
                     }
 
                     for (int i = 0; i < diagonal.Length; i++)
-                        w[i] *= diagonal[i];
+                    {
+                        workArea[i] *= diagonal[i];
+                    }
+
 
                     for (int i = 1; i <= bound; i += 1)
                     {
                         float yr = 0;
                         for (int j = 0; j < m_variableCount; j++)
-                            yr += delta[cp * m_variableCount + j] * w[j];
+                            yr += delta[cp * m_variableCount + j] * workArea[j];
 
                         float beta = alpha[cp] - rho[cp] * yr;
                         for (int j = 0; j < m_variableCount; j++)
-                            w[j] += beta * steps[cp * m_variableCount + j];
+                            workArea[j] += beta * steps[cp * m_variableCount + j];
 
                         if (++cp == m_corrections) cp = 0;
                     }
@@ -610,16 +619,19 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                     // Store the search direction
                     for (int i = 0; i < m_variableCount; i++)
-                        steps[nowPoint + i] = w[i];
+                    {
+                        steps[nowPoint + i] = workArea[i];
+                    }
+
 
                     stp = 1;
                 }
-
                 // Save original gradient
-                for (int i = 0; i < gradient.Length; i++)
-                    w[i] = gradient[i];
-
-
+                UnsafeUtility.MemCpy(workArea, gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<float>());
+/*                for (int i = 0; i < gradient.Length; i++)
+                {
+                    workArea[i] = gradient[i];//OYM：原始数据
+                }*/
                 // Obtain the one-dimensional minimizer of f by computing a line search
                 bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, &steps[point * m_variableCount], ref stp, out nfev, diagonal);
 
@@ -631,7 +643,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 for (int i = 0; i < gradient.Length; i++)
                 {
                     steps[nowPoint + i] *= stp;
-                    delta[nowPoint + i] = gradient[i] - w[i];
+                    delta[nowPoint + i] = gradient[i] - workArea[i];
                 }
 
                 if (++point == m_corrections) point = 0;
@@ -671,27 +683,30 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     ///   Finds a step which satisfies a sufficient decrease and curvature condition.
     /// </summary>
     /// 
-    private unsafe bool mcsrch(NativeArray<float> x, ref float f, ref NativeArray<float> g, float* s,
-        ref float stp, out int nfev, NativeArray<float> wa)
+    private unsafe bool mcsrch(NativeArray<float> currentSolution, ref float fitness, ref NativeArray<float> gradient, float* steps,
+        ref float step, out int innerLoop, NativeArray<float> diagonal)
     {
         int n = numberOfVariables;
-        float ftest1 = 0;
+        float fitnesstest1 = 0;
         int infoc = 1;
 
-        nfev = 0;
+        innerLoop = 0;
 
-        if (stp <= 0)
+        if (step <= 0)
             throw new LineSearchFailedException(1, "Invalid step size.");
 
         // Compute the initial gradient in the search direction
         // and check that s is a descent direction.
 
-        float dginit = 0;
+        float gradientInitial = 0;
 
-        for (int j = 0; j < g.Length; j++)
-            dginit = dginit + g[j] * s[j];
+        for (int j = 0; j < gradient.Length; j++)
+        {
+            gradientInitial = gradientInitial + gradient[j] * steps[j];
+        }
 
-        if (dginit >= 0)
+
+        if (gradientInitial >= 0)//OYM：梯度爆炸
         {
             // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
         }
@@ -701,34 +716,34 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         bool brackt = false;
         bool stage1 = true;
 
-        float finit = f;
-        float dgtest = ftol * dginit;
-        float width = stpmax - stpmin;
+        float fitnessInit = fitness;
+        float gradientTest = FITNESS_TOLERENCE * gradientInitial;
+        float width = STEP_MAX - STEP_MIN;
         float width1 = width / 0.5f;
 
-        for (int j = 0; j < x.Length; j++)
-            wa[j] = x[j];
+        for (int j = 0; j < currentSolution.Length; j++)
+            diagonal[j] = currentSolution[j];
 
         // The variables stx, fx, dgx contain the values of the
         // step, function, and directional derivative at the best
         // step.
 
-        float stx = 0;
-        float fx = finit;
-        float dgx = dginit;
+        float stepBoundX = 0;
+        float fitnessX = fitnessInit;
+        float gradientInitialX = gradientInitial;
 
         // The variables sty, fy, dgy contain the value of the
         // step, function, and derivative at the other endpoint
         // of the interval of uncertainty.
 
-        float sty = 0;
-        float fy = finit;
-        float dgy = dginit;
+        float stepBoundY = 0;
+        float fitnessY = fitnessInit;
+        float gradientInitialY = gradientInitial;
 
         // The variables stp, f, dg contain the values of the step,
         // function, and derivative at the current step.
 
-        float dg = 0;
+        float gradientTemp = 0;
 
 
         while (true)
@@ -736,69 +751,77 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // Set the minimum and maximum steps to correspond
             // to the present interval of uncertainty.
 
-            float stmin, stmax;
+            float stepBoundMin, stepBoundMax;
 
-            if (brackt)
+            if (brackt)//OYM：brackt意思是括号?
             {
-                stmin = math.min(stx, sty);
-                stmax = math.max(stx, sty);
+                stepBoundMin = math.min(stepBoundX, stepBoundY);
+                stepBoundMax = math.max(stepBoundX, stepBoundY);
             }
             else
             {
-                stmin = stx;
-                stmax = stp + 4.0f * (stp - stx);
+                stepBoundMin = stepBoundX;
+                stepBoundMax = step + 4.0f * (step - stepBoundX);
             }
 
             // Force the step to be within the bounds stpmax and stpmin.
-
-            stp = math.max(stp, stpmin);
-            stp = math.min(stp, stpmax);
+            //OYM：约束step的上下界
+            step = math.max(step, STEP_MIN);
+            step = math.min(step, STEP_MAX);
 
             // If an unusual termination is to occur then let
             // stp be the lowest point obtained so far.
 
-            if ((brackt && (stp <= stmin || stp >= stmax)) ||
-                (brackt && stmax - stmin <= xtol * stmax) ||
-                (nfev >= maxfev - 1) || (infoc == 0))
-                stp = stx;
+            if (
+                (brackt && (step <= stepBoundMin || step >= stepBoundMax)) ||//OYM：step在bound外
+                (brackt && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
+                (innerLoop >= maxInnerLoop - 1) || (infoc == 0))
+            {
+                step = stepBoundX;
+            }
+
 
             // Evaluate the function and gradient at stp
             // and compute the directional derivative.
             // We return to main program to obtain F and G.
 
-            for (int j = 0; j < x.Length; j++)
+            for (int j = 0; j < currentSolution.Length; j++)
             {
-                x[j] = wa[j] + stp * s[j];
+                currentSolution[j] = diagonal[j] + step * steps[j];
 
-                if (x[j] > upperBound[j])
-                    x[j] = upperBound[j];
-                else if (x[j] < lowerBound[j])
-                    x[j] = lowerBound[j];
+                if (currentSolution[j] > upperBound[j])
+                    currentSolution[j] = upperBound[j];
+                else if (currentSolution[j] < lowerBound[j])
+                    currentSolution[j] = lowerBound[j];
             }
 
 
             // Reevaluate function and gradient
-            f = GetFunction(x);
-            g = GetGradient(x);
+            fitness = GetFunction(currentSolution);
+            gradient = GetGradient(currentSolution);
 
-            nfev++;
-            dg = 0;
+            innerLoop++;
+            gradientTemp = 0;
 
-            for (int j = 0; j < g.Length; j++)
-                dg = dg + g[j] * s[j];
+            for (int j = 0; j < gradient.Length; j++)
+            {
+                gradientTemp = gradientTemp + gradient[j] * steps[j];
+            }
 
-            ftest1 = finit + stp * dgtest;
+
+            fitnesstest1 = fitnessInit + step * gradientTest;
 
             // Test for convergence.
 
-            if (nfev >= maxfev)
+            if (innerLoop >= maxInnerLoop)
             {
+                //OYM：Maximum number of function evaluations has been reached
                 return false;
                 //throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
             }
 
 
-            if ((brackt && (stp <= stmin || stp >= stmax)) || infoc == 0)
+            if ((brackt && (step <= stepBoundMin || step >= stepBoundMax)) || infoc == 0)
             {
                 return false;
                 /*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
@@ -806,28 +829,29 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                                                                        "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
             }
 
-            if (stp == stpmax && f <= ftest1 && dg <= dgtest)
+            if (step == STEP_MAX && fitness <= fitnesstest1 && gradientTemp <= gradientTest)
             {
+                //OYM：answer out the max
                 return false;
                 throw new LineSearchFailedException(5, "The step size has reached the upper bound.");
             }
 
 
-            if (stp == stpmin && (f > ftest1 || dg >= dgtest))
+            if (step == STEP_MIN && (fitness > fitnesstest1 || gradientTemp >= gradientTest))
             {
                 return false;
                 throw new LineSearchFailedException(4, "The step size has reached the lower bound.");
             }
 
 
-            if (brackt && stmax - stmin <= xtol * stmax)
+            if (brackt && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
             {
                 return false;
                 throw new LineSearchFailedException(2, "Relative width of the interval of uncertainty is at machine precision.");
             }
 
 
-            if (f <= ftest1 && math.abs(dg) <= gtol * (-dginit))
+            if (fitness <= fitnesstest1 && math.abs(gradientTemp) <= grandientTolerence * (-gradientInitial))
                 return true;
 
             // Not converged yet. Continuing with the search.
@@ -835,7 +859,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // In the first stage we seek a step for which the modified
             // function has a nonpositive value and nonnegative derivative.
 
-            if (stage1 && f <= ftest1 && dg >= math.min(ftol, gtol) * dginit)
+            if (stage1 && fitness <= fitnesstest1 && gradientTemp >= math.min(FITNESS_TOLERENCE, grandientTolerence) * gradientInitial)
                 stage1 = false;
 
             // A modified function is used to predict the step only if we
@@ -844,39 +868,39 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // if a lower function value has been obtained but the decrease
             // is not sufficient.
 
-            if (stage1 && f <= fx && f > ftest1)
+            if (stage1 && fitness <= fitnessX && fitness > fitnesstest1)
             {
                 // Define the modified function and derivative values.
 
-                float fm = f - stp * dgtest;
-                float fxm = fx - stx * dgtest;
-                float fym = fy - sty * dgtest;
+                float fm = fitness - step * gradientTest;
+                float fxm = fitnessX - stepBoundX * gradientTest;
+                float fym = fitnessY - stepBoundY * gradientTest;
 
-                float dgm = dg - dgtest;
-                float dgxm = dgx - dgtest;
-                float dgym = dgy - dgtest;
+                float dgm = gradientTemp - gradientTest;
+                float dgxm = gradientInitialX - gradientTest;
+                float dgym = gradientInitialY - gradientTest;
 
                 // Call cstep to update the interval of uncertainty
                 // and to compute the new step.
 
-                SearchStep(ref stx, ref fxm, ref dgxm,
-                    ref sty, ref fym, ref dgym, ref stp,
+                SearchStep(ref stepBoundX, ref fxm, ref dgxm,
+                    ref stepBoundY, ref fym, ref dgym, ref step,
                     fm, dgm, ref brackt, out infoc);
 
                 // Reset the function and gradient values for f.
-                fx = fxm + stx * dgtest;
-                fy = fym + sty * dgtest;
-                dgx = dgxm + dgtest;
-                dgy = dgym + dgtest;
+                fitnessX = fxm + stepBoundX * gradientTest;
+                fitnessY = fym + stepBoundY * gradientTest;
+                gradientInitialX = dgxm + gradientTest;
+                gradientInitialY = dgym + gradientTest;
             }
             else
             {
                 // Call mcstep to update the interval of uncertainty
                 // and to compute the new step.
 
-                SearchStep(ref stx, ref fx, ref dgx,
-                    ref sty, ref fy, ref dgy, ref stp,
-                    f, dg, ref brackt, out infoc);
+                SearchStep(ref stepBoundX, ref fitnessX, ref gradientInitialX,
+                    ref stepBoundY, ref fitnessY, ref gradientInitialY, ref step,
+                    fitness, gradientTemp, ref brackt, out infoc);
             }
 
             // Force a sufficient decrease in the size of the
@@ -884,11 +908,11 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
             if (brackt)
             {
-                if (math.abs(sty - stx) >= 0.66 * width1)
-                    stp = stx + 0.5f * (sty - stx);
+                if (math.abs(stepBoundY - stepBoundX) >= 0.66 * width1)
+                    step = stepBoundX + 0.5f * (stepBoundY - stepBoundX);
 
                 width1 = width;
-                width = math.abs(sty - stx);
+                width = math.abs(stepBoundY - stepBoundX);
             }
 
         }
@@ -906,7 +930,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         info = 0;
 
         if ((brackt && (stp <= math.min(stx, sty) || stp >= math.max(stx, sty))) ||
-            (dx * (stp - stx) >= 0.0) || (stpmax < stpmin)) return;
+            (dx * (stp - stx) >= 0.0) || (STEP_MAX < STEP_MIN)) return;
 
         // Determine if the derivatives have opposite sign.
         float sgnd = dp * (dx / math.abs(dx));
@@ -992,8 +1016,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             if (r < 0.0 && gamma != 0.0)
                 stpc = stp + r * (stx - stp);
             else if (stp > stx)
-                stpc = stpmax;
-            else stpc = stpmin;
+                stpc = STEP_MAX;
+            else stpc = STEP_MIN;
 
             stpq = stp + (dp / (dp - dx)) * (stx - stp);
 
@@ -1035,8 +1059,14 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 stpf = stpc;
             }
             else if (stp > stx)
-                stpf = stpmax;
-            else stpf = stpmin;
+            {
+                stpf = STEP_MAX;
+            }
+
+            else
+            {
+                stpf = STEP_MIN;           
+            } 
         }
 
         // Update the interval of uncertainty. This update does not
@@ -1062,8 +1092,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         }
 
         // Compute the new step and safeguard it.
-        stpf = math.min(stpmax, stpf);
-        stpf = math.max(stpmin, stpf);
+        stpf = math.min(STEP_MAX, stpf);
+        stpf = math.max(STEP_MIN, stpf);
         stp = stpf;
 
         if (brackt && bound)
