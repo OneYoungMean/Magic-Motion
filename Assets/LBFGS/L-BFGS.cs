@@ -479,7 +479,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
         if (Diagonal != null)
         {
-            diagonal = getDiagonal();
+            diagonal = GetDiagonal();
         }
         else
         {
@@ -552,7 +552,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     }
                     if (Diagonal != null)
                     {
-                        diagonal = getDiagonal();
+                        diagonal = GetDiagonal();
                     }
                     else
                     {
@@ -688,7 +688,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     {
         int n = numberOfVariables;
         float fitnesstest1 = 0;
-        int infoc = 1;
+        int funcState = 1;
 
         innerLoop = 0;
 
@@ -713,7 +713,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
 
 
-        bool brackt = false;
+        bool isInBracket = false;
         bool stage1 = true;
 
         float fitnessInit = fitness;
@@ -753,7 +753,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
             float stepBoundMin, stepBoundMax;
 
-            if (brackt)//OYM：brackt意思是括号?
+            if (isInBracket)//OYM：brackt意思是括号?
             {
                 stepBoundMin = math.min(stepBoundX, stepBoundY);
                 stepBoundMax = math.max(stepBoundX, stepBoundY);
@@ -773,9 +773,9 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // stp be the lowest point obtained so far.
 
             if (
-                (brackt && (step <= stepBoundMin || step >= stepBoundMax)) ||//OYM：step在bound外
-                (brackt && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-                (innerLoop >= maxInnerLoop - 1) || (infoc == 0))
+                (isInBracket && (step <= stepBoundMin || step >= stepBoundMax)) ||//OYM：step在bound外
+                (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
+                (innerLoop >= maxInnerLoop - 1) || (funcState == 0))
             {
                 step = stepBoundX;
             }
@@ -789,7 +789,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             {
                 currentSolution[j] = diagonal[j] + step * steps[j];
 
-                if (currentSolution[j] > upperBound[j])
+                if (currentSolution[j] > upperBound[j])//OYM: 这里可以用我自己的归一化去完成
                     currentSolution[j] = upperBound[j];
                 else if (currentSolution[j] < lowerBound[j])
                     currentSolution[j] = lowerBound[j];
@@ -821,7 +821,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             }
 
 
-            if ((brackt && (step <= stepBoundMin || step >= stepBoundMax)) || infoc == 0)
+            if ((isInBracket && (step <= stepBoundMin || step >= stepBoundMax)) || funcState == 0)
             {
                 return false;
                 /*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
@@ -844,7 +844,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             }
 
 
-            if (brackt && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
+            if (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
             {
                 return false;
                 throw new LineSearchFailedException(2, "Relative width of the interval of uncertainty is at machine precision.");
@@ -885,7 +885,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
                 SearchStep(ref stepBoundX, ref fxm, ref dgxm,
                     ref stepBoundY, ref fym, ref dgym, ref step,
-                    fm, dgm, ref brackt, out infoc);
+                    fm, dgm, ref isInBracket, out funcState);
 
                 // Reset the function and gradient values for f.
                 fitnessX = fxm + stepBoundX * gradientTest;
@@ -898,15 +898,17 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 // Call mcstep to update the interval of uncertainty
                 // and to compute the new step.
 
-                SearchStep(ref stepBoundX, ref fitnessX, ref gradientInitialX,
-                    ref stepBoundY, ref fitnessY, ref gradientInitialY, ref step,
-                    fitness, gradientTemp, ref brackt, out infoc);
+                SearchStep(
+                    ref stepBoundX, ref fitnessX, ref gradientInitialX,
+                    ref stepBoundY, ref fitnessY, ref gradientInitialY, 
+                    ref step,
+                    fitness, gradientTemp, ref isInBracket, out funcState);
             }
 
             // Force a sufficient decrease in the size of the
             // interval of uncertainty.
 
-            if (brackt)
+            if (isInBracket)
             {
                 if (math.abs(stepBoundY - stepBoundX) >= 0.66 * width1)
                     step = stepBoundX + 0.5f * (stepBoundY - stepBoundX);
@@ -919,78 +921,93 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     }
 
     // TODO: Move to separate classes
-    internal static void SearchStep(ref float stx, ref float fx, ref float dx,
-                                ref float sty, ref float fy, ref float dy,
-                                ref float stp, float fp, float dp,
-                                ref bool brackt, out int info)
+    internal static void SearchStep(ref float stepBoundX, ref float fitnessX , ref float gradientX,
+                                ref float stepBoundY, ref float fitnessY, ref float gradientY,
+                                ref float step, float fitnessTemp, float gradientTemp,
+                                ref bool isInBracket, out int funcState)
     {
         bool bound;
         float stpc, stpf, stpq;
 
-        info = 0;
+        funcState = 0;
 
-        if ((brackt && (stp <= math.min(stx, sty) || stp >= math.max(stx, sty))) ||
-            (dx * (stp - stx) >= 0.0) || (STEP_MAX < STEP_MIN)) return;
+        if ((isInBracket && (step <= math.min(stepBoundX, stepBoundY) || step >= math.max(stepBoundX, stepBoundY))) ||//OYM: 不连续解的情况
+            (gradientX * (step - stepBoundX) >= 0.0) || (STEP_MAX < STEP_MIN))//OYM: 丢解的情况（跟算法有关）
+        {
+            return;
+        }
 
         // Determine if the derivatives have opposite sign.
-        float sgnd = dp * (dx / math.abs(dx));
+        float signDerivatives = gradientTemp * (gradientX / math.abs(gradientX));//OYM: 这里应该换上一个符号函数
 
-        if (fp > fx)
+        if (fitnessTemp > fitnessX)//OYM: 可以被优化？
         {
             // First case. A higher function value.
             // The minimum is bracketed. If the cubic step is closer
             // to stx than the quadratic step, the cubic step is taken,
             // else the average of the cubic and quadratic steps is taken.
 
-            info = 1;
+            funcState = 1;
             bound = true;
-            float theta = 3.0f * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            float theta = 3.0f * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
 
-            if (stp < stx) gamma = -gamma;
-
-            float p = gamma - dx + theta;
-            float q = gamma - dx + gamma + dp;
+            if (step < stepBoundX)
+            {
+                gamma = -gamma;
+            }
+            float p = gamma - gradientX + theta;
+            float q = gamma - gradientX + gamma + gradientTemp;
             float r = p / q;
-            stpc = stx + r * (stp - stx);
-            stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2) * (stp - stx);
+            stpc = stepBoundX + r * (step - stepBoundX);
+            stpq = stepBoundX + ((gradientX / ((fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX)) / 2) * (step - stepBoundX);
 
-            if (math.abs(stpc - stx) < math.abs(stpq - stx))
+            if (math.abs(stpc - stepBoundX) < math.abs(stpq - stepBoundX))
+            {
                 stpf = stpc;
-            else
-                stpf = stpc + (stpq - stpc) / 2.0f;
+            }
 
-            brackt = true;
+            else
+            {
+                stpf = stpc + (stpq - stpc) / 2.0f;
+            }
+            isInBracket = true;
         }
-        else if (sgnd < 0.0)
+        else if (signDerivatives < 0.0)
         {
             // Second case. A lower function value and derivatives of
             // opposite sign. The minimum is bracketed. If the cubic
             // step is closer to stx than the quadratic (secant) step,
             // the cubic step is taken, else the quadratic step is taken.
 
-            info = 2;
+            funcState = 2;
             bound = false;
-            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            float theta = 3 * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
 
-            if (stp > stx) gamma = -gamma;
-
-            float p = (gamma - dp) + theta;
-            float q = ((gamma - dp) + gamma) + dx;
+            if (step > stepBoundX)
+            {
+                gamma = -gamma;
+            }
+            float p = (gamma - gradientTemp) + theta;
+            float q = ((gamma - gradientTemp) + gamma) + gradientX;
             float r = p / q;
-            stpc = stp + r * (stx - stp);
-            stpq = stp + (dp / (dp - dx)) * (stx - stp);
+            stpc = step + r * (stepBoundX - step);
+            stpq = step + (gradientTemp / (gradientTemp - gradientX)) * (stepBoundX - step);
 
-            if (math.abs(stpc - stp) > math.abs(stpq - stp))
+            if (math.abs(stpc - step) > math.abs(stpq - step))
+            {
                 stpf = stpc;
-            else stpf = stpq;
-
-            brackt = true;
+            }
+            else
+            {
+                stpf = stpq;
+            }
+            isInBracket = true;
         }
-        else if (math.abs(dp) < math.abs(dx))
+        else if (math.abs(gradientTemp) < math.abs(gradientX))
         {
             // Third case. A lower function value, derivatives of the
             // same sign, and the magnitude of the derivative decreases.
@@ -1001,35 +1018,44 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // computed and if the minimum is bracketed then the step
             // closest to stx is taken, else the step farthest away is taken.
 
-            info = 3;
+            funcState = 3;
             bound = true;
-            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+            float theta = 3 * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
+            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s)));
 
-            if (stp > stx) gamma = -gamma;
+            if (step > stepBoundX)
+            {
+                gamma = -gamma;
+            }
 
-            float p = (gamma - dp) + theta;
-            float q = (gamma + (dx - dp)) + gamma;
+            float p = (gamma - gradientTemp) + theta;
+            float q = (gamma + (gradientX - gradientTemp)) + gamma;
             float r = p / q;
 
             if (r < 0.0 && gamma != 0.0)
-                stpc = stp + r * (stx - stp);
-            else if (stp > stx)
-                stpc = STEP_MAX;
-            else stpc = STEP_MIN;
-
-            stpq = stp + (dp / (dp - dx)) * (stx - stp);
-
-            if (brackt)
             {
-                if (math.abs(stp - stpc) < math.abs(stp - stpq))
+                stpc = step + r * (stepBoundX - step);
+            }
+            else if (step > stepBoundX)
+            {
+                stpc = STEP_MAX;
+            }
+            else
+            {
+                stpc = STEP_MIN;
+            }
+            stpq = step + (gradientTemp / (gradientTemp - gradientX)) * (stepBoundX - step);
+
+            if (isInBracket)
+            {
+                if (math.abs(step - stpc) < math.abs(step - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
             else
             {
-                if (math.abs(stp - stpc) > math.abs(stp - stpq))
+                if (math.abs(step - stpc) > math.abs(step - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
@@ -1041,24 +1067,26 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             // not decrease. If the minimum is not bracketed, the step
             // is either stpmin or stpmax, else the cubic step is taken.
 
-            info = 4;
+            funcState = 4;
             bound = false;
 
-            if (brackt)
+            if (isInBracket)
             {
-                float theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
-                float s = math.max(math.abs(theta), math.max(math.abs(dy), math.abs(dp)));
-                float gamma = s * math.sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
+                float theta = 3 * (fitnessTemp - fitnessY) / (stepBoundY - step) + gradientY + gradientTemp;
+                float s = math.max(math.abs(theta), math.max(math.abs(gradientY), math.abs(gradientTemp)));
+                float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientY / s) * (gradientTemp / s));
 
-                if (stp > sty) gamma = -gamma;
-
-                float p = (gamma - dp) + theta;
-                float q = ((gamma - dp) + gamma) + dy;
+                if (step > stepBoundY)
+                {
+                    gamma = -gamma;
+                }
+                float p = (gamma - gradientTemp) + theta;
+                float q = ((gamma - gradientTemp) + gamma) + gradientY;
                 float r = p / q;
-                stpc = stp + r * (sty - stp);
+                stpc = step + r * (stepBoundY - step);
                 stpf = stpc;
             }
-            else if (stp > stx)
+            else if (step > stepBoundX)
             {
                 stpf = STEP_MAX;
             }
@@ -1072,36 +1100,40 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         // Update the interval of uncertainty. This update does not
         // depend on the new step or the case analysis above.
 
-        if (fp > fx)
+        if (fitnessTemp > fitnessX)
         {
-            sty = stp;
-            fy = fp;
-            dy = dp;
+            stepBoundY = step;
+            fitnessY = fitnessTemp;
+            gradientY = gradientTemp;
         }
         else
         {
-            if (sgnd < 0.0)
+            if (signDerivatives < 0.0)
             {
-                sty = stx;
-                fy = fx;
-                dy = dx;
+                stepBoundY = stepBoundX;
+                fitnessY = fitnessX;
+                gradientY = gradientX;
             }
-            stx = stp;
-            fx = fp;
-            dx = dp;
+            stepBoundX = step;
+            fitnessX = fitnessTemp;
+            gradientX = gradientTemp;
         }
 
         // Compute the new step and safeguard it.
         stpf = math.min(STEP_MAX, stpf);
         stpf = math.max(STEP_MIN, stpf);
-        stp = stpf;
+        step = stpf;
 
-        if (brackt && bound)
+        if (isInBracket && bound)
         {
-            if (sty > stx)
-                stp = math.min(stx + 0.66f * (sty - stx), stp);
+            if (stepBoundY > stepBoundX)
+            {
+                step = math.min(stepBoundX + 0.66f * (stepBoundY - stepBoundX), step);
+            }
             else
-                stp = math.max(stx + 0.66f * (sty - stx), stp);
+            {
+                step = math.max(stepBoundX + 0.66f * (stepBoundY - stepBoundX), step);
+            }
         }
 
         return;
@@ -1111,7 +1143,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     #endregion
 
 
-    private NativeArray<float> getDiagonal()
+    private NativeArray<float> GetDiagonal()
     {
         NativeArray<float> diag = Diagonal();
         if (diag.Length != numberOfVariables) throw new ArgumentException(
