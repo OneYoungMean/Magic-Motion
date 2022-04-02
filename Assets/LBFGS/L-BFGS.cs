@@ -172,14 +172,14 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public Func<NativeArray<float>, NativeArray<float>> Gradient { get; set; }
 
-    /// <summary>
+/*    /// <summary>
     ///   Gets or sets a function returning the Hessian
     ///   diagonals to be used during optimization.
     /// </summary>
     /// 
     /// <value>A function for the Hessian diagonal.</value>
     /// 
-    public Func<NativeArray<float>> Diagonal { get; set; }
+    public Func<NativeArray<float>> Diagonal { get; set; }*/
 
     /// <summary>
     ///   Gets the number of variables (free parameters)
@@ -402,11 +402,11 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// <param name="gradient">The gradient of the function.</param>
     /// <param name="diagonal">The diagonal of the Hessian.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, float> function, Func<NativeArray<float>, NativeArray<float>> gradient, Func<NativeArray<float>> diagonal)
+/*    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, float> function, Func<NativeArray<float>, NativeArray<float>> gradient, Func<NativeArray<float>> diagonal)
         : this(numberOfVariables, function, gradient)
     {
         this.Diagonal = diagonal;
-    }
+    }*/
     #endregion
 
 
@@ -477,17 +477,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         // Obtain initial Hessian
         NativeArray<float> diagonal = default(NativeArray<float>);
 
-        if (Diagonal != null)
+        diagonal = new NativeArray<float>(m_variableCount, Allocator.Persistent);
+        for (int i = 0; i < diagonal.Length; i++)
         {
-            diagonal = GetDiagonal();
-        }
-        else
-        {
-            diagonal = new NativeArray<float>(m_variableCount, Allocator.Persistent);
-            for (int i = 0; i < diagonal.Length; i++)
-            {
-                diagonal[i] = 1.0f;
-            }
+            diagonal[i] = 1.0f;
         }
 
 
@@ -550,24 +543,18 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                     {
                         break;
                     }
-                    if (Diagonal != null)
+                    float sqrY = 0;
+                    for (int i = 0; i < m_variableCount; i++)
                     {
-                        diagonal = GetDiagonal();
-                    }
-                    else
-                    {
-                        float sqrY = 0;
-                        for (int i = 0; i < m_variableCount; i++)
-                        {
-                            sqrY += delta[nowPoint + i] * delta[nowPoint + i];
-                        }
-
-                        float diagonalValue =(float) (sumY / sqrY);
-
-                        for (int i = 0; i < m_variableCount; i++)
-                            diagonal[i] = diagonalValue;
+                        sqrY += delta[nowPoint + i] * delta[nowPoint + i];
                     }
 
+                    float diagonalValue = (float)(sumY / sqrY);
+
+                    for (int i = 0; i < m_variableCount; i++)
+                    {
+                        diagonal[i] = diagonalValue;
+                    }
 
                     // Compute -H*g using the formula given in:
                     //   Nocedal, J. 1980, "Updating quasi-Newton matrices with limited storage",
@@ -1143,7 +1130,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     #endregion
 
 
-    private NativeArray<float> GetDiagonal()
+/*    private NativeArray<float> GetDiagonal()
     {
         NativeArray<float> diag = Diagonal();
         if (diag.Length != numberOfVariables) throw new ArgumentException(
@@ -1154,7 +1141,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 "One of the diagonal elements of the inverse" +
                 " Hessian approximation is not strictly positive");
         return diag;
-    }
+    }*/
+
 
     private NativeArray<float> GetGradient(NativeArray<float> args)
     {

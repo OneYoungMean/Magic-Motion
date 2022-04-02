@@ -1,7 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-namespace BIOIK2
+namespace BioIK2
 {
     public class BIOIK2Editor: MonoBehaviour
     {

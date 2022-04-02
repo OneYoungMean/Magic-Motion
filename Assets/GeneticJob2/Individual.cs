@@ -1,7 +1,7 @@
 ﻿using Unity.Collections;
 using Unity.Mathematics;
 using System;
-namespace BIOIK2
+namespace BioIK2
 {
     internal class Individual:IDisposable
     {

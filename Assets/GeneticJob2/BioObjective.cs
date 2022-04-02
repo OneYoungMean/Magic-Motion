@@ -5,7 +5,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
     public enum ObjectiveType { Position, Orientation, LookAt, Distance, Displacement, JointValue, Projection }
     public abstract unsafe class BioObjective : MonoBehaviour

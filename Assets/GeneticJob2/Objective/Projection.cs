@@ -1,10 +1,10 @@
-﻿using BIOIK2;
+﻿using BioIK2;
 using System.Collections;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
     //OYM：这个我认为应该是将脚投影到平面上什么的
     //OYM：我认为这个结果有问题，所以暂时没有实现

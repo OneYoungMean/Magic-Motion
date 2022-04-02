@@ -6,7 +6,7 @@ using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
 
-namespace BIOIK2
+namespace BioIK2
 {
     public unsafe class BioModel:IDisposable
     {

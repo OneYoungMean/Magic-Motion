@@ -4,7 +4,7 @@ using UnityEngine;
 using Unity.Mathematics;
 using System;
 using static Unity.Mathematics.math;
-namespace BIOIK2
+namespace BioIK2
 {
     public enum MotionType
     {

@@ -4,7 +4,7 @@ using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
     /// <summary>
     /// Make the node move the shortest distance to the next target

@@ -9,7 +9,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
     using static Utility;
     public unsafe class BioEvolution:IDisposable

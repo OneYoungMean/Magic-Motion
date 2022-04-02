@@ -2,7 +2,7 @@
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
 /*    public class JointValue : BioObjective
     {

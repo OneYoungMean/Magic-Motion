@@ -1,10 +1,10 @@
-﻿using BIOIK2;
+﻿using BioIK2;
 using System.Collections;
 using Unity.Collections;
 using Unity.Mathematics;
 using UnityEngine;
 
-namespace BIOIK2
+namespace BioIK2
 {
     public class Position : BioObjective
     {

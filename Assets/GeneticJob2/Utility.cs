@@ -4,7 +4,7 @@ using UnityEditor;
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace BIOIK2
+namespace BioIK2
 {
 	internal unsafe static class Utility
 	{
