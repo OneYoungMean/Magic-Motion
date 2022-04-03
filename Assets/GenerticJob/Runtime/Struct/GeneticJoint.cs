@@ -8,7 +8,8 @@ namespace GeneticJob
     public struct GeneticJoint
     {
         /// <summary>
-        /// if positionMode. Joint will be move ,if RotationMode Joint will be rotate.
+        /// if positionMode. Joint will be moved ,if RotationMode Joint will be rotated.
+        /// for example the root joint can be moved and rotated .
         /// a transform can take 0-2 joint,just keep it parent- child chain relation truly .
         /// </summary>
         public JointMode JointMode;

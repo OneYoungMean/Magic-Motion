@@ -16,27 +16,50 @@ namespace MagicMotion
             FromTransform,//OYM: input from Transform
             FromAPI//OYM: input from API
         }
+        #region  Field&Property
+
         /// <summary>
         /// input mode that you want 
         /// </summary>
         public InputMode inputMode;
         /// <summary>
-        /// the input animator
+        /// The input animator
         /// </summary>
         public Animator targetAnimator;
-
+        
+        /// <summary>
+        /// The character animator whitch has been controlled
+        /// </summary>
         [SerializeField]
         private Animator characterAnimator;
+        #endregion
+
+        #region UnityFunc
         // Start is called before the first frame update
         void Start()
         {
             InitializeTransForm();
         }
+        #endregion
 
+        #region LocalFunc
         private void InitializeTransForm()
         {
 
         }
+        #endregion
+
+        #region StaticFunc
+        private static void InitializeTransform(Animator animator)
+        {
+
+        }
+        #endregion
+
+
+
+
+
 
         // Update is called once per frame
         void Update()
