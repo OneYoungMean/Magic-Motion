@@ -1,46 +1,43 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 public class Test : MonoBehaviour
 {
     // Start is called before the first frame update
-    public Animator animatorA;
-   public Animator animatorB;
-    private HumanPoseHandler humanPoseHandlerA;
-    private HumanPoseHandler humanPoseHandlerB;
-    private HumanPose currentPoseA;
-    private HumanPose currentPoseB;
+    public Animator animator;
+    private HumanPose currentPose;
 
-    // Update is called once per framep
-    public void Start()
+    void Start()
     {
-         humanPoseHandlerA = new HumanPoseHandler(animatorA.avatar, transform);
-        humanPoseHandlerB = new HumanPoseHandler(animatorB.avatar, transform);
-        currentPoseA = new HumanPose();
-        humanPoseHandlerA.GetHumanPose(ref currentPoseA);
 
-         currentPoseB = currentPoseA;
+
+        // In Limit
+        /*        destinationPose.muscles[leftEyeInOutMuscleIndex] = 1f;
+                humanPoseHandler.SetHumanPose(ref destinationPose);
+                Quaternion leftEyeMaxInRotation = leftEye.rotation;
+                float leftEyeMaxInLimit = Quaternion.Angle(leftEyeTaredRotation, leftEyeMaxInRotation);*/
+
+        HumanPoseHandler humanPoseHandler = new HumanPoseHandler(animator.avatar, transform);
+        int leftEyeInOutMuscleIndex = HumanTrait.MuscleFromBone((int)HumanBodyBones.LeftEye, 1);
+        Transform leftEye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
+        Quaternion leftEyeTaredRotation = leftEye.rotation;
+         currentPose = new HumanPose();
+        humanPoseHandler.GetHumanPose(ref currentPose);
     }
+
+    // Update is called once per frame
     void Update()
     {
+        Debug.Log(currentPose.muscles[85]);
+        
 
-
-        //int leftEyeInOutMuscleIndex = HumanTrait.MuscleFromBone((int)HumanBodyBones.LeftEye, 1);
-        //Transform leftEye = animator.GetBoneTransform(HumanBodyBones.LeftEye);
-        //Quaternion leftEyeTaredRotation = leftEye.rotation;
-
-        humanPoseHandlerA.GetHumanPose(ref currentPoseA);
-
-        for (int i = 0; i < currentPoseA.muscles.Length; i++)
+/*        for (int i = 0; i < currentPose.muscles.Length; i++)
         {
-            Debug.Log(currentPoseA.muscles[i]- currentPoseB.muscles[i]);
-            currentPoseB.muscles[i] = -1;
-        }
-        humanPoseHandlerB.SetHumanPose(ref currentPoseB); 
-currentPoseB = currentPoseA;
+            humanPoseHandler.SetHumanPose(ref destinationPose);
+        }*/
+/*        // Out Limit
 
-
+        */
     }
 }
