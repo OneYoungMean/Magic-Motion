@@ -94,6 +94,12 @@
       "dependencies": {},
       "url": "https://packages.unity.com"
     },
+    "com.unity.playablegraph-visualizer": {
+      "version": "file:graph-visualizer-master",
+      "depth": 0,
+      "source": "embedded",
+      "dependencies": {}
+    },
     "com.unity.services.core": {
       "version": "1.0.1",
       "depth": 1,

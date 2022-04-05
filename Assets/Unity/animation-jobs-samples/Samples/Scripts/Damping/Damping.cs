@@ -15,21 +15,27 @@ using UnityEngine.Experimental.Animations;
 /// </summary>
 public class Damping : MonoBehaviour
 {
+    //OYM：节点
     public Transform[] joints;
-
+    //OYM：我已经看见这个东西很多次了，但是就是不知道他做了啥
     PlayableGraph m_Graph;
+    //OYM：这个也是
     AnimationScriptPlayable m_DampingPlayable;
-
+    //OYM：handle
     NativeArray<TransformStreamHandle> m_Handles;
+    //OYM：本地坐标
     NativeArray<Vector3> m_LocalPositions;
+    //OYM：本地旋转
     NativeArray<Quaternion> m_LocalRotations;
+    //OYM：世界坐标
     NativeArray<Vector3> m_Positions;
+    //OYM：世界旋转
     NativeArray<Vector3> m_Velocities;
-
+    //OYM：节点效果
     List<GameObject> m_JointEffectors;
 
     void Initialize(Animator animator)
-    {
+    {//OYM：创建nativearray/以及赋值
         // Create arrays (without the root which has its own handle).
         var numJoints = joints.Length;
         m_Handles = new NativeArray<TransformStreamHandle>(numJoints, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
@@ -43,7 +49,7 @@ public class Damping : MonoBehaviour
             m_LocalRotations[i] = joints[i].localRotation;
             m_Positions[i] = joints[i].position;
         }
-
+        //OYM：记录速度
         m_Velocities = new NativeArray<Vector3>(numJoints, Allocator.Persistent);
     }
 
