@@ -31,7 +31,7 @@ public class TwoBoneIK : MonoBehaviour
         if (m_TopJoint == null)
             return;
 
-        m_Effector = SampleUtility.CreateEffector("Effector_" + endJoint.name, endJoint.position, endJoint.rotation);
+        m_Effector = SampleUtility.CreateEffector("Effector_" + endJoint.name, endJoint.position, endJoint.rotation);//OYM：获取最后一个节点的
 
         m_Graph = PlayableGraph.Create("TwoBoneIK");
         m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);

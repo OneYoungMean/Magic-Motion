@@ -73,10 +73,11 @@ public class Damping : MonoBehaviour
         };
 
         // Create graph.
+        //OYM：创建graph
         m_Graph = PlayableGraph.Create("Damping");
-        m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+        m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);//OYM：更新模式
 
-        m_DampingPlayable = AnimationScriptPlayable.Create(m_Graph, dampingJob);
+        m_DampingPlayable = AnimationScriptPlayable.Create(m_Graph, dampingJob);//OYM：
 
         var output = AnimationPlayableOutput.Create(m_Graph, "output", animator);
         output.SetSourcePlayable(m_DampingPlayable);

@@ -41,45 +41,49 @@ public struct TwoBoneIKJob : IAnimationJob
     /// <param name="aLen">The desired length between the extremities of v1 and v2.</param>
     /// <param name="v1">First triangle edge.</param>
     /// <param name="v2">Second triangle edge.</param>
-    private static float TriangleAngle(float aLen, Vector3 v1, Vector3 v2)
+    private static float TriangleAngle(float aLen, Vector3 v1, Vector3 v2) //OYM：计算在已知第三条边的长度的情况下，这条边对应的夹角（单位是弧度）
     {
         float aLen1 = v1.magnitude;
         float aLen2 = v2.magnitude;
-        float c = Mathf.Clamp((aLen1 * aLen1 + aLen2 * aLen2 - aLen * aLen) / (aLen1 * aLen2) / 2.0f, -1.0f, 1.0f);
+        float c = Mathf.Clamp((aLen1 * aLen1 + aLen2 * aLen2 - aLen * aLen) / (aLen1 * aLen2) / 2.0f, -1.0f, 1.0f);//OYM：余弦定理
         return Mathf.Acos(c);
     }
 
     private static void Solve(AnimationStream stream, TransformStreamHandle topHandle, TransformStreamHandle midHandle, TransformStreamHandle lowHandle, TransformSceneHandle effectorHandle)
     {
+        //OYM：看明白这一部分的话，可能需要一些草稿纸
+
+
+        //OYM：骨骼的旋转，需要知道目标的旋转与倒数第二节与第三节的旋转
         Quaternion aRotation = topHandle.GetRotation(stream);
         Quaternion bRotation = midHandle.GetRotation(stream);
         Quaternion eRotation = effectorHandle.GetRotation(stream);
-
+        //OYM：骨骼的位置，全部获取
         Vector3 aPosition = topHandle.GetPosition(stream);
         Vector3 bPosition = midHandle.GetPosition(stream);
         Vector3 cPosition = lowHandle.GetPosition(stream);
         Vector3 ePosition = effectorHandle.GetPosition(stream);
-
+        //OYM：获取向量，AB ，BC， AC（三角形的三条边）以及AE（倒数第三节点到目标节点的距离）
         Vector3 ab = bPosition - aPosition;
         Vector3 bc = cPosition - bPosition;
         Vector3 ac = cPosition - aPosition;
         Vector3 ae = ePosition - aPosition;
+         
+        float abcAngle = TriangleAngle(ac.magnitude, ab, bc);//OYM：计算已AC，AB，BC组成的三角形中<ABC的夹角
+        float abeAngle = TriangleAngle(ae.magnitude, ab, bc);//OYM：计算AE,AB,BE组成的三角形中<ABE的夹角
+        float angle = (abcAngle - abeAngle) * Mathf.Rad2Deg; //OYM：夹角之差
+        Vector3 axis = Vector3.Cross(ab, bc).normalized;//OYM：ab与ac构成的平面的法向量
 
-        float abcAngle = TriangleAngle(ac.magnitude, ab, bc);
-        float abeAngle = TriangleAngle(ae.magnitude, ab, bc);
-        float angle = (abcAngle - abeAngle) * Mathf.Rad2Deg;
-        Vector3 axis = Vector3.Cross(ab, bc).normalized;
+        Quaternion fromToRotation = Quaternion.AngleAxis(angle, axis);//OYM：计算从ac到ae长度之间变化的四元数
 
-        Quaternion fromToRotation = Quaternion.AngleAxis(angle, axis);
+        Quaternion worldQ = fromToRotation * bRotation; //OYM：点b旋转后所处的旋转
+        midHandle.SetRotation(stream, worldQ);//OYM：设置b点的旋转
 
-        Quaternion worldQ = fromToRotation * bRotation;
-        midHandle.SetRotation(stream, worldQ);
+        cPosition = lowHandle.GetPosition(stream);//OYM：获取c点的位置
+        ac = cPosition - aPosition;//OYM：计算ac之间的距离
+        Quaternion fromTo = Quaternion.FromToRotation(ac, ae);//OYM：设置从ac到ae的旋转
+        topHandle.SetRotation(stream, fromTo * aRotation);//OYM：设置跟节点的旋转
 
-        cPosition = lowHandle.GetPosition(stream);
-        ac = cPosition - aPosition;
-        Quaternion fromTo = Quaternion.FromToRotation(ac, ae);
-        topHandle.SetRotation(stream, fromTo * aRotation);
-
-        lowHandle.SetRotation(stream, eRotation);
+        lowHandle.SetRotation(stream, eRotation);//OYM：设置c节点的旋转
     }
 }
