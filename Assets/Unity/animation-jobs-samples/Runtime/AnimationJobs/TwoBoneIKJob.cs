@@ -10,7 +10,7 @@ using UnityEngine.Experimental.Animations;
 public struct TwoBoneIKJob : IAnimationJob
 {
     public TransformSceneHandle effector;
-
+    public Quaternion oldEffectorRotation;
     public TransformStreamHandle top;
     public TransformStreamHandle mid;
     public TransformStreamHandle low;
@@ -22,6 +22,7 @@ public struct TwoBoneIKJob : IAnimationJob
         low = animator.BindStreamTransform(lowX);
 
         effector = animator.BindSceneTransform(effectorX);
+        oldEffectorRotation = effectorX.rotation;
     }
 
     public void ProcessRootMotion(AnimationStream stream)
@@ -30,9 +31,39 @@ public struct TwoBoneIKJob : IAnimationJob
 
     public void ProcessAnimation(AnimationStream stream)
     {
-        Solve(stream, top, mid, low, effector);
+        Solve(stream, top, mid, low, effector, oldEffectorRotation);
     }
-
+    /**
+ * Use the swing-twist decomposition to get the component of a rotation
+ * around the given axis.
+ *
+ * N.B. assumes direction is normalized (to save work in calculating projection).
+ * 
+ * @param rotation  The rotation.
+ * @param direction The axis.
+ * @return The component of rotation about the axis.
+ */
+    private static Quaternion GetRotationComponentAboutAxis(
+                Quaternion rotation, Vector3 direction)
+    {
+        direction = direction.normalized;//OYM：归一化
+        Vector3 rotationAxis = new Vector3(rotation.x, rotation.y, rotation.z);//OYM：获取四元数旋转的轴（此时他们被乘以了cosa）
+        float dotProduct = Vector3.Dot(direction,rotationAxis);
+        // Shortcut calculation of `projection` requires `direction` to be normalized
+        Vector3 projection = dotProduct* direction;
+        Quaternion twist = new Quaternion(
+                projection.x, projection.y, projection.z, rotation.w).normalized;
+        if (dotProduct < 0.0)
+        {
+            // Ensure `twist` points towards `direction`
+            twist.x = -twist.x;
+            twist.y = -twist.y;
+            twist.z = -twist.z;
+            twist.w = -twist.w;
+            // Rotation angle `twist.angle()` is now reliable
+        }
+        return twist;
+    }
     /// <summary>
     /// Returns the angle needed between v1 and v2 so that their extremities are
     /// spaced with a specific length.
@@ -49,7 +80,7 @@ public struct TwoBoneIKJob : IAnimationJob
         return Mathf.Acos(c);
     }
 
-    private static void Solve(AnimationStream stream, TransformStreamHandle topHandle, TransformStreamHandle midHandle, TransformStreamHandle lowHandle, TransformSceneHandle effectorHandle)
+    private static void Solve(AnimationStream stream, TransformStreamHandle topHandle, TransformStreamHandle midHandle, TransformStreamHandle lowHandle, TransformSceneHandle effectorHandle, Quaternion oldEffectorRotation)
     {
         //OYM：看明白这一部分的话，可能需要一些草稿纸
 
@@ -77,12 +108,28 @@ public struct TwoBoneIKJob : IAnimationJob
         Quaternion fromToRotation = Quaternion.AngleAxis(angle, axis);//OYM：计算从ac到ae长度之间变化的四元数
 
         Quaternion worldQ = fromToRotation * bRotation; //OYM：点b旋转后所处的旋转
+
+        Quaternion deltaRotation = eRotation * Quaternion.Inverse(oldEffectorRotation);
+
+        Quaternion axisRotationB = GetRotationComponentAboutAxis(deltaRotation, bc);//OYM：获取deltarotation绕bc轴的旋转
+
+        //worldQ = axisRotationB * worldQ;
+
         midHandle.SetRotation(stream, worldQ);//OYM：设置b点的旋转
 
         cPosition = lowHandle.GetPosition(stream);//OYM：获取c点的位置
+
         ac = cPosition - aPosition;//OYM：计算ac之间的距离
+
         Quaternion fromTo = Quaternion.FromToRotation(ac, ae);//OYM：设置从ac到ae的旋转
-        topHandle.SetRotation(stream, fromTo * aRotation);//OYM：设置跟节点的旋转
+
+        aRotation = fromTo * aRotation;//OYM：附加fromto的旋转
+
+        Quaternion axisRotationA = GetRotationComponentAboutAxis(axisRotationB, ab);//OYM：获取axisRotationB绕ab轴的旋转
+
+        //aRotation = axisRotationA * aRotation;
+
+        topHandle.SetRotation(stream, aRotation);//OYM：设置跟节点的旋转
 
         lowHandle.SetRotation(stream, eRotation);//OYM：设置c节点的旋转
     }
