@@ -10,49 +10,49 @@ using UnityEngine.Experimental.Animations;
 #endif
 
 public class FullBodyIK : MonoBehaviour
-{
-    public bool syncGoal = true;
+{//OYM：这部分内容有点多，我先洗个澡再来
+    public bool syncGoal = true;//OYM：啥
 
     [Range(0.0f, 1.5f)]
-    public float stiffness = 1.0f;
+    public float stiffness = 1.0f;//OYM：刚性
 
     [Range(1, 50)]
-    public int maxPullIteration = 5;
+    public int maxPullIteration = 5;//OYM：最大迭代次数
 
     [Range(0, 1)]
-    public float defaultEffectorPositionWeight = 1.0f;
+    public float defaultEffectorPositionWeight = 1.0f;//OYM：正常位置影响
     [Range(0, 1)]
-    public float defaultEffectorRotationWeight = 1.0f;
+    public float defaultEffectorRotationWeight = 1.0f;//OYM：正常旋转影响
     [Range(0, 1)]
-    public float defaultEffectorPullWeight = 1.0f;
+    public float defaultEffectorPullWeight = 1.0f;//OYM：不太清楚做啥
     [Range(0, 1)]
-    public float defaultHintWeight = 0.0f;
+    public float defaultHintWeight = 0.0f;//OYM：跟随权重
 
-    private GameObject m_LeftFootEffector;
-    private GameObject m_RightFootEffector;
-    private GameObject m_LeftHandEffector;
-    private GameObject m_RightHandEffector;
+    private GameObject m_LeftFootEffector;//OYM：左脚
+    private GameObject m_RightFootEffector;//OYM：右脚
+    private GameObject m_LeftHandEffector;//OYM：左手
+    private GameObject m_RightHandEffector;//OYM：右手
 
-    private GameObject m_LeftKneeHintEffector;
-    private GameObject m_RightKneeHintEffector;
-    private GameObject m_LeftElbowHintEffector;
-    private GameObject m_RightElbowHintEffector;
+    private GameObject m_LeftKneeHintEffector;//OYM：左膝盖
+    private GameObject m_RightKneeHintEffector;//OYM：右膝盖
+    private GameObject m_LeftElbowHintEffector;//OYM：做手肘
+    private GameObject m_RightElbowHintEffector;//OYM：右手肘
 
-    private GameObject m_LookAtEffector;
+    private GameObject m_LookAtEffector;//OYM：lookat
 
-    private GameObject m_BodyRotationEffector;
+    private GameObject m_BodyRotationEffector;//OYM：身体旋转
 
     private Animator m_Animator;
     private PlayableGraph m_Graph;
     private AnimationScriptPlayable m_IKPlayable;
 
-    private static GameObject CreateEffector(string name)
+    private static GameObject CreateEffector(string name)//OYM：创建effect
     {
         var go = SampleUtility.CreateEffector(name, Vector3.zero, Quaternion.identity);
         return go;
     }
 
-    private static GameObject CreateBodyEffector(string name)
+    private static GameObject CreateBodyEffector(string name)//OYM：创建身体的effect
     {
         var go = SampleUtility.CreateBodyEffector(name, Vector3.zero, Quaternion.identity);
         return go;
@@ -65,7 +65,7 @@ public class FullBodyIK : MonoBehaviour
         {
             go.AddComponent<Effector>();
             handle.effector = m_Animator.BindSceneTransform(go.transform);
-            handle.positionWeight = m_Animator.BindSceneProperty(go.transform, typeof(Effector), "positionWeight");
+            handle.positionWeight = m_Animator.BindSceneProperty(go.transform, typeof(Effector), "positionWeight");//OYM：这里说实话没搞懂啥意思。。。。与transformbind在了一起？
             handle.rotationWeight = m_Animator.BindSceneProperty(go.transform, typeof(Effector), "rotationWeight");
             handle.pullWeight = m_Animator.BindSceneProperty(go.transform, typeof(Effector), "pullWeight");
         }
@@ -79,7 +79,7 @@ public class FullBodyIK : MonoBehaviour
         {
             go.AddComponent<HintEffector>();
             handle.hint = m_Animator.BindSceneTransform(go.transform);
-            handle.weight = m_Animator.BindSceneProperty(go.transform, typeof(HintEffector), "weight");
+            handle.weight = m_Animator.BindSceneProperty(go.transform, typeof(HintEffector), "weight");//OYM：同样没看懂
         }
         return go;
     }
@@ -137,29 +137,29 @@ public class FullBodyIK : MonoBehaviour
         m_RightElbowHintEffector.GetComponent<HintEffector>().weight = defaultHintWeight;
     }
 
-    private void SyncIKFromPose()
+    private void SyncIKFromPose()//OYM：同步修改IK之后产生的变化
     {
-        var selectedTransform = Selection.transforms;
+        var selectedTransform = Selection.transforms;//OYM：获取选中的物体
 
-        var stream = new AnimationStream();
+        var stream = new AnimationStream();//OYM：创建新的stream
         if (m_Animator.OpenAnimationStream(ref stream))
         {
-            AnimationHumanStream humanStream = stream.AsHuman();
+            AnimationHumanStream humanStream = stream.AsHuman();//OYM：ashuman
 
             // don't sync if transform is currently selected
-            if (!Array.Exists(selectedTransform, tr => tr == m_LeftFootEffector.transform))
+            if (!Array.Exists(selectedTransform, tr => tr == m_LeftFootEffector.transform)) //OYM：如果存在leftfoot
             {
                 m_LeftFootEffector.transform.position = humanStream.GetGoalPositionFromPose(AvatarIKGoal.LeftFoot);
                 m_LeftFootEffector.transform.rotation = humanStream.GetGoalRotationFromPose(AvatarIKGoal.LeftFoot);
             }
 
-            if (!Array.Exists(selectedTransform, tr => tr == m_RightFootEffector.transform))
+            if (!Array.Exists(selectedTransform, tr => tr == m_RightFootEffector.transform))//OYM：存在右脚
             {
                 m_RightFootEffector.transform.position = humanStream.GetGoalPositionFromPose(AvatarIKGoal.RightFoot);
                 m_RightFootEffector.transform.rotation = humanStream.GetGoalRotationFromPose(AvatarIKGoal.RightFoot);
             }
 
-            if (!Array.Exists(selectedTransform, tr => tr == m_LeftHandEffector.transform))
+            if (!Array.Exists(selectedTransform, tr => tr == m_LeftHandEffector.transform))//OYM：获取
             {
                 m_LeftHandEffector.transform.position = humanStream.GetGoalPositionFromPose(AvatarIKGoal.LeftHand);
                 m_LeftHandEffector.transform.rotation = humanStream.GetGoalRotationFromPose(AvatarIKGoal.LeftHand);
@@ -211,14 +211,14 @@ public class FullBodyIK : MonoBehaviour
         if (!m_Animator.avatar.isHuman)
             throw new InvalidOperationException("Avatar must be a humanoid.");
 
-        m_Graph = PlayableGraph.Create();
-        m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);
+        m_Graph = PlayableGraph.Create();//OYM：创建graph
+        m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);//OYM：更新时间源
         var output = AnimationPlayableOutput.Create(m_Graph, "output", m_Animator);
 
-        var clip = SampleUtility.LoadAnimationClipFromFbx("DefaultMale/Models/DefaultMale_Humanoid", "Idle");
-        var clipPlayable = AnimationClipPlayable.Create(m_Graph, clip);
-        clipPlayable.SetApplyFootIK(false);
-        clipPlayable.SetApplyPlayableIK(false);
+        var clip = SampleUtility.LoadAnimationClipFromFbx("DefaultMale/Models/DefaultMale_Humanoid", "Idle");//OYM：设置动作
+        var clipPlayable = AnimationClipPlayable.Create(m_Graph, clip);//OYM：设置图
+        clipPlayable.SetApplyFootIK(false);//OYM：关闭footik
+        clipPlayable.SetApplyPlayableIK(false);//OYM：关闭onanimator ik的调用
 
         var job = new FullBodyIKJob();
         job.stiffness = stiffness;

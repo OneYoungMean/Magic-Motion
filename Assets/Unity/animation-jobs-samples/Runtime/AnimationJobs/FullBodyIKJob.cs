@@ -10,6 +10,8 @@ public struct FullBodyIKJob : IAnimationJob
 {
     public struct EffectorHandle
     {
+        //OYM：当前的transform
+        //OYM：当前的property
         public TransformSceneHandle effector;
         public PropertySceneHandle positionWeight;
         public PropertySceneHandle rotationWeight;
@@ -210,7 +212,7 @@ public struct FullBodyIKJob : IAnimationJob
                 deltaPosition += (localForce * force * limbParts[goalIter].goalPullWeight * limbParts[goalIter].goalWeight);
             }
 
-            deltaPosition /= (maxPullIteration - iter);
+            //deltaPosition /= (maxPullIteration - iter);
             bodyPosition += deltaPosition;
         }
 

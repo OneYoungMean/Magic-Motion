@@ -1,4 +1,4 @@
-/*using System.Collections;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Unity.Mathematics;
@@ -6,6 +6,7 @@ using UnityEngine;
 
 namespace MagicMotion.Mono
 {
+    /*
     public class AnimatorTreeNode
     {
         public Transform transform;
@@ -401,5 +402,5 @@ namespace MagicMotion.Mono
 
 
     }
+    */
 }
-*/
