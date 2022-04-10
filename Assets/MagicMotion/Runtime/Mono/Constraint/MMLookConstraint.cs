@@ -1,28 +1,23 @@
 using System.Collections;
 using System.Collections.Generic;
-using Unity.Mathematics;
 using UnityEngine;
 
 namespace MagicMotion.Mono
 {
-    /// <summary>
-    /// Position Constraint ,will keep target joint's position.
-    /// </summary>
-    public class MMPositionConstraint : MMConstraint
+    public class MMLookConstraint : MMConstraint
     {
-        // Start is called before the first frame update
-        public const float MIN__TOLERENCE = 0.001f;
+        public const float MIN__TOLERENCE = 0.1f;
 
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
-        [Range(0, 1)]
-        public float3 weight3=1;
+        [Range(0,1)]
+        public float weight=1;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>
-        [Range(MIN__TOLERENCE, 1f)]
-        public float3 tolerance3= MIN__TOLERENCE;
+        [Range(MIN__TOLERENCE, 180f)]
+        public float tolerance= MIN__TOLERENCE;
         /// <summary>
         /// Constraint target
         /// </summary>
@@ -46,25 +41,23 @@ namespace MagicMotion.Mono
         {
             return new MMConstraintNative()
             {
-                constraintType = MMConstraintType.Position,
-                position = transform.position,
-                weight3 = weight3,
-                torlerace3 = tolerance3,
+                constraintType =MMConstraintType.LookAt,
+                weight3 = weight,
+                torlerace3 = tolerance,
+                position = transform.position
             };
-
         }
 
         public override void ResetPositionAndRotation()
         {
             transform.localPosition = initalLocalPosition;
             transform.localRotation = initalLocalRotation;
-
         }
 
         public override MMConstraintType GetConstraintType()
         {
-            return MMConstraintType.Position;
+           return MMConstraintType.LookAt;
         }
     }
-}
 
+}

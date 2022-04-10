@@ -10,7 +10,7 @@ using System;
 
 namespace MagicMotion.Mono
 {
-    public class MagicMotionJointAndMuscleController : MonoBehaviour
+    public class MMAvatarController : MonoBehaviour
     {
         // Start is called before the first frame update
         public Animator animator;
@@ -132,14 +132,14 @@ namespace MagicMotion.Mono
 
                 if (currentJoint.parentIndex == -1)
                 {
-                    currentJoint.localRotation = math.mul(math.inverse(animator.transform.rotation), currentJoint.transform.rotation);
-                    currentJoint.localPosition = math.mul(math.inverse(animator.transform.rotation), (float3)currentJoint.transform.position - (float3)animator.transform.position);
+                    currentJoint.initiallocalRotation = math.mul(math.inverse(animator.transform.rotation), currentJoint.transform.rotation);
+                    currentJoint.initiallocalPosition = math.mul(math.inverse(animator.transform.rotation), (float3)currentJoint.transform.position - (float3)animator.transform.position);
                 }
                 else
                 {
                     var parentJoint = motionJoints[currentJoint.parentIndex];
-                    currentJoint.localRotation = math.mul(math.inverse(parentJoint.transform. rotation), currentJoint.transform.rotation);
-                    currentJoint.localPosition = math.mul(math.inverse(parentJoint.transform.rotation),(float3)( currentJoint.transform.position - parentJoint.transform.position));
+                    currentJoint.initiallocalRotation = math.mul(math.inverse(parentJoint.transform. rotation), currentJoint.transform.rotation);
+                    currentJoint.initiallocalPosition = math.mul(math.inverse(parentJoint.transform.rotation),(float3)( currentJoint.transform.position - parentJoint.transform.position));
                     currentJoint.parent = parentJoint;
                 }
                 motionJoints[i] = currentJoint;
@@ -257,8 +257,8 @@ namespace MagicMotion.Mono
                     parentRotation = jointUpdateTransform[currentJoint.parentIndex].rot;
                     parentPosition = jointUpdateTransform[currentJoint.parentIndex].pos;
                 }
-                currentTrans.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
-                currentTrans.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
+                currentTrans.rot = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
+                currentTrans.pos = parentPosition + math.mul(parentRotation, currentJoint.initiallocalPosition);
 
                 jointUpdateTransform[i] = currentTrans;
                 jointTransform.position = jointUpdateTransform[i].pos;

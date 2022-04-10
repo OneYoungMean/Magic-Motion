@@ -34,13 +34,13 @@ namespace MagicMotion.Mono
         [SerializeField]
         private Animator characterAnimator;
         /// <summary>
-        /// Auto generate,all IK's point root; 
-        /// </summary>
-        private GameObject IKRoot;
-        /// <summary>
         /// To convert human animator as native data.
         /// </summary>
-        private MagicMotionJointAndMuscleController muscleAndJointController;
+        private MMAvatarController muscleAndJointController;
+        /// <summary>
+        /// All constraint manager
+        /// </summary>
+        private MMConstraintsController constraintsController;
         #endregion
 
         #region UnityFunc
@@ -48,7 +48,7 @@ namespace MagicMotion.Mono
         void Start()
         {
 
-            InitializeTransform();
+            ValueCheck();
         }
         #endregion
 
@@ -73,15 +73,16 @@ namespace MagicMotion.Mono
             {
                 throw new InvalidOperationException("characterAnimator is not human");
             }
-            if (muscleAndJointController=null)
+            if (muscleAndJointController==null)
             {
-                muscleAndJointController = gameObject.AddComponent<MagicMotionJointAndMuscleController>();
+                muscleAndJointController = gameObject.AddComponent<MMAvatarController>();
                 muscleAndJointController.Initialize(characterAnimator);
             }
+
+            ValueCheck(inputMode);
         }
         private bool ValueCheck(InputMode inputMode)
         {
-            return true;
             switch (inputMode)
             {
                 case InputMode.FromHumanAnimator:
@@ -92,49 +93,39 @@ namespace MagicMotion.Mono
                     }
                     break;
                 case InputMode.FromIK:
-                    if (IKRoot==null)
+                    if (constraintsController==null)
                     {
-
-
+                        BuildConstraintController();
                     }
                     break;
                 case InputMode.FromAPI:
                     break;
                 default:
-                    break;
+                    return false;
             }
+            return true;
         }
-            private void Initialize()
+         private void Initialize()
         {
             
         }
 
-        private void InitializeTransform()
+        private void BuildConstraintController()
         {
-
-        }
-
-        private void BuildIKPoint()
-        {
-            IKRoot = new GameObject(characterAnimator.name + "IKRoot");
+            var IKRoot = new GameObject(characterAnimator.name + " IKRoot");
             IKRoot.transform.parent = characterAnimator.transform;
             IKRoot.transform.localPosition = Vector3.zero;
             IKRoot.transform.rotation = Quaternion.identity;
             IKRoot.transform.localScale = Vector3.one;
 
-            var joints = muscleAndJointController.motionJoints;
-            for (int i = 0; i < joints.Length; i++)
-            {
+            constraintsController = IKRoot.AddComponent<MMConstraintsController>();
+            constraintsController.Initialize( muscleAndJointController.motionJoints);
 
-            }
         }
         #endregion
 
         #region StaticFunc
-        private static void InitializeTransform(Animator animator)
-        {
 
-        }
         #endregion
 
 

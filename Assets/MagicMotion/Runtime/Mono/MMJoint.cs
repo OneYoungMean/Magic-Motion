@@ -22,7 +22,10 @@ namespace MagicMotion.Mono
         ///  the joint's muscle
         /// </summary>
         public MMMuscle[] muscles = new MMMuscle[3];
-
+        /// <summary>
+        ///  the joint's constraint
+        /// </summary>
+        public MMConstraint[]constraints = new MMConstraint[sizeof(byte)*8];
         /// <summary>
         ///  parent index in heap
         /// </summary>
@@ -42,12 +45,12 @@ namespace MagicMotion.Mono
         /// <summary>
         /// initial localPosition from parent,used be clac currentPosition
         /// </summary>
-        public float3 localPosition;
+        public float3 initiallocalPosition;
 
         /// <summary>
         /// initial localRotation from parent,used be clac currentPosition and localRotation
         /// </summary>
-        public quaternion localRotation;
+        public quaternion initiallocalRotation;
 
         /// <summary>
         /// the dof3 axis
@@ -80,8 +83,8 @@ namespace MagicMotion.Mono
             return new MMJointNative()
             {
                 parentIndex = parentIndex,
-                localPosition = localPosition,
-                localRotation = localRotation,
+                localPosition = initiallocalPosition,
+                localRotation = initiallocalRotation,
                 maxRange = maxRange,
                 minRange = minRange,
                 dof3Axis = dof3Axis,

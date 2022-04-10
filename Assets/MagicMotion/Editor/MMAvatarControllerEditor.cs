@@ -6,13 +6,13 @@ using UnityEditor;
 namespace MagicMotion.UnityEditor
 {
     using Mono;
-    [CustomEditor(typeof(MagicMotionJointAndMuscleController))]
-    public class MagicMotionJointAndMuscleControllerEditor : Editor
+    [CustomEditor(typeof(MMAvatarController))]
+    public class MMAvatarControllerEditor : Editor
     {
-        MagicMotionJointAndMuscleController controller;
+        MMAvatarController controller;
         public void OnEnable()
         {
-            controller = (MagicMotionJointAndMuscleController)target;
+            controller = (MMAvatarController)target;
         }
 
         public override void OnInspectorGUI()
