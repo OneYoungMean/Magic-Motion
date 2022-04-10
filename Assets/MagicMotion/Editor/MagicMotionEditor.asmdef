@@ -1,0 +1,18 @@
+{
+    "name": "MagicMotionEditor",
+    "rootNamespace": "",
+    "references": [
+        "GUID:11ff8a66c978e6149a3889a70486806f"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

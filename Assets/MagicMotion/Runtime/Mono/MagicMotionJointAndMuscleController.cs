@@ -2,182 +2,342 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
-using MagicMotion;
+
 using Unity.Mathematics;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using System;
 
-public unsafe class Test : MonoBehaviour
+namespace MagicMotion.Mono
 {
-    // Start is called before the first frame update
-    public Animator animator;
-    private HumanPose currentPose;
-    private MagicMotionJoint[] joints;
-    public bool isUpdatePosition;
-
-    void Start()
+    public class MagicMotionJointAndMuscleController : MonoBehaviour
     {
+        // Start is called before the first frame update
+        public Animator animator;
+        public MMJoint[] motionJoints;
+        public MMMuscle[] motionMuscles;
 
-        // In Limit
-        /*        destinationPose.muscles[leftEyeInOutMuscleIndex] = 1f;
-                humanPoseHandler.SetHumanPose(ref destinationPose);
-                Quaternion leftEyeMaxInRotation = leftEye.rotation;
-                float leftEyeMaxInLimit = Quaternion.Angle(leftEyeTaredRotation, leftEyeMaxInRotation);*/
+        public bool isInitialize;
 
-        var avatar = animator.avatar;
-        var humanDiscription = avatar.humanDescription;
-        HumanPoseHandler humanPoseHandler = new HumanPoseHandler(avatar, animator.transform);
-        currentPose = new HumanPose();
-        humanPoseHandler.GetHumanPose(ref currentPose);
+        //建议不要为了一丢丢性能把代码搞得很脏
+        //满打满算也就省下来10%
 
-        joints = new MagicMotionJoint[(int)HumanBodyBones.LastBone];
-        var muscleValues = currentPose.muscles;
-
-        var defalutMuscleValue = new HumanPose();
-        defalutMuscleValue.bodyPosition = currentPose.bodyPosition;
-        defalutMuscleValue.bodyRotation = currentPose.bodyRotation;
-
-        defalutMuscleValue.muscles = new float[currentPose.muscles.Length];
-        humanPoseHandler.SetHumanPose(ref defalutMuscleValue);
-        for (int i = 0; i < humanDiscription.human.Length; i++)
+        public void Start()
         {
-            var jointDescription = humanDiscription.human[i];
-            int boneIndex= Array.IndexOf(HumanTrait.BoneName, jointDescription.humanName);
-            HumanBodyBones humanBodyBone = (HumanBodyBones)boneIndex;
-            Transform jointTransform = animator.GetBoneTransform(humanBodyBone);
-            if (jointTransform==null)
+            if (!isInitialize)
             {
-                continue;
+                Initialize(animator);
+            }
+        }
+        public void Initialize(Animator animator=null ,bool isRefresh = false)
+        {
+            if (!isRefresh&& isInitialize)
+            {
+                return;
             }
 
-            MagicMotionJoint motionJoint = new MagicMotionJoint(true);
-            motionJoint.humanBodyBone = humanBodyBone;
-            var limit = jointDescription.limit;
-            float3 dof3 = 0;
-            float3 min = 0;
-            float3 max = 0;
-            for (int j0 = 0; j0 < 3; j0++)//OYM：dof
+            if (animator == null)
             {
-                int muscleIndex = HumanTrait.MuscleFromBone((int)humanBodyBone, j0);
-                if (muscleIndex != -1)
+                animator = gameObject.GetComponent<Animator>();
+                if (animator == null || !animator.isHuman)
                 {
-                    dof3[j0] = muscleValues[muscleIndex];
-                    min[j0] = HumanTrait.GetMuscleDefaultMin(muscleIndex);
-                    max[j0] = HumanTrait.GetMuscleDefaultMax(muscleIndex);
+                    throw new InvalidOperationException("invaild animator");
                 }
             }
-            motionJoint.Dof3 = dof3;
+            this.animator = animator;
 
-            if (limit.useDefaultValues)
+            Avatar avatar = animator.avatar;
+            var humandescription = avatar.humanDescription;
+
+            /*        Avatar defaultAvatar= AvatarBuilder.BuildHumanAvatar(animator.gameObject, humandescription);
+                    animator.avatar= defaultAvatar;*/
+            HumanPoseHandler humanPoseHandler = new HumanPoseHandler(animator.avatar, animator.transform);
+            HumanPose currentPose = new HumanPose();
+            humanPoseHandler.GetHumanPose(ref currentPose);
+            currentPose.bodyPosition =new Vector3(0, currentPose.bodyPosition.y,0);
+            currentPose.bodyRotation = Quaternion.identity;
+            float[] muscleValue = currentPose.muscles;
+            currentPose.muscles = new float[muscleValue.Length];
+            motionJoints = new MMJoint[HumanTrait.BoneCount];
+            motionMuscles = new MMMuscle[muscleValue.Length];
+
+
+
+            //OYM：load1  createMuscle and joint;
+            for (int i = 0; i < muscleValue.Length; i++)
             {
+                int muscleIndex = i;
+                if (GetMuscleData(muscleIndex, out int jointIndex, out int dof, out string muscleName, out string jointName))
+                {
+                    Transform targetJoint = animator.GetBoneTransform((HumanBodyBones)jointIndex);
+                    if (targetJoint != null)
+                    {
+                        motionMuscles[i] = targetJoint.gameObject.AddComponent<MMMuscle>();
+                        motionMuscles[i].dof = dof;
+                        motionMuscles[i].jointIndex = jointIndex;
+                        motionMuscles[i].muscleIndex = muscleIndex;
+                        motionMuscles[i].muscleName = muscleName;
 
-                motionJoint.MaxRange = max;
-                motionJoint.MinRange = min;
+                        GetMuscleRangeAndAxis(targetJoint, currentPose, humanPoseHandler, muscleIndex, out float minAngle, out float maxAngle, out float3 axis);
+
+
+                        MMJoint motionJoint = motionJoints[jointIndex];
+                        if (motionJoint == null)
+                        {
+                            motionJoint =targetJoint.gameObject.AddComponent<MMJoint>();
+/*                            motionJoint.position = targetJoint.position;
+                            motionJoint.rotation = targetJoint.rotation;*/
+                            motionJoint.humanBodyBone = (HumanBodyBones)jointIndex;
+
+                        }
+                        motionJoint.muscles[dof] = motionMuscles[i];
+
+                        float3x3 dof3Axis = motionJoint.dof3Axis;
+                        dof3Axis[dof] = axis;
+                        motionJoint.dof3Axis = dof3Axis;
+
+                        float3 minRange = motionJoint.minRange;
+                        minRange[dof] = minAngle;
+                        motionJoint.minRange = minRange;
+
+                        float3 maxRange = motionJoint.maxRange;
+                        maxRange[dof] = maxAngle;
+                        motionJoint.maxRange = maxRange;
+
+                        motionJoints[jointIndex] = motionJoint;
+                    }
+                }
             }
-            else
+            var hipMotionJoint = animator.GetBoneTransform((HumanBodyBones)0).gameObject.AddComponent<MMJoint>();
+/*            hipMotionJoint.position = hipMotionJoint.transform.position;
+            hipMotionJoint.rotation = hipMotionJoint.transform.rotation;*/
+            hipMotionJoint.humanBodyBone = (HumanBodyBones)0;
+            motionJoints[0]=hipMotionJoint;
+
+            //OYM：load2 clac joint localpos;
+
+            for (int i = 0; i < motionJoints.Length; i++)
             {
-                motionJoint.MaxRange = limit.max;
-                motionJoint.MinRange = limit.min;
+                var currentJoint = motionJoints[i];
+                if (motionJoints[i] == null)
+                {
+                    continue;
+                }
+                int parentIndex = i;
+                do
+                {
+                    parentIndex = HumanTrait.GetParentBone(parentIndex);
+                } while (parentIndex != -1 && motionJoints[parentIndex] == null);
+                currentJoint.parentIndex = parentIndex;
+
+                if (currentJoint.parentIndex == -1)
+                {
+                    currentJoint.localRotation = math.mul(math.inverse(animator.transform.rotation), currentJoint.transform.rotation);
+                    currentJoint.localPosition = math.mul(math.inverse(animator.transform.rotation), (float3)currentJoint.transform.position - (float3)animator.transform.position);
+                }
+                else
+                {
+                    var parentJoint = motionJoints[currentJoint.parentIndex];
+                    currentJoint.localRotation = math.mul(math.inverse(parentJoint.transform. rotation), currentJoint.transform.rotation);
+                    currentJoint.localPosition = math.mul(math.inverse(parentJoint.transform.rotation),(float3)( currentJoint.transform.position - parentJoint.transform.position));
+                    currentJoint.parent = parentJoint;
+                }
+                motionJoints[i] = currentJoint;
             }
 
+            //OYM：load 3 import range if not useDefaultValues
+            var humanbone = humandescription.human;
+            for (int i = 0; i < humanbone.Length; i++)
+            {
+                var jointDescription = humanbone[i];
+                int boneIndex = Array.IndexOf(HumanTrait.BoneName, jointDescription.humanName);
+                if (!jointDescription.limit.useDefaultValues)
+                {
+                    var motionJoint = motionJoints[boneIndex];
+                    motionJoint.minRange = jointDescription.limit.min;
+                    motionJoint.maxRange = jointDescription.limit.max;
+                }
 
-            motionJoint.position = jointTransform.position;
-            motionJoint.rotation = jointTransform.rotation;
+            }
 
-            joints[boneIndex] = motionJoint;
+            //OYM：load4 remove null joint;
+
+            List<MMJoint> vaildJoint = new List<MMJoint>();
+            int[] indexOffset = new int[motionJoints.Length];
+            int lastoffset = 0;
+            for (int i = 0; i < indexOffset.Length; i++)
+            {
+                if (motionJoints[i] == null)
+                {
+                    lastoffset--;
+                }
+                else
+                {
+                    vaildJoint.Add(motionJoints[i]);
+                }
+                indexOffset[i] = i + lastoffset;
+            }
+            motionJoints = vaildJoint.ToArray();
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                if (motionJoints[i].parentIndex!=-1)
+                {
+                    motionJoints[i].parentIndex = indexOffset[motionJoints[i].parentIndex];
+                }
+            }
+
+            //OYM：load5 remove null muscle;
+            List<MMMuscle> vaildmotionMuscle = new List<MMMuscle>();
+            for (int i = 0; i < motionMuscles.Length; i++)
+            {
+                if (motionMuscles[i] != null)
+                {
+                    motionMuscles[i].jointIndex = indexOffset[motionMuscles[i].jointIndex];
+                    vaildmotionMuscle.Add(motionMuscles[i]);
+                }
+            }
+            motionMuscles = vaildmotionMuscle.ToArray();
+
+            isInitialize=true;
         }
-        //OYM：load2
-        for (int i = 0; i < joints.Length; i++)
+
+        public void UpdateMuscle()
         {
-            MagicMotionJoint currentJoint = joints[i];
-            if (!currentJoint.isVaild)
+            //OYM：set value;
+            for (int i = 0; i < motionMuscles.Length; i++)
             {
-                continue;
+                var motionjoint = this.motionJoints[motionMuscles[i].jointIndex];
+                if (motionjoint.enabled)
+                {
+                    motionjoint.Dof3[motionMuscles[i].dof] = motionMuscles[i].value;
+                }
             }
-
-            int parentIndex = i;
-            do
-            {
-                parentIndex = HumanTrait.GetParentBone(parentIndex);
-            } while (parentIndex != -1 && joints[parentIndex].isVaild != true);
-
-            currentJoint.parentIndex = parentIndex;
-
-            if (currentJoint.parentIndex == -1)
-            {
-                currentJoint.localRotation = currentPose.bodyRotation * math.inverse(currentJoint.rotation);
-                currentJoint.localPosition = math.mul(math.inverse(currentPose.bodyRotation), currentJoint.position - (float3)currentPose.bodyPosition);
-            }
-            else
-            {
-                var parentJoint = joints[currentJoint.parentIndex];
-                currentJoint.localRotation =math.mul( parentJoint.rotation, math.inverse(currentJoint.rotation));
-                currentJoint.localPosition = math.mul(math.inverse(parentJoint.rotation), currentJoint.position - parentJoint.position);
-            }
-
-            joints[i] = currentJoint;
         }
-    }
-
-
-    private void OnDrawGizmos()
-    {
-
-    }
-    private void OnDestroy()
-    {
-
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        if (isUpdatePosition)
+        public void UpdateMotion()
         {
-            RigidTransform[] jointUpdateTransform =new RigidTransform[joints.Length];
-            for (int i = 0; i < joints.Length; i++)
+            //OYM：rebuild sklenon
+            RigidTransform[] jointUpdateTransform = new RigidTransform[motionJoints.Length];
+            for (int i = 0; i < motionJoints.Length; i++)
             {
-                //OYM：getdata
-                int currentIndex = i;
-                MagicMotionJoint currentJoint = joints[currentIndex];
-                if (!currentJoint.isVaild)
+                MMJoint currentJoint = motionJoints[i];
+                if (currentJoint == null || !currentJoint.enabled)
                 {
                     continue;
                 }
 
-                Transform jointTransform = animator.GetBoneTransform((HumanBodyBones)currentIndex);
+                Transform jointTransform = currentJoint.transform;
                 RigidTransform currentTrans = new RigidTransform();
 
                 //OYM：Dof to euler angle
-                float3 Dof3toEuler = 
-                    math.lerp(0, currentJoint.MinRange, -math.clamp(currentJoint.Dof3, -2, 0))
-                    + math.lerp(0, currentJoint.MaxRange, math.clamp(currentJoint.Dof3, 0, 2));
-                quaternion euler = quaternion.Euler(math.radians(Dof3toEuler));
+                float3 Dof3toEuler =
+                    math.lerp(0, currentJoint.minRange, -math.clamp(currentJoint.Dof3, -2, 0))
+                    + math.lerp(0, currentJoint.maxRange, math.clamp(currentJoint.Dof3, 0, 2));
 
-
+                quaternion eulerAngle = quaternion.identity;
+                if (currentJoint.Dof3[0] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], math.radians(Dof3toEuler[0])), eulerAngle);
+                }
+                if (currentJoint.Dof3[2] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], math.radians(Dof3toEuler[2])), eulerAngle);
+                }
+                if (currentJoint.Dof3[1] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], math.radians(Dof3toEuler[1])), eulerAngle);
+                }
                 quaternion parentRotation; float3 parentPosition;
                 if (currentJoint.parentIndex == -1)
                 {
-                    parentRotation = animator.bodyRotation;
-                    parentPosition = animator.bodyPosition;
+                    parentPosition = animator.transform.position;
+                    parentRotation = animator.transform.rotation;
                 }
                 else
                 {
                     parentRotation = jointUpdateTransform[currentJoint.parentIndex].rot;
                     parentPosition = jointUpdateTransform[currentJoint.parentIndex].pos;
-
                 }
-                currentTrans.rot = math.mul(euler, math.mul(parentRotation, currentJoint.localRotation));
+                currentTrans.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
                 currentTrans.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
 
                 jointUpdateTransform[i] = currentTrans;
                 jointTransform.position = jointUpdateTransform[i].pos;
                 jointTransform.rotation = jointUpdateTransform[i].rot;
             }
+
+        }
+        private static Quaternion ConvertRightHandedToLeftHandedQuaternion(Quaternion rightHandedQuaternion)
+        {
+            return new Quaternion(-rightHandedQuaternion.x,
+                                   -rightHandedQuaternion.z,
+                                   -rightHandedQuaternion.y,
+                                     rightHandedQuaternion.w);
+        }
+
+        public static void GetMuscleRangeAndAxis(Transform targetBone, HumanPose currentPose, HumanPoseHandler humanPoseHandler, int muscleIndex, out float minAngle, out float maxAngle, out float3 axis)
+        {
+            float[] muscleValue = currentPose.muscles;
+            //defaultValue = 0;
+
+            float min = HumanTrait.GetMuscleDefaultMin(muscleIndex);
+            float max = HumanTrait.GetMuscleDefaultMax(muscleIndex);
+
+            muscleValue[muscleIndex] = 1;
+            humanPoseHandler.SetHumanPose(ref currentPose);
+            Quaternion positiveLocalRotation = targetBone.localRotation;
+
+
+            muscleValue[muscleIndex] = -1;
+            humanPoseHandler.SetHumanPose(ref currentPose);
+            Quaternion negativeLocalRotation = targetBone.localRotation;
+
+            muscleValue[muscleIndex] = 0;
+            humanPoseHandler.SetHumanPose(ref currentPose);
+            Quaternion initialLocalRotation = targetBone.localRotation;
+
+            /*        muscleValue[muscleIndex] = defaultValue;
+                    humanPoseHandler.SetHumanPose(ref currentPose);*/
+            //OYM：positiveLocalRotation=initialLocalRotation *positiveRotate,it should under the initialLocalRotation axis.
+            Quaternion positiveRotate = Quaternion.Inverse(initialLocalRotation) * positiveLocalRotation;
+            Quaternion negativeRotate = Quaternion.Inverse(initialLocalRotation) * negativeLocalRotation;
+            positiveRotate.ToAngleAxis(out maxAngle, out Vector3 axis1);
+            negativeRotate.ToAngleAxis(out minAngle, out Vector3 axis2);
+            //negative
+            /*        minAngle *= -1;*/
+            minAngle = min;
+            maxAngle = max;
+            axis = axis1;
+        }
+        public static bool GetMuscleData(int muscleIndex, out int boneIndex, out int dof, out string muscleName, out string boneName)
+        {
+            dof = -1;
+            muscleName = null;
+            boneName = null;
+            boneIndex = HumanTrait.BoneFromMuscle(muscleIndex);
+            if (boneIndex == -1)
+            {
+                return false;
+            }
+            else
+            {
+                for (int i = 0; i < 3; i++)
+                {
+                    int muscleIndexCmp = HumanTrait.MuscleFromBone(boneIndex, i);
+                    if (muscleIndexCmp == muscleIndex)
+                    {
+                        dof = i;
+                        break;
+                    }
+                }
+                muscleName = HumanTrait.MuscleName[muscleIndex];
+                boneName = HumanTrait.BoneName[boneIndex];
+                return true;
+            }
         }
     }
-    public static unsafe void RemoveAllWhitespace(ref string str)
+    /*          
+
+        public static unsafe void RemoveAllWhitespace(ref string str)
     {
         fixed (char* pfixed = str)
         {
@@ -225,7 +385,129 @@ public unsafe class Test : MonoBehaviour
             pfixed[len] = '\0';
         }
     }
+*/
+    /*        var avatar = animator.avatar;
+            var humanDiscription = avatar.humanDescription;
+             humanPoseHandler = new HumanPoseHandler(avatar, animator.transform);
+            currentPose = new HumanPose();
+            humanPoseHandler.GetHumanPose(ref currentPose);
 
+            joints = new MagicMotionJoint[(int)HumanBodyBones.LastBone];
+
+            var defalutMuscleValue = new HumanPose();
+            defalutMuscleValue.bodyPosition = currentPose.bodyPosition;
+            defalutMuscleValue.bodyRotation = currentPose.bodyRotation;
+
+            defalutMuscleValue.muscles = new float[currentPose.muscles.Length];
+            currentPose.muscles = new float[currentPose.muscles.Length];
+            *//*        currentPose.muscles[0] = value;
+                    currentPose.muscles[1] = value1;
+                    currentPose.muscles[2] = value2;*//*
+            humanPoseHandler.SetHumanPose(ref defalutMuscleValue);
+            for (int i = 0; i < humanDiscription.human.Length; i++)
+            {
+                var jointDescription = humanDiscription.human[i];
+                int boneIndex= Array.IndexOf(HumanTrait.BoneName, jointDescription.humanName);
+                HumanBodyBones humanBodyBone = (HumanBodyBones)boneIndex;
+                Transform jointTransform = animator.GetBoneTransform(humanBodyBone);
+                if (jointTransform==null)
+                {
+                    continue;
+                }
+
+                MagicMotionJoint motionJoint = new MagicMotionJoint(true);
+                motionJoint.humanBodyBone = humanBodyBone;
+                var limit = jointDescription.limit;
+                float3 dof3 = 0;
+                float3 min = 0;
+                float3 max = 0;
+                for (int j0 = 0; j0 < 3; j0++)//OYM：dof
+                {
+                    int muscleIndex = HumanTrait.MuscleFromBone((int)humanBodyBone, j0);
+                    if (muscleIndex != -1)
+                    {
+                        dof3[j0] = currentPose.muscles[muscleIndex];
+                        min[j0] = HumanTrait.GetMuscleDefaultMin(muscleIndex);
+                        max[j0] = HumanTrait.GetMuscleDefaultMax(muscleIndex);
+                    }
+                }
+                motionJoint.Dof3 = dof3;
+
+                if (limit.useDefaultValues)
+                {
+
+                    motionJoint.MaxRange = max;
+                    motionJoint.MinRange = min;
+                }
+                else
+                {
+                    motionJoint.MaxRange = limit.max;
+                    motionJoint.MinRange = limit.min;
+                }
+
+
+                motionJoint.position = jointTransform.position;
+                motionJoint.rotation = jointTransform.rotation;
+
+                joints[boneIndex] = motionJoint;
+            }
+
+    /*        for (int i = 0; i < joints.Length; i++)
+            {
+                for (int j0 = 0; j0 < 3; j0++)//OYM：dof
+                {
+                    int muscleIndex = HumanTrait.MuscleFromBone(i, j0);
+                    if (muscleIndex != -1)
+                    {
+                        joints[i].Dof3[j0] = currentPose.muscles[muscleIndex];
+                    }
+                }
+            }
+            if (isUpdatePosition)
+            {
+                RigidTransform[] jointUpdateTransform =new RigidTransform[joints.Length];
+                for (int i = 0; i < joints.Length; i++)
+                {
+                    //OYM：getdata
+                    int currentIndex = i;
+                    MagicMotionJoint currentJoint = joints[currentIndex];
+                    if (!currentJoint.isVaild)
+                    {
+                        continue;
+                    }
+
+                    Transform jointTransform = animator.GetBoneTransform((HumanBodyBones)currentIndex);
+                    RigidTransform currentTrans = new RigidTransform();
+
+                    //OYM：Dof to euler angle
+                    float3 Dof3toEuler = 
+                        math.lerp(0, currentJoint.MinRange, -math.clamp(currentJoint.Dof3, -2, 0))
+                        + math.lerp(0, currentJoint.MaxRange, math.clamp(currentJoint.Dof3, 0, 2));
+
+                    Dof3toEuler = Dof3toEuler * new float3(0, -1, -1);
+                    quaternion euler = quaternion.Euler(math.radians(Dof3toEuler));
+                   // quaternion euler = quaternion.identity;
+
+                    quaternion parentRotation; float3 parentPosition;
+                    if (currentJoint.parentIndex == -1)
+                    {
+                        parentPosition = animator.transform.position;
+                         parentRotation = animator.transform.rotation; ;
+                    }
+                    else
+                    {
+                        parentRotation = jointUpdateTransform[currentJoint.parentIndex].rot;
+                        parentPosition = jointUpdateTransform[currentJoint.parentIndex].pos;
+
+                    }
+                    currentTrans.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, euler));
+                    currentTrans.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
+
+                    jointUpdateTransform[i] = currentTrans;
+                    jointTransform.position = jointUpdateTransform[i].pos;
+                    jointTransform.rotation = jointUpdateTransform[i].rot;
+                }
+            }*/
     /*
             [System.Serializable]
             internal class AvatarMuscleEditor 

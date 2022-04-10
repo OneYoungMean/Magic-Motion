@@ -495,9 +495,17 @@ ModelImporter:
     optimizeGameObjects: 0
     motionNodeName: 
     rigImportErrors: 
-    rigImportWarnings: 
+    rigImportWarnings: "Avatar Rig Configuration mis-match. Inbetween bone rotation
+      in configuration does not match rotation in animation file:\n\t'UpperChest'
+      : rotation error = 3.833055 deg\n"
     animationImportErrors: 
-    animationImportWarnings: 
+    animationImportWarnings: "\nClip 'Idle' has import animation warnings that might
+      lower retargeting quality:\nNote: Activate translation DOF on avatar to improve
+      retargeting quality.\n\t'UpperChest' is inbetween humanoid transforms and has
+      rotation animation that will be discarded.\n\nClip 'ROM' has import animation
+      warnings that might lower retargeting quality:\nNote: Activate translation
+      DOF on avatar to improve retargeting quality.\n\t'UpperChest' is inbetween
+      humanoid transforms and has rotation animation that will be discarded.\n"
     animationRetargetingWarnings: 
     animationDoRetargetingWarnings: 0
     importAnimatedCustomProperties: 0
@@ -1427,12 +1435,12 @@ ModelImporter:
       position: {x: -0.054048974, y: 8.881784e-18, z: 7.105427e-17}
       rotation: {x: -2.8384017e-10, y: 0.000000017475124, z: 0.00000004680691, w: 1}
       scale: {x: 1, y: 1, z: 1}
-    armTwist: 0.5
-    foreArmTwist: 0.5
+    armTwist: 0
+    foreArmTwist: 0
     upperLegTwist: 0.5
     legTwist: 0.5
-    armStretch: 0.05
-    legStretch: 0.05
+    armStretch: 0
+    legStretch: 0
     feetSpacing: 0
     globalScale: 1
     rootMotionBoneName: 
