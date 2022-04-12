@@ -39,7 +39,14 @@ namespace MagicMotion
         /// initial localRotation from parent,used be clac currentPosition and localRotation
         /// </summary>
         public quaternion localRotation;
-
+        /// <summary>
+        /// initial localPosition 's Length
+        /// </summary>
+        public float length;
+        /// <summary>
+        /// the direction length to hips joint
+        /// </summary>
+        public float cumulativeLength;
         /// <summary>
         /// the dof3 axis
         /// </summary>

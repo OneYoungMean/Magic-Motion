@@ -27,6 +27,7 @@ namespace MagicMotion.Mono
         /// Constraint target
         /// </summary>
         public Transform targetJointTransform;
+
         /// <summary>
         /// initialLocalPosition;
         /// </summary>
@@ -35,6 +36,7 @@ namespace MagicMotion.Mono
         /// initialLocalQuaternion;
         /// </summary>
         private Quaternion initalLocalRotation;
+
 
         public override void Initialize()
         {

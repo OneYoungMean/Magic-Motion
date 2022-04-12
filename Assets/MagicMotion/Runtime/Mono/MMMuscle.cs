@@ -4,26 +4,24 @@ using UnityEngine;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
 
-namespace MagicMotion
+namespace MagicMotion.Mono
 {
     public class MMMuscle:MonoBehaviour
     {
         /// <summary>
-        /// the muscle index,range 0-95
+        /// the muscle index
         /// </summary>
         [HideInInspector]
         public int muscleIndex;
         /// <summary>
-        /// muscle to joint index ,range0-55
-        /// </summary>
-        [HideInInspector]
-        public int jointIndex;
-        /// <summary>
-        /// muscle dof range 0-2
+        /// muscle dof ,must from range 0-2
         /// </summary>
         [HideInInspector]
         public int dof;
-
+        /// <summary>
+        /// muscle to joint 
+        /// </summary>
+        public MMJoint joint;
         /// <summary>
         /// the muscle Name
         /// </summary>
@@ -39,7 +37,7 @@ namespace MagicMotion
             return new MMMuscleNative()
             {
                 muscleIndex = muscleIndex,
-                jointIndex = jointIndex,
+                jointIndex = joint.jointIndex,
                 dof = dof,
             };
         }

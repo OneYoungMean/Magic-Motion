@@ -22,38 +22,43 @@ namespace MagicMotion
     /// The joint constraint.
     /// Can be read as position ,Rotation LookAt
     /// </summary>
-    [StructLayout(LayoutKind.Explicit)]
+    //[StructLayout(LayoutKind.Explicit)]
     public struct MMConstraintNative
     {
         /// <summary>
-        /// The target joint index;
-        /// </summary>
-        [FieldOffset(0)] public byte targetJointIndex;
-
-        /// <summary>
         /// The constraint type
         /// </summary>
-        [FieldOffset(1)] public MMConstraintType constraintType;
+        //[FieldOffset(0)] 
+        public MMConstraintType constraintType;
+
+        /// <summary>
+        /// The target joint index;
+        /// </summary>
+        //[FieldOffset(1)] 
+        public int targetJointIndex;
+
+        /// <summary>
+        /// The target's position or eulers weight, range [0-1],0 means dont believe that. 
+        /// </summary>
+        //[FieldOffset(1 + 4 )] 
+        public float3 weight3;
+        /// <summary>
+        /// The target's position or eulers weight, range [0-1],0 means dont believe that. 
+        /// </summary>
+        //[FieldOffset(1 + 4+12)] 
+        public float3 torlerace3;
 
         /// <summary>
         /// The target position .overlapping with rotation
         /// </summary>
-        [FieldOffset(1 + 1)] public float3 position;
+        //[FieldOffset(1 + 4 + 12+12)]
+        public float3 position;
 
         /// <summary>
         /// The target rotation .overlapping with position
         /// </summary>
-        [FieldOffset(1 + 1)] public quaternion rotation;
-
-
-        /// <summary>
-        /// The target's position or eulers weight, range [0-1],0 means dont believe that. 
-        /// </summary>
-        [FieldOffset(1 + 1 + 16)] public float3 weight3;
-        /// <summary>
-        /// The target's position or eulers weight, range [0-1],0 means dont believe that. 
-        /// </summary>
-        [FieldOffset(1 + 1 + 16+12)] public float3 torlerace3;
+        //[FieldOffset(1 + 4 + 12 + 12)]
+        public quaternion rotation;
     }
     #endregion
 }

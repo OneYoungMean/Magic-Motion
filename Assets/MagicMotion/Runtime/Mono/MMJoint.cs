@@ -14,10 +14,18 @@ namespace MagicMotion.Mono
     public class MMJoint:MonoBehaviour
     {
         /// <summary>
+        /// the joint Name
+        /// </summary>
+        public string jointName;
+        /// <summary>
+        /// data index in array
+        /// </summary>
+        [HideInInspector]
+        public int jointIndex;
+        /// <summary>
         ///  the joint's parent , the hip 's parent is empty
         /// </summary>
         public MMJoint parent;
-
         /// <summary>
         ///  the joint's muscle
         /// </summary>
@@ -26,11 +34,6 @@ namespace MagicMotion.Mono
         ///  the joint's constraint
         /// </summary>
         public MMConstraint[]constraints = new MMConstraint[sizeof(byte)*8];
-        /// <summary>
-        ///  parent index in heap
-        /// </summary>
-        [HideInInspector]
-        public int parentIndex;
 
         /// <summary>
         /// if is Position Joint mode ,it means move Range ,else means euler angle;
@@ -57,20 +60,15 @@ namespace MagicMotion.Mono
         /// </summary>
         public float3x3 dof3Axis;
 
-/*        /// <summary>
-        /// initial worldPosition from parent,used be clac currentPosition
+        /// <summary>
+        /// initial localPosition 's Length
         /// </summary>
-        public float3 position;
+        public float length;
 
         /// <summary>
-        /// initial localRotation from parent,used be clac currentPosition and localRotation
+        /// the direction length to hips joint
         /// </summary>
-        public quaternion rotation;*/
-
-        /// <summary>
-        /// the intial motion's dof,mostly is zero
-        /// </summary>
-        public float3 Dof3;
+        public float cumulativeLength;
 
         /// <summary>
         /// the joint human type
@@ -82,12 +80,15 @@ namespace MagicMotion.Mono
         {
             return new MMJointNative()
             {
-                parentIndex = parentIndex,
+                parentIndex = parent.jointIndex,
                 localPosition = initiallocalPosition,
                 localRotation = initiallocalRotation,
                 maxRange = maxRange,
                 minRange = minRange,
                 dof3Axis = dof3Axis,
+                length = length,
+                cumulativeLength = cumulativeLength,
+
                 isVaild = enabled,
             };
     }
