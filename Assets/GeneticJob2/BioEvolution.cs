@@ -84,7 +84,7 @@ namespace BioIK2
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
 /*                optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));*/
-                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y, 1e-5f));
+                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y));
             }
 
 
@@ -133,9 +133,6 @@ namespace BioIK2
                 for (int i = 0; i < elites; i++)
                 {
                     models[i].CopyFrom(bioModel);
-
-                   UnsafeUtility.MemCpy( optimisers2[i].UpperBounds .GetUnsafePtr(),upperBounds.GetUnsafePtr(), upperBounds.Length*UnsafeUtility.SizeOf<float3>());
-                    UnsafeUtility.MemCpy(optimisers2[i].LowerBounds.GetUnsafePtr(), lowerBounds.GetUnsafePtr(), lowerBounds.Length * UnsafeUtility.SizeOf<float3>());
                 }
                 for (int i = 0; i < generations; i++)
                 {
