@@ -124,44 +124,51 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-5f;
     private const float STEP_MAX = 180f;
+    private const float RANGLE_MIN=-1;
+    private const float RANGE_MAX=1;
 
     // Line search parameters
-    private float grandientTolerence = 1;
+    private float fitnessTolerence = 1;
     private int maxInnerLoop = 40;
 
-    private float tolerance =1f;
+    private float tolerance = 1f;
     private int iterations;
     private int evaluations;
 
     private int numberOfVariables;
-    private int corrections = 5;
+    private int corrections = 3;
 
     private NativeArray<float> currentSolution; // current solution x
-   private float fitness;   // value at current solution f(x)
+    private float fitness;   // value at current solution f(x)
     NativeArray<float> gradient;         // gradient at current solution
 
-    private NativeArray<float> work;
     private float gnorm;
     private float xnorm;
-    private float stp;
+    private float innerLoopStep;
     private float stp1;
-    private int nfev;
+    private int innerLoopCount;
     private int point;
-    private int nowPoint;
-    private int correctionsTemp;
+    private int matrixPoint;
+    private int prePointLoop;
     private bool isfinish;
-    private float fitnesstest1;
     private int funcState;
     private bool isInBracket;
     private bool stage1;
-    private float gradientInitial;
-
+    private float fitnessInit;
+    private float width;
+    private float width1;
     private NativeArray<float> diagonal;
     private NativeArray<float> gradientStore;
     private NativeArray<float> rho;
     private NativeArray<float> alpha;
     private NativeArray<float> steps;
     private NativeArray<float> delta;
+    private float stepBoundX;
+    private float fitnessX;
+    private float gradientInitialX;
+    private float stepBoundY;
+    private float fitnessY;
+    private float gradientInitialY;
 
 
     #region Properties
@@ -190,14 +197,14 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public Func<NativeArray<float>, NativeArray<float>> Gradient { get; set; }
 
-/*    /// <summary>
-    ///   Gets or sets a function returning the Hessian
-    ///   diagonals to be used during optimization.
-    /// </summary>
-    /// 
-    /// <value>A function for the Hessian diagonal.</value>
-    /// 
-    public Func<NativeArray<float>> Diagonal { get; set; }*/
+    /*    /// <summary>
+        ///   Gets or sets a function returning the Hessian
+        ///   diagonals to be used during optimization.
+        /// </summary>
+        /// 
+        /// <value>A function for the Hessian diagonal.</value>
+        /// 
+        public Func<NativeArray<float>> Diagonal { get; set; }*/
 
     /// <summary>
     ///   Gets the number of variables (free parameters)
@@ -300,13 +307,13 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public float Precision
     {
-        get { return grandientTolerence; }
+        get { return fitnessTolerence; }
         set
         {
             if (value <= 1e-4)
                 throw new ArgumentOutOfRangeException("value");
 
-            grandientTolerence = value;
+            fitnessTolerence = value;
         }
     }
 
@@ -330,11 +337,6 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     }
 
     #endregion
-
-    ~BroydenFletcherGoldfarbShanno()
-    {
-        Dispose();
-    }
 
     #region Constructors
 
@@ -421,7 +423,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         if (values == null)
             throw new ArgumentNullException("values");
 
-        if (values.Length*3 != numberOfVariables)
+        if (values.Length * 3 != numberOfVariables)
             throw new DimensionMismatchException("values");
 
         UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), values.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
@@ -461,428 +463,458 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
 
         // Obtain initial Hessian
-        NativeArray<float> diagonal = default(NativeArray<float>);
-
-        diagonal = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
         for (int i = 0; i < diagonal.Length; i++)
         {
             diagonal[i] = 1.0f;
         }
 
 
-            // Initialize work vector
+        // Initialize work vector
+        for (int i = 0; i < gradient.Length; i++)
+        {
+            steps[i] = -gradient[i] * diagonal[i];
+        }
+
+        // Initialize statistics
+        gnorm = Norm.Euclidean(gradient);
+        xnorm = Norm.Euclidean(currentSolution);
+        innerLoopStep = 1.0f / gnorm;
+
+        // Initialize loop
+        innerLoopCount = 0;
+        point = 0;
+        matrixPoint = 0;
+        prePointLoop = 0;
+        isfinish = false;
+
+        /*            // Make initial progress report with initialization parameters
+                    if (Progress != null) Progress(this, new OptimizationProgressEventArgs
+                        (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, finish));//OYM：输出初始状态*/
+
+        // Start main
+        while (!isfinish)
+        {
+            iterations++;
+
+            if (iterations != 1)
+            {
+
+                float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);
+
+                // Compute the diagonal of the Hessian
+                // or use an approximation by the user.
+                ComputeDiagonal(diagonal, delta, matrixPoint, numberOfVariables, sumY);
+
+                // Compute -H*g using the formula given in:
+                //   Nocedal, J. 1980, "Updating quasi-Newton matrices with limited storage",
+                //   Mathematics of Computation, Vol.24, No.151, pp. 773-782.
+
+                int bound = math.min(iterations - 1, corrections);
+
+                for (int i = 0; i < numberOfVariables; i++)
+                {
+                    gradientStore[i] = -gradient[i];
+                }
+
+                UpdatingQuasi_Newton(diagonal, rho, gradientStore, steps, alpha, delta, numberOfVariables, corrections, point, bound, sumY);
+
+                matrixPoint = point * numberOfVariables;
+
+                // Store the search direction
+                for (int i = 0; i < numberOfVariables; i++)
+                {
+                    steps[matrixPoint + i] = gradientStore[i];
+                }
+                innerLoopStep = 1;
+            }
+
+            // Save original gradient
+            UnsafeUtility.MemCpy(gradientStore.GetUnsafePtr(), gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<float>());
+
+            /*            // Obtain the one-dimensional minimizer of f by computing a line search
+                        bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, steps.Slice(point * numberOfVariables, numberOfVariables), ref innerLoopStep, out innerLoopCount, diagonal);*/
+            var isContinue = false;
+            var innerLoopSteps = steps.Slice(point * numberOfVariables, numberOfVariables);
+
+            funcState = 1;
+            innerLoopCount = 0;
+
+            if (innerLoopStep <= 0)
+            {
+                //OYM：Invalid step size
+                isContinue = false;
+                break;
+            }
+
+            // Compute the initial gradient in the search direction
+            // and check that s is a descent direction.
+
+            float gradientInitial = GetGradientInitial(gradient, innerLoopSteps, numberOfVariables);
+
+            if (gradientInitial >= 0)//OYM：梯度爆炸
+            {
+                isContinue = false;
+                break;
+                // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
+            }
+
+
+
+            isInBracket = false;
+            stage1 = true;
+
+             fitnessInit = fitness;
+   
+             width = STEP_MAX - STEP_MIN;
+             width1 = width / 0.5f;
+
+            UnsafeUtility.MemCpy(diagonal.GetUnsafePtr(), currentSolution.GetUnsafePtr(), numberOfVariables * UnsafeUtility.SizeOf<float>());
+
+            // The variables stx, fx, dgx contain the values of the
+            // step, function, and directional derivative at the best
+            // step.
+
+             stepBoundX = 0;
+             fitnessX = fitnessInit;
+             gradientInitialX = gradientInitial;
+
+            // The variables sty, fy, dgy contain the value of the
+            // step, function, and derivative at the other endpoint
+            // of the interval of uncertainty.
+
+             stepBoundY = 0;
+             fitnessY = fitnessInit;
+             gradientInitialY = gradientInitial;
+
+            // The variables stp, f, dg contain the values of the step,
+            // function, and derivative at the current step.
+
+            while (true)
+            {
+                // Set the minimum and maximum steps to correspond
+                // to the present interval of uncertainty.
+
+                float stepBoundMin, stepBoundMax;
+
+                if (isInBracket)//OYM：brackt意思是括号?
+                {
+                    stepBoundMin = math.min(stepBoundX, stepBoundY);
+                    stepBoundMax = math.max(stepBoundX, stepBoundY);
+                }
+                else
+                {
+                    stepBoundMin = stepBoundX;
+                    stepBoundMax = innerLoopStep + 4.0f * (innerLoopStep - stepBoundX);
+                }
+
+                // If an unusual termination is to occur then let
+                // stp be the lowest point obtained so far.
+                //OYM：约束step的上下界
+                innerLoopStep = math.max(innerLoopStep, STEP_MIN);
+                innerLoopStep = math.min(innerLoopStep, STEP_MAX);
+
+                if (
+                    (isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) ||//OYM：step在bound外
+                    (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
+                    (innerLoopCount >= maxInnerLoop - 1) || (funcState == 0))
+                {
+                    innerLoopStep = stepBoundX;
+                }
+                // Force the step to be within the bounds stpmax and stpmin.
+
+
+                // Evaluate the function and gradient at stp
+                // and compute the directional derivative.
+                // We return to main program to obtain F and G.
+
+                for (int j = 0; j < currentSolution.Length; j++)
+                {
+                    currentSolution[j] = diagonal[j] + innerLoopStep * innerLoopSteps[j];
+                    currentSolution[j] = math.clamp(currentSolution[j], RANGLE_MIN, RANGE_MAX);
+                }
+
+
+                // Reevaluate function and gradient
+                fitness = GetFunction(currentSolution);
+                gradient = GetGradient(currentSolution);
+
+                innerLoopCount++;
+                float gradientTemp = GetGreadientTemp(gradient
+                    ,innerLoopSteps,numberOfVariables);
+
+
+                float gradientTest = FITNESS_TOLERENCE * gradientInitial;
+                float fitnesstest1 = fitnessInit + innerLoopStep * gradientTest;
+
+                // Test for convergence.
+
+                if (innerLoopCount >= maxInnerLoop)
+                {
+                    isContinue = false;
+                    break;
+                    //throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
+                }
+
+
+                if ((isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) || funcState == 0)
+                {
+                    isContinue = false;
+                    break;
+                    /*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
+                                                                           "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
+                                                                           "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
+                }
+
+                if (innerLoopStep == STEP_MAX && fitness <= fitnesstest1 && gradientTemp <= gradientTest)
+                {
+                    //OYM：answer out the max
+                    isContinue = false;
+                    break;
+                    //throw new LineSearchFailedException(5, "The step size has reached the upper bound.");
+                }
+
+
+                if (innerLoopStep == STEP_MIN && (fitness > fitnesstest1 || gradientTemp >= gradientTest))
+                {
+                    isContinue = false;
+                    break;
+                    //throw new LineSearchFailedException(4, "The step size has reached the lower bound.");
+                }
+
+
+                if (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
+                {
+                    isContinue = false;
+                    break;
+                    /*                    throw new LineSearchFailedException(2, "Relative width of the interval of uncertainty is at machine precision.");*/
+                }
+
+
+                if (fitness <= fitnesstest1 && math.abs(gradientTemp) <= fitnessTolerence * (-gradientInitial))
+                {
+                    isContinue = true;
+                    break;
+                    // successful
+                }
+
+
+                // Not converged yet. Continuing with the search.
+
+                // In the first stage we seek a step for which the modified
+                // function has a nonpositive value and nonnegative derivative.
+
+                if (stage1 &&
+                    fitness <= fitnesstest1 && 
+                    gradientTemp >= math.min(FITNESS_TOLERENCE, fitnessTolerence) * gradientInitial)
+                {
+                    stage1 = false;
+                }
+
+
+                // A modified function is used to predict the step only if we
+                // have not obtained a step for which the modified function has
+                // a nonpositive function value and nonnegative derivative, and
+                // if a lower function value has been obtained but the decrease
+                // is not sufficient.
+
+                if (stage1 && fitness <= fitnessX && fitness > fitnesstest1)
+                {
+                    // Define the modified function and derivative values.
+
+                    float fm = fitness - innerLoopStep * gradientTest;
+                    float fxm = fitnessX - stepBoundX * gradientTest;
+                    float fym = fitnessY - stepBoundY * gradientTest;
+
+                    float dgm = gradientTemp - gradientTest;
+                    float dgxm = gradientInitialX - gradientTest;
+                    float dgym = gradientInitialY - gradientTest;
+
+                    // Call cstep to update the interval of uncertainty
+                    // and to compute the new step.
+
+                    SearchStep(ref stepBoundX, ref fxm, ref dgxm,
+                        ref stepBoundY, ref fym, ref dgym, ref innerLoopStep,
+                        fm, dgm, ref isInBracket, out funcState);
+
+                    // Reset the function and gradient values for f.
+                    fitnessX = fxm + stepBoundX * gradientTest;
+                    fitnessY = fym + stepBoundY * gradientTest;
+                    gradientInitialX = dgxm + gradientTest;
+                    gradientInitialY = dgym + gradientTest;
+                }
+                else
+                {
+                    // Call mcstep to update the interval of uncertainty
+                    // and to compute the new step.
+
+                    SearchStep(
+                        ref stepBoundX, ref fitnessX, ref gradientInitialX,
+                        ref stepBoundY, ref fitnessY, ref gradientInitialY,
+                        ref innerLoopStep,
+                        fitness, gradientTemp, ref isInBracket, out funcState);
+                }
+
+                // Force a sufficient decrease in the size of the
+                // interval of uncertainty.
+
+                if (isInBracket)
+                {
+                    if (math.abs(stepBoundY - stepBoundX) >= 0.66f * width1)
+                        innerLoopStep = stepBoundX + 0.5f * (stepBoundY - stepBoundX);
+
+                    width1 = width;
+                    width = math.abs(stepBoundY - stepBoundX);
+                }
+            }
+
+            // Register evaluations
+            evaluations += innerLoopCount;
+
+            // Compute the new step and
+            // new gradient differences
             for (int i = 0; i < gradient.Length; i++)
             {
-                steps[i] = -gradient[i] * diagonal[i];
+                steps[matrixPoint + i] *= innerLoopStep;
+                delta[matrixPoint + i] = gradient[i] - gradientStore[i];
             }
 
-            // Initialize statistics
-             gnorm = Norm.Euclidean(gradient);
-             xnorm = Norm.Euclidean(currentSolution);
-             stp = 1.0f / gnorm;
-             stp1 = stp;
+            if (++point == corrections) point = 0;
 
-            // Initialize loop
-            nfev = 0;
-            point = 0;
-            nowPoint = 0;
-            correctionsTemp = 0;
-            isfinish = false;
+            // Check for termination
+            gnorm = Norm.Euclidean(gradient);
+            xnorm = Norm.Euclidean(currentSolution);
+            xnorm = math.max(1f, xnorm);
 
-/*            // Make initial progress report with initialization parameters
-            if (Progress != null) Progress(this, new OptimizationProgressEventArgs
-                (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, finish));//OYM：输出初始状态*/
-            
-            // Start main
-            while (!isfinish)
+            if (!isContinue && gnorm / xnorm <= tolerance)
             {
-                iterations++;
-                float bound = iterations - 1;
-
-                if (iterations != 1)
-                {
-                    if (iterations > corrections)
-                        bound = corrections;
-
-                    float sumY = 0;
-                    for (int i = 0; i < numberOfVariables; i++)
-                    {
-                        sumY += delta[nowPoint + i] * steps[nowPoint + i];
-                    }
-
-
-
-                    // Compute the diagonal of the Hessian
-                    // or use an approximation by the user.
-                    if (sumY == 0)
-                    {
-                        break;
-                    }
-                    float sqrY = 0;
-                    for (int i = 0; i < numberOfVariables; i++)
-                    {
-                        sqrY += delta[nowPoint + i] * delta[nowPoint + i];
-                    }
-
-                    float diagonalValue = (float)(sumY / sqrY);
-
-                    for (int i = 0; i < numberOfVariables; i++)
-                    {
-                        diagonal[i] = diagonalValue;
-                    }
-
-                    // Compute -H*g using the formula given in:
-                    //   Nocedal, J. 1980, "Updating quasi-Newton matrices with limited storage",
-                    //   Mathematics of Computation, Vol.24, No.151, pp. 773-782.
-
-                    correctionsTemp = (point == 0) ? corrections : point;
-
-                    rho[correctionsTemp - 1] = 1.0f /math.max((float)sumY,math.EPSILON);
-                    for (int i = 0; i < numberOfVariables; i++)
-                    {
-                        gradientStore[i] = -gradient[i];
-                    }
-
-                    correctionsTemp = point;
-                    for (int i = 1; i <= bound; i += 1)
-                    {
-                        if (--correctionsTemp == -1) correctionsTemp = corrections - 1;
-
-                        float sq = 0;
-                        for (int j = 0; j < numberOfVariables; j++)
-                            sq += steps[correctionsTemp * numberOfVariables + j] * gradientStore[j];
-
-                        float beta = alpha[correctionsTemp] = rho[correctionsTemp] * sq;
-                        for (int j = 0; j < numberOfVariables; j++)
-                            gradientStore[j] -= beta * delta[correctionsTemp * numberOfVariables + j];
-                    }
-
-                    for (int i = 0; i < diagonal.Length; i++)
-                    {
-                        gradientStore[i] *= diagonal[i];
-                    }
-
-
-                    for (int i = 1; i <= bound; i += 1)
-                    {
-                        float yr = 0;
-                        for (int j = 0; j < numberOfVariables; j++)
-                            yr += delta[correctionsTemp * numberOfVariables + j] * gradientStore[j];
-
-                        float beta = alpha[correctionsTemp] - rho[correctionsTemp] * yr;
-                        for (int j = 0; j < numberOfVariables; j++)
-                            gradientStore[j] += beta * steps[correctionsTemp * numberOfVariables + j];
-
-                        if (++correctionsTemp == corrections) correctionsTemp = 0;
-                    }
-
-                    nowPoint = point * numberOfVariables;
-
-                    // Store the search direction
-                    for (int i = 0; i < numberOfVariables; i++)
-                    {
-                        steps[nowPoint + i] = gradientStore[i];
-                    }
-
-
-                    stp = 1;
-                }
-                // Save original gradient
-                UnsafeUtility.MemCpy(gradientStore.GetUnsafePtr(), gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<float>());
-/*                for (int i = 0; i < gradient.Length; i++)
-                {
-                    gradientStore[i] = gradient[i];//OYM：原始数据
-                }*/
-                // Obtain the one-dimensional minimizer of f by computing a line search
-                bool isContinue = mcsrch(currentSolution, ref fitness, ref gradient, steps.Slice(point * numberOfVariables, numberOfVariables), ref stp, out nfev, diagonal);
-
-                // Register evaluations
-                evaluations += nfev;
-
-                // Compute the new step and
-                // new gradient differences
-                for (int i = 0; i < gradient.Length; i++)
-                {
-                    steps[nowPoint + i] *= stp;
-                    delta[nowPoint + i] = gradient[i] - gradientStore[i];
-                }
-
-                if (++point == corrections) point = 0;
-
-
-                // Check for termination
-                gnorm = Norm.Euclidean(gradient);
-                xnorm = Norm.Euclidean(currentSolution);
-                xnorm = math.max(1f, xnorm);
-
-
-
-
-                if (!isContinue && gnorm / xnorm <= tolerance)
-                    isfinish = true;
-
-                /*                for (int i = 0; i < n; i++)
-                                    ys += delta[npt + i] * steps[npt + i];
-
-                                if (ys==0)
-                                {
-                                    finish = true;
-                                }*/
-
-                if (Progress != null) Progress(this, new OptimizationProgressEventArgs
-                    (iterations, evaluations, gradient.ToArray(), gnorm, currentSolution.ToArray(), xnorm, fitness, stp, isfinish));
+                isfinish = true;
             }
-        
+
+
+        }
+
 
         return fitness; // return the minimum value found (at solution x)
     }
 
+    private float GetGreadientTemp(NativeArray<float> gradient, NativeSlice<float> innerLoopSteps,int numOf)
+    {
+        float gradientTemp = 0;
+        for (int j = 0; j < gradient.Length; j++)
+        {
+            gradientTemp = gradientTemp + gradient[j] * innerLoopSteps[j];
+        }
+        return gradientTemp;
+    }
+
+    private float  GetGradientInitial(NativeArray<float> gradient, NativeSlice<float> innerLoopSteps, int numberOfVariables)
+    {
+        float gradientInitial = 0f;
+        for (int j = 0; j < numberOfVariables; j++)
+        {
+            gradientInitial += gradient[j] * innerLoopSteps[j];
+        }
+        return gradientInitial;
+    }
+
+    private static void UpdatingQuasi_Newton(
+     NativeArray<float> diagonal, NativeArray<float>rho, NativeArray<float> gradientStore, NativeArray<float> steps, NativeArray<float> alpha, NativeArray<float> delta,
+        int numberOfVariables,int corrections,int point,int bound, float sumY)
+    {
+        int prePointLoop = ((point == 0) ? corrections : point) - 1;
+        rho[prePointLoop] = 1.0f / sumY;
+
+
+
+        prePointLoop = point;
+        for (int i = 0; i < bound; i++)
+        {
+            prePointLoop--;
+            if (prePointLoop == -1) prePointLoop = corrections - 1;
+
+            float lastSum = 0;
+            for (int j = 0; j < numberOfVariables; j++)
+            {
+                lastSum += steps[prePointLoop * numberOfVariables + j] * gradientStore[j];
+            }
+
+
+            alpha[prePointLoop] = rho[prePointLoop] * lastSum;
+            for (int j = 0; j < numberOfVariables; j++)
+            {
+                gradientStore[j] -= alpha[prePointLoop] * delta[prePointLoop * numberOfVariables + j];
+            }
+        }
+
+        for (int i = 0; i < diagonal.Length; i++)
+        {
+            gradientStore[i] *= diagonal[i];
+        }
+
+
+        for (int i = 0; i < bound; i++)
+        {
+            float yr = 0;
+            for (int j = 0; j < numberOfVariables; j++)
+            {
+                yr += delta[prePointLoop * numberOfVariables + j] * gradientStore[j];
+            }
+
+
+            float beta = alpha[prePointLoop] - rho[prePointLoop] * yr;
+            for (int j = 0; j < numberOfVariables; j++)
+            {
+                gradientStore[j] += beta * steps[prePointLoop * numberOfVariables + j];
+            }
+
+            prePointLoop++;
+
+            if (prePointLoop == corrections) prePointLoop = 0;
+        }
+    }
+
+    private static void ComputeDiagonal(NativeArray<float> diagonal, NativeArray<float> delta, int nowPoint, int numberOfVariables, float sumY)
+    {
+        float sqrY = 0;
+        for (int i = 0; i < numberOfVariables; i++)
+        {
+            sqrY += delta[nowPoint + i] * delta[nowPoint + i];
+        }
+
+        float diagonalValue = (float)(sumY / sqrY);
+
+        for (int i = 0; i < numberOfVariables; i++)
+        {
+            diagonal[i] = diagonalValue;
+        }
+    }
+
+    private static float GetSumY(NativeArray<float> delta, NativeArray<float> steps, int nowPoint, int numberOfVariables)
+    {
+        float sumY = 0;
+        for (int i = 0; i < numberOfVariables; i++)
+        {
+            sumY += delta[nowPoint + i] * steps[nowPoint + i];
+        }
+
+        return sumY;
+    }
+
 
     #region Line Search (mcsrch)
-
+/*
     /// <summary>
     ///   Finds a step which satisfies a sufficient decrease and curvature condition.
     /// </summary>
     /// 
-    private unsafe bool mcsrch(NativeArray<float> currentSolution, ref float fitness, ref NativeArray<float> gradient, NativeSlice<float> steps,
-        ref float step, out int innerLoop, NativeArray<float> diagonal)
+    private unsafe bool mcsrch(NativeArray<float> currentSolution, ref float fitness, ref NativeArray<float> gradient, NativeSlice<float> innerLoopSteps,
+        ref float innerLoopStep, out int innerLoopCount, NativeArray<float> diagonal)
     {
-         fitnesstest1 = 0;
-         funcState = 1;
-
-        innerLoop = 0;
-
-        if (step <= 0)
-            throw new LineSearchFailedException(1, "Invalid step size.");
-
-        // Compute the initial gradient in the search direction
-        // and check that s is a descent direction.
-
-         gradientInitial = 0;
-
-        for (int j = 0; j < gradient.Length; j++)
-        {
-            gradientInitial = gradientInitial + gradient[j] * steps[j];
-        }
-
-
-        if (gradientInitial >= 0)//OYM：梯度爆炸
-        {
-            return true;
-            // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
-        }
-
-
-
-         isInBracket = false;
-         stage1 = true;
-
-        float fitnessInit = fitness;
-        float gradientTest = FITNESS_TOLERENCE * gradientInitial;
-        float width = STEP_MAX - STEP_MIN;
-        float width1 = width / 0.5f;
-
-        for (int j = 0; j < currentSolution.Length; j++)
-            diagonal[j] = currentSolution[j];
-
-        // The variables stx, fx, dgx contain the values of the
-        // step, function, and directional derivative at the best
-        // step.
-
-        float stepBoundX = 0;
-        float fitnessX = fitnessInit;
-        float gradientInitialX = gradientInitial;
-
-        // The variables sty, fy, dgy contain the value of the
-        // step, function, and derivative at the other endpoint
-        // of the interval of uncertainty.
-
-        float stepBoundY = 0;
-        float fitnessY = fitnessInit;
-        float gradientInitialY = gradientInitial;
-
-        // The variables stp, f, dg contain the values of the step,
-        // function, and derivative at the current step.
-
-        float gradientTemp = 0;
-        int innerIter = 0;
-
-        while (true)
-        {
-            innerIter++;
-            // Set the minimum and maximum steps to correspond
-            // to the present interval of uncertainty.
-
-            float stepBoundMin, stepBoundMax;
-
-            if (isInBracket)//OYM：brackt意思是括号?
-            {
-                stepBoundMin = math.min(stepBoundX, stepBoundY);
-                stepBoundMax = math.max(stepBoundX, stepBoundY);
-            }
-            else
-            {
-                stepBoundMin = stepBoundX;
-                stepBoundMax = step + 4.0f * (step - stepBoundX);
-            }
-
-            // If an unusual termination is to occur then let
-            // stp be the lowest point obtained so far.
-            //OYM：约束step的上下界
-            step = math.max(step, STEP_MIN);
-            step = math.min(step, STEP_MAX);
-
-            if (
-                (isInBracket && (step <= stepBoundMin || step >= stepBoundMax)) ||//OYM：step在bound外
-                (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-                (innerLoop >= maxInnerLoop - 1) || (funcState == 0))
-            {
-                step = stepBoundX;
-            }
-            // Force the step to be within the bounds stpmax and stpmin.
-
-
-            // Evaluate the function and gradient at stp
-            // and compute the directional derivative.
-            // We return to main program to obtain F and G.
-
-            for (int j = 0; j < currentSolution.Length; j++)
-            {
-                currentSolution[j] = diagonal[j] + step * steps[j];
-                currentSolution[j] = math.clamp(currentSolution[j], -1, 1);
-/*                if (currentSolution[j] > upperBound[j])//OYM: 这里可以用我自己的归一化去完成
-                    currentSolution[j] = upperBound[j];
-                else if (currentSolution[j] < lowerBound[j])
-                    currentSolution[j] = lowerBound[j];*/
-            }
-
-
-            // Reevaluate function and gradient
-            fitness = GetFunction(currentSolution);
-            gradient = GetGradient(currentSolution);
-
-            innerLoop++;
-            gradientTemp = 0;
-
-            for (int j = 0; j < gradient.Length; j++)
-            {
-                gradientTemp = gradientTemp + gradient[j] * steps[j];
-            }
-
-
-            fitnesstest1 = fitnessInit + step * gradientTest;
-
-            // Test for convergence.
-
-            if (innerLoop >= maxInnerLoop)
-            {
-                //OYM：Maximum number of function evaluations has been reached
-                return false;
-                //throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
-            }
-
-
-            if ((isInBracket && (step <= stepBoundMin || step >= stepBoundMax)) || funcState == 0)
-            {
-                return false;
-                /*                throw new LineSearchFailedException(6, "Rounding errors prevent further progress." +
-                                                                       "There may not be a step which satisfies the sufficient decrease and curvature conditions. Tolerances may be too small. \n" +
-                                                                       "stp: " + stp.ToString() + ", brackt: " + brackt.ToString() + ", infoc: " + infoc.ToString() + ", stmin: " + stmin.ToString() + ", stmax: " + stmax.ToString());*/
-            }
-
-            if (step == STEP_MAX && fitness <= fitnesstest1 && gradientTemp <= gradientTest)
-            {
-                //OYM：answer out the max
-                return false;
-                throw new LineSearchFailedException(5, "The step size has reached the upper bound.");
-            }
-
-
-            if (step == STEP_MIN && (fitness > fitnesstest1 || gradientTemp >= gradientTest))
-            {
-                return false;
-                throw new LineSearchFailedException(4, "The step size has reached the lower bound.");
-            }
-
-
-            if (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
-            {
-                return false;
-                throw new LineSearchFailedException(2, "Relative width of the interval of uncertainty is at machine precision.");
-            }
-
-
-            if (fitness <= fitnesstest1 && math.abs(gradientTemp) <= grandientTolerence * (-gradientInitial))
-                return true;
-
-            // Not converged yet. Continuing with the search.
-
-            // In the first stage we seek a step for which the modified
-            // function has a nonpositive value and nonnegative derivative.
-
-            if (stage1 && fitness <= fitnesstest1 && gradientTemp >= math.min(FITNESS_TOLERENCE, grandientTolerence) * gradientInitial)
-                stage1 = false;
-
-            // A modified function is used to predict the step only if we
-            // have not obtained a step for which the modified function has
-            // a nonpositive function value and nonnegative derivative, and
-            // if a lower function value has been obtained but the decrease
-            // is not sufficient.
-
-            if (stage1 && fitness <= fitnessX && fitness > fitnesstest1)
-            {
-                // Define the modified function and derivative values.
-
-                float fm = fitness - step * gradientTest;
-                float fxm = fitnessX - stepBoundX * gradientTest;
-                float fym = fitnessY - stepBoundY * gradientTest;
-
-                float dgm = gradientTemp - gradientTest;
-                float dgxm = gradientInitialX - gradientTest;
-                float dgym = gradientInitialY - gradientTest;
-
-                // Call cstep to update the interval of uncertainty
-                // and to compute the new step.
-
-                SearchStep(ref stepBoundX, ref fxm, ref dgxm,
-                    ref stepBoundY, ref fym, ref dgym, ref step,
-                    fm, dgm, ref isInBracket, out funcState);
-
-                // Reset the function and gradient values for f.
-                fitnessX = fxm + stepBoundX * gradientTest;
-                fitnessY = fym + stepBoundY * gradientTest;
-                gradientInitialX = dgxm + gradientTest;
-                gradientInitialY = dgym + gradientTest;
-            }
-            else
-            {
-                // Call mcstep to update the interval of uncertainty
-                // and to compute the new step.
-
-                SearchStep(
-                    ref stepBoundX, ref fitnessX, ref gradientInitialX,
-                    ref stepBoundY, ref fitnessY, ref gradientInitialY, 
-                    ref step,
-                    fitness, gradientTemp, ref isInBracket, out funcState);
-            }
-
-            // Force a sufficient decrease in the size of the
-            // interval of uncertainty.
-
-            if (isInBracket)
-            {
-                if (math.abs(stepBoundY - stepBoundX) >= 0.66f * width1)
-                    step = stepBoundX + 0.5f * (stepBoundY - stepBoundX);
-
-                width1 = width;
-                width = math.abs(stepBoundY - stepBoundX);
-            }
-
-        }
-    }
+  
+    }*/
 
     // TODO: Move to separate classes
-    internal static void SearchStep(ref float stepBoundX, ref float fitnessX , ref float gradientX,
+    internal static void SearchStep(ref float stepBoundX, ref float fitnessX, ref float gradientX,
                                 ref float stepBoundY, ref float fitnessY, ref float gradientY,
                                 ref float step, float fitnessTemp, float gradientTemp,
                                 ref bool isInBracket, out int funcState)
@@ -1054,8 +1086,8 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
             else
             {
-                stpf = STEP_MIN;           
-            } 
+                stpf = STEP_MIN;
+            }
         }
 
         // Update the interval of uncertainty. This update does not
@@ -1104,18 +1136,18 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     #endregion
 
 
-/*    private NativeArray<float> GetDiagonal()
-    {
-        NativeArray<float> diag = Diagonal();
-        if (diag.Length != numberOfVariables) throw new ArgumentException(
-            "The length of the Hessian diagonal vector does not match the" +
-            " number of free parameters in the optimization poblem.");
-        for (int i = 0; i < diag.Length; i++)
-            if (diag[i] <= 0) throw new ArgumentException(
-                "One of the diagonal elements of the inverse" +
-                " Hessian approximation is not strictly positive");
-        return diag;
-    }*/
+    /*    private NativeArray<float> GetDiagonal()
+        {
+            NativeArray<float> diag = Diagonal();
+            if (diag.Length != numberOfVariables) throw new ArgumentException(
+                "The length of the Hessian diagonal vector does not match the" +
+                " number of free parameters in the optimization poblem.");
+            for (int i = 0; i < diag.Length; i++)
+                if (diag[i] <= 0) throw new ArgumentException(
+                    "One of the diagonal elements of the inverse" +
+                    " Hessian approximation is not strictly positive");
+            return diag;
+        }*/
 
 
     private NativeArray<float> GetGradient(NativeArray<float> args)
@@ -1144,14 +1176,12 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         rho = new NativeArray<float>(corrections, Allocator.Persistent);                  // Stores the scalars rho.
         alpha = new NativeArray<float>(corrections, Allocator.Persistent);               // Stores the alphas in computation of H*g.
         steps = new NativeArray<float>(numberOfVariables * corrections, Allocator.Persistent);          // Stores the last M search steps.
-        delta= new NativeArray<float>(numberOfVariables * corrections, Allocator.Persistent);
+        delta = new NativeArray<float>(numberOfVariables * corrections, Allocator.Persistent);
     }
 
     public void Dispose()
     {
         currentSolution.Dispose();
-        gradient.Dispose();
-        work.Dispose();
 
         diagonal.Dispose();
         gradientStore.Dispose();
