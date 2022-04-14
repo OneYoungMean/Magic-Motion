@@ -13,7 +13,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public class MagicMotionKernel 
     {
-        private NativeArray<MMConstraintNative> constrainNativeArray;
+        private NativeArray<MMJointConstraintNative> constrainNativeArray;
         private NativeArray<MMJointNative> jointNativeArray;
         private NativeArray<MMMuscleNative> muscleNativeArray;
         private TransformAccessArray constraintTransformArray;

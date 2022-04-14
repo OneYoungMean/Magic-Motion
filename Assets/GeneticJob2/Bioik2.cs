@@ -49,7 +49,7 @@ namespace BioIK2
         }
         void Start()
         {
-
+            solutions = new NativeArray<float3>(evolution.GetModel().GetDof3(), Allocator.Persistent);
         }
 
         // Update is called once per frame
@@ -68,7 +68,7 @@ namespace BioIK2
             {
                 solutions[i] = evolution.GetModel().motionPtrs[i].Motion.GetTargetValue(true);
             }
-            solutions = evolution.Optimise(Generations);
+            evolution.Optimise(Generations, solutions);
             for (int i = 0; i < solutions.Length; i++)
             {
                 BioMotion motion = evolution.GetModel().motionPtrs[i].Motion;
@@ -108,7 +108,11 @@ namespace BioIK2
         private void OnDestroy()
         {
             Destoryed = true;
-            solutions.Dispose();
+            if (solutions.IsCreated)
+            {
+                solutions.Dispose();
+            }
+
             DeInitialise();
             Utility.Cleanup(transform);
         }
@@ -157,6 +161,7 @@ namespace BioIK2
         {
             if (evolution != null)
             {
+                evolution.Dispose();
                 evolution = null;
             }
         }
@@ -204,7 +209,6 @@ namespace BioIK2
             {
                 DeInitialise();
                 Initialise();
-                solutions = new NativeArray<float3>(evolution.GetModel().GetDof3(),Allocator.Persistent);
             }
         }
 

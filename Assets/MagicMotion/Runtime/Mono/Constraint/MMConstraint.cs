@@ -9,7 +9,6 @@ namespace MagicMotion.Mono
         /// </summary>
         [HideInInspector]
         public int index;
-        public abstract MMConstraintNative GetNativeData();
 
         public abstract void ResetPositionAndRotation();
 

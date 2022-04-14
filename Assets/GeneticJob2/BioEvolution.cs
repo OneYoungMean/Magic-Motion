@@ -24,12 +24,6 @@ namespace BioIK2
 
         private Individual[] population;
 
-        private Individual[] offSpring;
-
-        private List<Individual> pool = new List<Individual>();
-
-        private int poolCount;
-
         private float[] probabilities;
 
         private float3 geneTemp;
@@ -46,7 +40,6 @@ namespace BioIK2
 
         private BioModel[] models = null;
 
-        private BIOIK.BFGS_F[] optimisers = null;
         private BroydenFletcherGoldfarbShanno[] optimisers2 = null;
         private float Fitness;
         private Random random;
@@ -62,11 +55,9 @@ namespace BioIK2
             this.Dimensionality = bioModel.GetDof3();
 
             population=new Individual[populationSize]; 
-            offSpring = new Individual[populationSize];
             for (int i = 0; i < populationSize; i++)
             {
                 population[i] = new Individual(Dimensionality);
-                offSpring[i] = new Individual(Dimensionality);
             }
 
             lowerBounds = new NativeArray<float3>(Dimensionality,Allocator.Persistent);
@@ -76,7 +67,6 @@ namespace BioIK2
             solutions = new NativeArray<float3>(Dimensionality, Allocator.Persistent);
 
             models =new BioModel[elites];
-            optimisers = new BIOIK.BFGS_F[elites];
             optimisers2 = new BroydenFletcherGoldfarbShanno[elites];
             improved = new bool[elites];
             for (int i = 0; i < elites; i++)
@@ -84,16 +74,11 @@ namespace BioIK2
                 int index = i;
                 models[index] = new BioModel(bioModel.GetCharacter());
 /*                optimisers[index] = new BIOIK.BFGS_F(Dimensionality*3, x => models[index].ComputeLoss(x.ToFloat3Array()), y => models[index].ComputeGradient(y, 1e-5f));*/
-                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y, 1e-5f));
+                optimisers2[index] = new BroydenFletcherGoldfarbShanno(Dimensionality * 3, x => models[index].ComputeLoss(x), y => models[index].ComputeGradient(y));
             }
 
 
             random = new Random(1); 
-        }
-
-        ~BioEvolution()
-        {
-            Dispose();
         }
 
         internal BioModel GetModel()
@@ -115,8 +100,9 @@ namespace BioIK2
             return upperBounds;
         }
 
-        internal NativeArray<float3> Optimise(int generations)
+        internal void Optimise(int generations,NativeArray<float3> solution)
         {
+            solutions.CopyFrom(solution);
             bioModel.Refresh();
 
             for (int i = 0; i < Dimensionality; i++)
@@ -133,9 +119,6 @@ namespace BioIK2
                 for (int i = 0; i < elites; i++)
                 {
                     models[i].CopyFrom(bioModel);
-
-                   UnsafeUtility.MemCpy( optimisers2[i].UpperBounds .GetUnsafePtr(),upperBounds.GetUnsafePtr(), upperBounds.Length*UnsafeUtility.SizeOf<float3>());
-                    UnsafeUtility.MemCpy(optimisers2[i].LowerBounds.GetUnsafePtr(), lowerBounds.GetUnsafePtr(), lowerBounds.Length * UnsafeUtility.SizeOf<float3>());
                 }
                 for (int i = 0; i < generations; i++)
                 {
@@ -143,60 +126,16 @@ namespace BioIK2
                     Evolve();
                 }
             }
-            return solutions;
+            solution.CopyFrom(solutions);
         }
 
 
         private void Evolve()
         {
-            pool.Clear();
-            pool.AddRange(population);
-            poolCount = populationSize;
-
-            System.DateTime timestamp = Utility.GetTimestamp();
-            for (int i = elites; i < populationSize; i++)
-            {
-                if (poolCount > 0)
-                {
-                    Individual parentA = Select(pool);
-                    Individual parentB = Select(pool);
-                    Individual prototype = Select(pool);
-
-                    //Recombination and Adoption
-                    Reproduce(offSpring[i], parentA, parentB, prototype);
-
-                    //Pre-Selection Niching
-                    if (offSpring[i].fitness < parentA.fitness)
-                    {
-                        pool.Remove(parentA);
-                        poolCount -= 1;
-                    }
-                    if (offSpring[i].fitness < parentB.fitness)
-                    {
-                        pool.Remove(parentB);
-                        poolCount -= 1;
-                    }
-                }
-                else
-                {
-                    //Fill the population
-                    Reroll(offSpring[i]);
-                }
-            }
-            float duration = Utility.GetElapsedTime(timestamp);
             for (int i = 0; i < elites; i++)
             {
-                SurviveSequential(i, duration);
+                SurviveSequential(i, 1f);
             }
-            for (int i = 0; i < elites; i++)
-            {
-                if (!improved[i])
-                {
-                    Reroll(offSpring[i]); //OYM：无法优化了，创建一个新的基因
-                }
-            }
-            Swap(ref population, ref offSpring);
-            SortByFitness();
 
             if (!TryUpdateSolution() && !HasAnyEliteImproved())
             {
@@ -231,11 +170,6 @@ namespace BioIK2
         {
             //Copy elitist survivor
             Individual survivor = population[index];
-            Individual elite = offSpring[index];
-
-            elite.genes.CopyFrom( survivor.genes);
-            Array.Copy(survivor.momentum, elite.momentum, Dimensionality);
-            float fitness = models[index].ComputeLoss(elite.genes);
 
             //OYM：两者之间收敛速度差不多
             //OYM：但是后者可读性吊打前者
@@ -258,23 +192,21 @@ namespace BioIK2
                             elite.fitness = fitness;
                             improved[index] = false;
                         }*/
-            optimisers2[index].Minimize(elite.genes);
+            optimisers2[index].Minimize(survivor.genes);
 
-            if (optimisers2[index].Value < fitness)
+            if (optimisers2[index].Value < survivor.fitness)
             {
                 var newSolution = optimisers2[index].Solution;
                 for (int i = 0; i < Dimensionality; i++)
                 {
                     float3 target = new float3(newSolution[i * 3], newSolution[i * 3 + 1], newSolution[i * 3 + 2]);
-                    elite.momentum[i] =  - elite.genes[i];
-                    elite.genes[i] = target;
+                    survivor.genes[i] = target;
                 }
-                elite.fitness = optimisers2[index].Value;
+                survivor.fitness = optimisers2[index].Value;
                 improved[index] = true;
             }
             else
             {
-                elite.fitness = fitness;
                 improved[index] = false;
             }
         }
@@ -326,16 +258,7 @@ namespace BioIK2
         {
             return 0.5f * (parentA.extinction + parentB.extinction);
         }
-        //OYM：选择权重
-        private Individual Select(List<Individual> pool)
-        {
-            float rankSum = (poolCount * (poolCount + 1)) / 2.0f;//OYM：等差数列求和
-            for (int i = 0; i < poolCount; i++)
-            {
-                probabilities[i] = (float)(poolCount - i) / rankSum; //OYM：归一化之后的值
-            }
-            return pool[GetRandomWeightedIndex(probabilities,poolCount)];
-        }
+
         /// <summary>
         /// 依次递减直到rVal为零为止
         /// 话说这东西不应该有个通项之类的吗。。。。
@@ -429,6 +352,20 @@ namespace BioIK2
             upperBounds.Dispose();
             solutions.Dispose();
             constrained.Dispose();
+            for (int i = 0; i < population.Length; i++)
+            {
+                population[i].Dispose();
+            }
+            for (int i = 0; i < optimisers2.Length; i++)
+            {
+                optimisers2[i].Dispose();
+
+            }
+            bioModel.Dispose();
+            for (int i = 0; i < models.Length; i++)
+            {
+                models[i].Dispose();
+            }
         }
     }
 }

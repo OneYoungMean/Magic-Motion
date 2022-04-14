@@ -10,10 +10,6 @@ namespace BioIK2
         public float fitness;
         public float extinction;
 
-         ~Individual()
-        {
-            Dispose();
-        }
         public Individual(int dimension)
         {
             genes = new NativeArray<float3>(dimension,Allocator.Persistent);

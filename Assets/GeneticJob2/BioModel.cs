@@ -131,8 +131,9 @@ namespace BioIK2
             }
         }
 
-        internal NativeArray<float> ComputeGradient(NativeArray<float> configuration, float resolution)
+        internal NativeArray<float> ComputeGradient(NativeArray<float> configuration)
         {
+            float resolution = 1e-2f;
             float oldLoss = ComputeLoss(configuration);
             for (int j = 0; j <Dof3*3; j++)
             {
@@ -146,7 +147,8 @@ namespace BioIK2
                     newLoss += SimulatedLosses[i];
                 }
                 newLoss = (float)System.Math.Sqrt(newLoss / (float)objectivePtrs.Count);
-                Gradient[j] = (float)((newLoss - oldLoss) / resolution);
+                float gradient = ((newLoss - oldLoss) / resolution);
+                Gradient[j] = gradient;
             }
             return Gradient;
         }

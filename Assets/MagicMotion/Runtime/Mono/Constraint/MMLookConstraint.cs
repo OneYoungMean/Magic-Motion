@@ -37,7 +37,7 @@ namespace MagicMotion.Mono
             initalLocalRotation = transform.localRotation;
         }
 
-        public override MMConstraintNative GetNativeData()
+/*        public override MMConstraintNative GetNativeData()
         {
             return new MMConstraintNative()
             {
@@ -46,7 +46,7 @@ namespace MagicMotion.Mono
                 torlerace3 = tolerance,
                 position = transform.position
             };
-        }
+        }*/
 
         public override void ResetPositionAndRotation()
         {
