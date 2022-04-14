@@ -333,6 +333,7 @@ namespace BIOIK
 				for(int i=0; i<Dimensionality; i++) {
 					Solution[i] = Population[0].Genes[i];
 				}
+                Debug.Log(Fitness+" ~ "+candidateFitness);
 				Fitness = candidateFitness;
 				return true;
 			} else {

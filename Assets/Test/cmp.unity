@@ -237,6 +237,10 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 114000011629695536, guid: e2a3d0c94d6e04041971e5be25796167, type: 3}
+      propertyPath: Sensitivity
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: e2a3d0c94d6e04041971e5be25796167, type: 3}
 --- !u!4 &389388109 stripped
@@ -726,7 +730,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   UseThreading: 1
   Generations: 1
-  PopulationSize: 50
+  PopulationSize: 1
   Elites: 1
   smoothing: 0.5
   animationWeight: 0
@@ -735,7 +739,6 @@ MonoBehaviour:
   maximumAcceleration: 3
   segments: []
   root: {fileID: 0}
-  solutions: []
   selectedSegment: {fileID: 0}
   scroll: {x: 0, y: 0}
 --- !u!114 &493056839
