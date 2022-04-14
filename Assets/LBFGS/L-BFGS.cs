@@ -137,7 +137,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private int corrections = 5;
 
     private NativeArray<float> currentSolution; // current solution x
-    private float fitness;   // value at current solution f(x)
+   private float fitness;   // value at current solution f(x)
     NativeArray<float> gradient;         // gradient at current solution
 
     private NativeArray<float> work;
