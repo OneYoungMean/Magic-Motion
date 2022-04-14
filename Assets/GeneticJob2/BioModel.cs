@@ -133,7 +133,7 @@ namespace BioIK2
 
         internal NativeArray<float> ComputeGradient(NativeArray<float> configuration)
         {
-            float resolution =1e-3f;
+            float resolution = BroydenFletcherGoldfarbShanno.STEP_MIN/2;
             float oldLoss = ComputeLoss(configuration);
             for (int j = 0; j <Dof3*3; j++)
             {
