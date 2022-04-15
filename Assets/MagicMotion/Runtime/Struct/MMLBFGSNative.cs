@@ -29,9 +29,20 @@ using System;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
+using static L_BFGSStatic;
 
 namespace MagicMotion
 {
+    public enum LBFGSState : Byte
+    {
+        Initialize = 0,
+        OutsideLoopHead = 1,
+        InsideLoopHead = 2,
+        InsideLoopTail = 3,
+        OutsideLoopTail = 4,
+        Finish = 5
+    }
+
     #region summary
     /// <summary>
     ///   Limited-memory Broyden¨CFletcher¨CGoldfarb¨CShanno (L-BFGS) optimization method.
@@ -125,13 +136,6 @@ namespace MagicMotion
     public unsafe struct MMLBFGSNative
     {
         /// <summary>
-        /// 
-        /// </summary>
-        private const float FITNESS_TOLERENCE = 1e-2f;
-        private const float xTolerance = 1e-2f; // machine precision
-        private const float STEP_MIN = 1e-2f;
-        private const float STEP_MAX = 180f;
-        /// <summary>
         ///   Gets or sets a tolerance value controlling the accuracy of the
         ///   line search routine. If the function and gradient evaluations are
         ///   inexpensive with respect to the cost of the iteration (which is
@@ -139,7 +143,7 @@ namespace MagicMotion
         ///   advantageous to set this to a small value. A typical small value
         ///   is 0.1. This value should be greater than 1e-4. Default is 0.9.
         /// </summary>
-        public static  float grandientTolerence = 1f;
+        public static float fitnessTolerance = 1f;
 
         /// <summary>
         ///   Gets or sets the accuracy with which the solution
@@ -151,16 +155,16 @@ namespace MagicMotion
         ///   where ||.|| denotes the Euclidean norm and EPS is the value for this
         ///   property.
         /// </remarks>
-        public static float tolerance = 0.1f;
+        public static float gradientTolerance = 0.1f;
         /// <summary>
         ///   Gets the number of iterations performed in the last
         /// </summary>
-        public static float iterations=0;
+        public static int iterations = 0;
         /// <summary>
         /// Gets the number of function evaluations performe  in the last loop
         /// dont know how to use that
         /// </summary>
-        public static int evaluations=1;
+        public static int evaluations = 1;
         /*        /// <summary>
                 /// number of variables (free parameters), in the optimization problem.
                 /// </summary>
@@ -169,16 +173,27 @@ namespace MagicMotion
         ///   Gets or sets the number of corrections used in the L-BFGS
         ///   update. Recommended values are between 3 and 7. Default is 5.
         /// </summary>
-        public static int correction=5;
+        public static int corrections = 5;
         /// <summary>
         ///   Gets the number of variables (free parameters)
         ///   in the optimization problem.
         /// </summary>
-        public static int numberOfVariables=0;
+        public static int numberOfVariables = 0;
         /// <summary>
         ///  value at current solution f(x)
         /// </summary>
         public float fitness;
+
+        /// <summary>
+        /// Max Inner LoopCount
+        /// Looks we dont need that ,we controll loop outside
+        /// </summary>
+        public static int maxInnerLoop = 40;
+
+        /// <summary>
+        ///  State
+        /// </summary>
+        public LBFGSState state;
 
         private float preFitness;
         private float fitnessX;
@@ -211,55 +226,81 @@ namespace MagicMotion
         private bool isInBracket;
         private bool stage1;
 
+        public void Reset()
+        {
+            state = LBFGSState.Initialize;
+        }
 
         public void Optimize(
-            //NativeArray<float> upperBound,  NativeArray<float> lowerBound,//Ä¬ÈÏÈ¡1ºÍ-1
-            NativeArray<float> currentSolution,
-            NativeArray<float> diagonal, NativeArray<float> work,
-            NativeArray<float> gradient,float fitness
-
+NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta, NativeSlice<float> innerLoopSteps, NativeArray<float> currentSolution, NativeArray<float> gradient
             )
         {
-            float* workArea = (float*)work.GetUnsafePtr();
-
-            // The first N locations of the work vector are used to
-            //  store the gradient and other temporary information.
-
-            float* rho = &workArea[numberOfVariables];                   // Stores the scalars rho.
-            float* alpha = &workArea[numberOfVariables + correction];             // Stores the alphas in computation of H*g.
-            float* steps = &workArea[numberOfVariables + 2 * correction];         // Stores the last M search steps.
-            float* delta = &workArea[numberOfVariables + 2 * correction + numberOfVariables * correction]; // Stores the last M gradient differences.
-
-            // Initialize work vector
-            for (int i = 0; i < gradient.Length; i++)
+            while (true)
             {
-                steps[i] = -gradient[i] * diagonal[i];
+                switch (state)
+                {
+                    case LBFGSState.Initialize:
+                        {
+                            InitializeLoop(ref innerLoopStep, ref iterations, ref evaluations, ref innerLoopCount, ref point, ref matrixPoint, ref isLoopOutside, ref gradient, ref diagonal, ref steps);
+                            state = LBFGSState.OutsideLoopHead;
+                        }
+                        break;
+                    case LBFGSState.OutsideLoopHead:
+                        if (isLoopOutside)
+                        {
+                            OutsideLoopHead(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref innerLoopStep, ref preFitness, ref fitness, ref fitnessX, ref fitnessY, ref gradientInitialX, ref gradientInitialY, ref funcState, ref innerLoopCount, ref iterations, ref matrixPoint, ref numberOfVariables, ref point, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref delta, ref steps, ref diagonal, ref corrections, ref gradientStore, ref gradient, ref rho, ref alpha, ref currentSolution);
+                            state = LBFGSState.InsideLoopHead;
+                        }
+                        else
+                        {
+                            state = LBFGSState.Finish;
+                        }
+                        break;
+                    case LBFGSState.InsideLoopHead:
+                        if (isLoopInside)
+                        {
+                            InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref innerLoopCount, ref maxInnerLoop, ref numberOfVariables, ref funcState, ref matrixPoint, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
+                            state = LBFGSState.InsideLoopTail;
+                            return;
+                        }
+                        else
+                        {
+                            state = LBFGSState.OutsideLoopTail;
+                        }
+                        break;
+                    case LBFGSState.InsideLoopTail:
+                        InisdeLoopTail(ref preGradientSum, ref preFitness, ref innerLoopStep, ref stepBoundMin, ref stepBoundMax, ref fitness, ref fitnessTolerance, ref fitnessX, ref fitnessY, ref stepBoundX, ref stepBoundY, ref gradientInitialX, ref gradientInitialY, ref width, ref width1, ref innerLoopCount, ref numberOfVariables, ref maxInnerLoop, ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref gradient, ref steps);
+                        if (isLoopInside)
+                        {
+                            state = LBFGSState.InsideLoopHead;
+                            return;
+                        }
+                        else
+                        {
+                            state = LBFGSState.OutsideLoopTail;
+                        }
+                        break;
+                    case LBFGSState.OutsideLoopTail:
+                        if (isLoopOutside)
+                        {
+                            OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
+                                ref innerLoopCount, ref evaluations, ref matrixPoint, ref point, ref corrections, ref numberOfVariables,
+                                ref isLoopOutside,
+                                ref gradient, ref steps, ref delta, ref gradientStore, ref currentSolution);
+                            state = LBFGSState.OutsideLoopHead;
+                        }
+                        else
+                        {
+                            state = LBFGSState.Finish;
+                        }
+                        break;
+                    case LBFGSState.Finish:
+                        return;
+                    default:
+                        return;
+                }
             }
-
-            // Initialize statistics
-            float gnorm = Euclidean(gradient);
-            float xnorm = Euclidean(currentSolution);
-            float stp = 1.0f / gnorm;
-            float stp1 = stp;
-
-            // Initialize loop
-            int nfev, point = 0;
-            int nowPoint = 0, cp = 0;
-            bool finish = false;
-
-
-        }
-
-        public static float Euclidean( NativeArray<float> a)
-        {
-            return math.sqrt(SquareEuclidean(a));
-        }
-        public static float SquareEuclidean( NativeArray<float> a)
-        {
-            float sum = 0;
-            for (int i = 0; i < a.Length; i++)
-                sum += a[i] * a[i];
-            return sum;
+            //OYM£ºInitializeLoop
 
         }
     }
