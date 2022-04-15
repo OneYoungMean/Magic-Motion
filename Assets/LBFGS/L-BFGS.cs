@@ -131,12 +131,12 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     public float fitnessTolerance = 1f;
     public int maxInnerLoop = 40;
 
-    public float gradientTolerance = 1f;
+    public float gradientTolerance = 1e-5f;
     private int iterations;
     private int evaluations;
 
     public int numberOfVariables;
-    public int corrections = 3;
+    public int corrections = 5;
 
     private NativeArray<float> currentSolution; // current solution x
     private float fitness;   // value at current solution f(x)
@@ -147,7 +147,6 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private int innerLoopCount;
     private int point;
     private int matrixPoint;
-    private bool isFinish;
     private bool isLoopOutside;
     private int funcState;
     private bool isInBracket;
@@ -401,7 +400,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     }*/
     #endregion
 
-    public static void Initialize(ref float innerLoopStep, ref int iterations, ref int evaluations, ref int innerLoopCount, ref int point,ref int matrixPoint,ref bool isfinish)
+    public static void Initialize(ref float innerLoopStep, ref int iterations, ref int evaluations, ref int innerLoopCount, ref int point,ref int matrixPoint,ref bool isLoopOutside)
     {
         innerLoopStep = 0;
         iterations = 0;
@@ -409,9 +408,9 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         innerLoopCount = 0;
         point = 0;
         matrixPoint = 0;
-        isfinish = false;
+        isLoopOutside = true;
     }
-    public static void InitializeOutsideLoop(ref float width,ref float width1,ref float stepBoundX,ref float stepBoundY, ref float preGradientSum, ref int funcState,ref int innerLoopCount,ref bool isLoopOutside, ref bool isInBracket,ref bool stage1)
+    public static void InitializeOutsideLoop(ref float width,ref float width1,ref float stepBoundX,ref float stepBoundY, ref float preGradientSum, ref int funcState,ref int innerLoopCount,ref bool isLoopOutside,ref bool isLoopInside, ref bool isInBracket,ref bool stage1)
     {
         width = STEP_MAX - STEP_MIN;
         width1 = width / 0.5f;
@@ -423,10 +422,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         innerLoopCount = 0;
 
         isLoopOutside = false;
+        isLoopInside = true;
+
         isInBracket = false;
         stage1 = true;
-
-
     }
     /// <summary>
     ///   Minimizes the defined function. 
@@ -472,10 +471,15 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return minimize();
     }
 
-    private void InitializeLoop()
+    private static void InitializeLoop(
+        ref float innerLoopStep,
+        ref int iterations, ref int evaluations, ref int innerLoopCount, ref int point, ref int matrixPoint,
+        ref bool isLoopOutside,
+        ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArray<float> steps
+        )
     {
         // Initialization
-        Initialize(ref innerLoopStep, ref iterations, ref evaluations, ref innerLoopCount, ref point, ref matrixPoint, ref isFinish);
+        Initialize(ref innerLoopStep, ref iterations, ref evaluations, ref innerLoopCount, ref point, ref matrixPoint,ref isLoopOutside);
 
         // Obtain initial Hessian
         for (int i = 0; i < diagonal.Length; i++)
@@ -497,12 +501,12 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private static bool OutsideLoopHead(
 ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preFitness, ref float fitness, ref float fitnessX, ref float fitnessY, ref float gradientInitialX, ref float gradientInitialY,
 ref int funcState, ref int innerLoopCount, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
-ref bool isLoopOutside, ref bool isInBracket, ref bool stage1,
+ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal,ref int corrections, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
 ref NativeArray<float> currentSolution,
 ref NativeSlice<float> innerLoopSteps)
     {
-        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY,ref preGradientSum,ref funcState, ref innerLoopCount, ref isLoopOutside, ref isInBracket, ref stage1);
+        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY,ref preGradientSum,ref funcState, ref innerLoopCount, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1);
         iterations++;
         if (iterations != 1)
         {
@@ -740,7 +744,7 @@ ref NativeSlice<float> innerLoopSteps)
     private static bool OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
            ref int innerLoopCount, ref int evaluations, ref int matrixPoint, ref int point, ref int corrections, ref int numberOfVariables,
-           ref bool isLoopOutside, ref bool isFinish,
+           ref bool isLoopOutside, 
            ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> currentSolution
         )
     {
@@ -768,9 +772,9 @@ ref NativeSlice<float> innerLoopSteps)
         xnorm = math.max(1f, xnorm);
 
         // isSuccessful
-        if (!isLoopOutside && gnorm / xnorm <= gradientTolerance)
+        if (gnorm / xnorm <= gradientTolerance)
         {
-            isFinish = true;
+            isLoopOutside = false;
         }
         return true;
     }
@@ -781,16 +785,16 @@ ref NativeSlice<float> innerLoopSteps)
         fitness = GetFunction(currentSolution);
         gradient = GetGradient(currentSolution);
         //OYM：InitializeLoop
-        InitializeLoop();
+        InitializeLoop(ref innerLoopStep, ref iterations,ref evaluations,ref innerLoopCount,ref point,ref matrixPoint,ref isLoopOutside,ref gradient,ref diagonal,ref steps);
 
         // outside loop
-        while (!isFinish)
+        while (isLoopOutside)
         {
-             isLoopOutside= OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preFitness,ref fitness,ref fitnessX,ref fitnessY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref corrections,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution, ref innerLoopSteps);
+             isLoopOutside= OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preFitness,ref fitness,ref fitnessX,ref fitnessY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref corrections,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution, ref innerLoopSteps);
             if (!isLoopOutside) break;
 
             //inner loop
-            while (true)
+            while (isLoopInside)
             {
                 InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref innerLoopCount,ref maxInnerLoop,ref numberOfVariables,ref funcState,ref isInBracket,ref currentSolution,ref diagonal,ref innerLoopSteps);
 
@@ -804,7 +808,7 @@ ref NativeSlice<float> innerLoopSteps)
 
             OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
                 ref innerLoopCount,ref evaluations,ref matrixPoint,ref point, ref corrections, ref  numberOfVariables,
-                ref isLoopOutside,ref  isFinish,
+                ref isLoopOutside,
                 ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }
 

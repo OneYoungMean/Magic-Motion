@@ -175,6 +175,42 @@ namespace MagicMotion
         ///   in the optimization problem.
         /// </summary>
         public static int numberOfVariables=0;
+        /// <summary>
+        ///  value at current solution f(x)
+        /// </summary>
+        public float fitness;
+
+        private float preFitness;
+        private float fitnessX;
+        private float fitnessY;
+
+        private float preGradientSum;
+        private float gradientInitialX;
+        private float gradientInitialY;
+
+        private float stepBoundX;
+        private float stepBoundY;
+        private float stepBoundMin;
+        private float stepBoundMax;
+
+        private float width;
+        private float width1;
+
+        private float innerLoopStep;
+
+        private int point;
+        private int matrixPoint;
+
+        private int innerLoopCount;
+        private int funcState;
+
+        private bool isLoopInside;
+        private bool isLoopOutside;
+        private bool isFinish;
+
+        private bool isInBracket;
+        private bool stage1;
+
 
         public void Optimize(
             //NativeArray<float> upperBound,  NativeArray<float> lowerBound,//Ä¬ÈÏÈ¡1ºÍ-1
@@ -214,15 +250,6 @@ namespace MagicMotion
 
         }
 
-        public void Reset(NativeArray<float> diagonal)
-        {
-            iterations = 0;
-            evaluations =1;
-            for (int i = 0; i < numberOfVariables; i++)
-            {
-                diagonal[i] = 1.0f;
-            }
-        }
         public static float Euclidean( NativeArray<float> a)
         {
             return math.sqrt(SquareEuclidean(a));
