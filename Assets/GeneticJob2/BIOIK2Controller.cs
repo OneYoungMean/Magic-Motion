@@ -8,7 +8,7 @@ using UnityEngine;
 
 namespace BioIK2
 {
-    public class BIOIK2 : MonoBehaviour
+    public class BIOIK2Controller : MonoBehaviour
     {
         #region  Field&Property
 

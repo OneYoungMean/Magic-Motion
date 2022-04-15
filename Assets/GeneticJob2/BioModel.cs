@@ -10,7 +10,7 @@ namespace BioIK2
 {
     public unsafe class BioModel:IDisposable
     {
-        private BIOIK2 Character;
+        private BIOIK2Controller Character;
 
         private BioSegment root;
 
@@ -35,7 +35,7 @@ namespace BioIK2
 
         private int Dof3;
 
-        public BioModel(BIOIK2 character)
+        public BioModel(BIOIK2Controller character)
         {
             this.Character = character;
             root = character.FindSegment(Character.transform);//OYM:找到root节点
@@ -298,7 +298,7 @@ namespace BioIK2
 
         }
 
-        public BIOIK2 GetCharacter()
+        public BIOIK2Controller GetCharacter()
         {
             return Character;
         }
