@@ -44,10 +44,6 @@ namespace MagicMotion
         /// </summary>
         public float length;
         /// <summary>
-        /// the direction length to hips joint
-        /// </summary>
-        public float cumulativeLength;
-        /// <summary>
         /// the dof3 axis
         /// </summary>
         public float3x3 dof3Axis;

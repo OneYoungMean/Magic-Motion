@@ -21,7 +21,7 @@ namespace MagicMotion
     /// The joint constraint.
     /// Can be read as position ,Rotation LookAt
     /// </summary>
-    public struct MMJointConstraintNative
+    public struct MMConstraintNative
     {
         public MMPositionConstraint positionConstraint;
         public MMMuscleConstraint muscleConstraint;

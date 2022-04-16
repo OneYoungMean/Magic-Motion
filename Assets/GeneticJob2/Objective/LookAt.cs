@@ -7,7 +7,7 @@ namespace BioIK2
 {
     public class LookAt : BioObjective
     {
-        [SerializeField] private Transform Target;
+        [SerializeField] public Transform Target;
         [SerializeField] private Vector3 targetPositon;
         [SerializeField] private Vector3 ViewingDirection = Vector3.forward;
         [SerializeField] private float MaximumError = 0.1f;

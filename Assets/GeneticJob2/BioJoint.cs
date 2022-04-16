@@ -16,6 +16,7 @@ namespace BioIK2
         public BioSegment segment;//OYM:挂载的Segment
         public BioJointType jointType = BioJointType.Rotational;
         public BioMotion bioMotion;//OYM:包含了运动的倾向
+        public BioJoint parent;
         private float3 anchor;
         private float3 orientation;
         private float3 defaultPosition;
@@ -34,11 +35,16 @@ namespace BioIK2
 
         private float AnimationWeight => segment.character.animationWeight;
         private MotionType motionType => segment.character.motionType;
+        void OnEnable()
+        {
+            parent = gameObject.GetComponentInParent<BioJoint>();
+        }
         // Start is called before the first frame update
         void Start()
         {
             lastPosition = transform.localPosition;
             lastrotation = transform.localRotation;
+
         }
 
         // Update is called once per frame

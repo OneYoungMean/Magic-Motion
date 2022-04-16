@@ -87,7 +87,6 @@ namespace MagicMotion.Mono
                 minRange = minRange,
                 dof3Axis = dof3Axis,
                 length = length,
-                cumulativeLength = cumulativeLength,
 
                 isVaild = enabled,
             };

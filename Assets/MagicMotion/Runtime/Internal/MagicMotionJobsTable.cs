@@ -14,7 +14,7 @@ namespace MagicMotion
         public struct TransformToConstraintJob : IJobParallelForTransform
         {
             [NativeDisableParallelForRestriction]
-            public NativeArray<MMJointConstraintNative> constraintNatives;
+            public NativeArray<MMConstraintNative> constraintNatives;
 
             public NativeArray<TransformToConstraintNative> transformToConstrainNatives;
             public int muscleLength;
@@ -52,7 +52,7 @@ namespace MagicMotion
             [ReadOnly,NativeDisableParallelForRestriction]
             public NativeArray<MMJointNative> jointNatives;
             [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<MMJointConstraintNative> constraintNatives;
+            public NativeArray<MMConstraintNative> constraintNatives;
             [NativeDisableParallelForRestriction]
             public NativeArray<RigidTransform> jointTransformNatives;
 
@@ -72,7 +72,7 @@ namespace MagicMotion
 
                     for (int i = 0; i < constraintNatives.Length; i++)
                     {
-                        MMJointConstraintNative jointConstraint = constraintNatives[offset+i];
+                        MMConstraintNative jointConstraint = constraintNatives[offset+i];
 
                         MMPositionConstraint positionConstraint = jointConstraint.positionConstraint;
 
@@ -224,7 +224,7 @@ namespace MagicMotion
         public struct CaclulateFitnessJob : IJobParallelFor
         {
             [ReadOnly]
-            public NativeArray<MMJointConstraintNative> constraintNatives;
+            public NativeArray<MMConstraintNative> constraintNatives;
             [ReadOnly]
             public NativeArray<RigidTransform> jointTransformNatives;
             [ReadOnly]
@@ -234,7 +234,7 @@ namespace MagicMotion
 
             public void Execute(int index)
             {
-                MMJointConstraintNative constraintNative = constraintNatives[index];
+                MMConstraintNative constraintNative = constraintNatives[index];
                 MMJoinFitness jointFitness = jointFitnessNatives[index];
                 RigidTransform jointTransform = jointTransformNatives[index];
                 float3 Dof3 = Dof3s[index];
@@ -265,7 +265,7 @@ namespace MagicMotion
                     UpdateMuscleChangeFitness(ref jointFitness, Dof3, constraintNative);
                 }
             }
-            private static void UpdatePositionFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMJointConstraintNative constraintNative)
+            private static void UpdatePositionFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMConstraintNative constraintNative)
             {
                 MMPositionConstraint positionConstraint = constraintNative.positionConstraint;
                 float3 jointPosition = jointTransform.pos;
@@ -289,7 +289,7 @@ namespace MagicMotion
 
                 jointFitness.positionFitness = fitness;
             }
-            private static void UpdateMuscleFitness(ref MMJoinFitness jointFitness, float3 Dof3, MMJointConstraintNative constraintNative)
+            private static void UpdateMuscleFitness(ref MMJoinFitness jointFitness, float3 Dof3, MMConstraintNative constraintNative)
             {
                 float3 tolerance3 = constraintNative.muscleConstraint.tolerance3;
                 float3 weight3 = constraintNative.muscleConstraint.weight3;
@@ -297,7 +297,7 @@ namespace MagicMotion
                 float fitness =math.csum(Dof3Outside * weight3);
                 jointFitness.muscleFitness = fitness;
             }
-            private static void UpdateLookAtFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMJointConstraintNative constraintNative)
+            private static void UpdateLookAtFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMConstraintNative constraintNative)
             { 
             MMLookAtConstraint lookAtConstraint = constraintNative.lookAtConstraint;
             float3 jointPosition = jointTransform.pos;
@@ -316,13 +316,13 @@ namespace MagicMotion
             float fitness = math.acos(cosA);
             jointFitness.lookAtFitness= fitness* fitness*weight;
             }
-            private static void UpdateColliderConstraint(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMJointConstraintNative constraintNative)
+            private static void UpdateColliderConstraint(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMConstraintNative constraintNative)
             {
                 //OYM：啊这个超级难写 
                 //OYM：还要去构造AABB
                 //OYM：不想写（摆烂
             }
-            private static void UpdatePositionChangeFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMJointConstraintNative constraintNative)
+            private static void UpdatePositionChangeFitness(ref MMJoinFitness jointFitness, RigidTransform jointTransform, MMConstraintNative constraintNative)
             {
                 MMPositionChangeConstraint positionConstraint = constraintNative.positionChangeConstraint;
                 float3 jointPosition = jointTransform.pos;
@@ -345,7 +345,7 @@ namespace MagicMotion
                 jointFitness.positionFitness = fitness;
             }
 
-            private static void UpdateMuscleChangeFitness(ref MMJoinFitness jointFitness, float3 Dof3, MMJointConstraintNative constraintNative)
+            private static void UpdateMuscleChangeFitness(ref MMJoinFitness jointFitness, float3 Dof3, MMConstraintNative constraintNative)
             {
                 float3 oldDof3 = constraintNative.muscleChangeConstraint.oldDof3;
                 float3 torlerence3 = constraintNative.muscleChangeConstraint.torlerence3;

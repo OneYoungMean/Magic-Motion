@@ -25,7 +25,7 @@ namespace MagicMotion
         private NativeArray<MMMuscleNative> muscleNativeArray;
         private NativeArray<TransformToConstraintNative> transformToConstrainNativeArray;
         private NativeArray<MMJoinFitness> jointFitnessNativeArray;
-        private NativeArray<MMJointConstraintNative> constraintNativeArray;
+        private NativeArray<MMConstraintNative> constraintNativeArray;
 
         private NativeArray<float3> Dof3NativeArray;
         private NativeArray<float> muscleValueNativeArray;
@@ -62,7 +62,7 @@ namespace MagicMotion
         private MMJointNative[] joints;
         private MMMuscleNative[] muscles;
         private TransformToConstraintNative[] transformToConstraints;
-        private MMJointConstraintNative[] constraints;
+        private MMConstraintNative[] constraints;
 
         private Transform[] constraintTransforms;
         private Transform[] jointsTransforms;
@@ -79,7 +79,7 @@ namespace MagicMotion
         #endregion
 
         #region PublicFunc
-        public void SetData(MMJointConstraintNative[] constraints, Transform[] constraintTransforms)
+        public void SetData(MMConstraintNative[] constraints, Transform[] constraintTransforms)
         {
             this.constraints = constraints;
             this.constraintTransforms = constraintTransforms;
@@ -183,10 +183,10 @@ namespace MagicMotion
             {
                 throw new System.Exception("Disposed NativeArray before you create it");
             }
-            constraintNativeArray = new NativeArray<MMJointConstraintNative>(parallelDataCount, Allocator.Persistent);
+            constraintNativeArray = new NativeArray<MMConstraintNative>(parallelDataCount, Allocator.Persistent);
             for (int i = 0; i < muscleCount + 1; i++)
             {
-                NativeArray<MMJointConstraintNative>.Copy(constraints, 0, constraintNativeArray, i * jointCount, jointCount);
+                NativeArray<MMConstraintNative>.Copy(constraints, 0, constraintNativeArray, i * jointCount, jointCount);
             }
 
             jointNativeArray = new NativeArray<MMJointNative>(parallelDataCount, Allocator.Persistent);

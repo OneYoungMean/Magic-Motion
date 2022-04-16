@@ -12,7 +12,7 @@ namespace MagicMotion.Mono
         public bool isInitialize;
         public List<MMConstraint> constraints;
 
-        private MMJointConstraintNative[] constraintNatives;
+        private MMConstraintNative[] constraintNatives;
         private Transform[] constraintTransform;
         public void Initialize(MMJoint[] joints)
         {
@@ -62,9 +62,9 @@ namespace MagicMotion.Mono
             }
         }
 
-        public MMJointConstraintNative[] GetNativeDatas()
+        public MMConstraintNative[] GetNativeDatas()
         {
-            constraintNatives = new MMJointConstraintNative[constraints.Count];
+            constraintNatives = new MMConstraintNative[constraints.Count];
 /*            for (int i = 0; i < constraintNatives.Length; i++)
             {
                 constraintNatives[i]=constraints[i].GetNativeData();
