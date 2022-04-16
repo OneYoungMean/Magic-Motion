@@ -123,14 +123,12 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
     // Line search parameters
     public float fitnessTolerance = 1f;
-    public int maxInnerLoop = 40;
 
     public float gradientTolerance = 1e-5f;
     private int iterations;
     private int evaluations;
 
     public int numberOfVariables;
-    public int corrections = 5;
 
 
     private float fitness;   // value at current solution f(x)
@@ -258,27 +256,6 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     }
 
     /// <summary>
-    ///   Gets or sets the number of corrections used in the L-BFGS
-    ///   update. Recommended values are between 3 and 7. Default is 5.
-    /// </summary>
-    /// 
-    public int Corrections
-    {
-        get { return corrections; }
-        set
-        {
-            if (value <= 0)
-                throw new ArgumentOutOfRangeException("value");
-
-            if (corrections != value)
-            {
-                corrections = value;
-                createWorkVector();
-            }
-        }
-    }
-
-    /// <summary>
     ///   Gets or sets the accuracy with which the solution
     ///   is to be found. Default value is 1e-10.
     /// </summary>
@@ -352,7 +329,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
 
         this.numberOfVariables = numberOfVariables;
 
-        this.createWorkVector();
+        CreateWorkVector(numberOfVariables,out diagonal,out gradientStore,out rho,out alpha,out steps,out delta);
 
         currentSolution = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
         for (int i = 0; i < currentSolution.Length; i++)
@@ -438,24 +415,24 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         // outside loop
         while (isLoopOutside)
         {
-            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preFitness,ref fitness,ref fitnessX,ref fitnessY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref corrections,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
+            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preFitness,ref fitness,ref fitnessX,ref fitnessY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
             if (!isLoopOutside) break;
 
             //inner loop
             while (isLoopInside)
             {
-                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref innerLoopCount,ref maxInnerLoop,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
+                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref innerLoopCount,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
 
                 // Reevaluate function and gradient
                 fitness = GetFunction(currentSolution);
                 gradient = GetGradient(currentSolution);
 
-              InisdeLoopTail(ref preGradientSum,ref preFitness,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref fitness,ref fitnessTolerance,ref fitnessX,ref fitnessY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref innerLoopCount,ref numberOfVariables,ref maxInnerLoop,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
+              InisdeLoopTail(ref preGradientSum,ref preFitness,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref fitness,ref fitnessTolerance,ref fitnessX,ref fitnessY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref innerLoopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
                 if (!isLoopInside) break;
             }
             if (!isLoopOutside) break;
             OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
-                ref innerLoopCount,ref evaluations,ref matrixPoint,ref point, ref corrections, ref  numberOfVariables,
+                ref innerLoopCount,ref evaluations,ref matrixPoint,ref point, ref  numberOfVariables,
                 ref isLoopOutside,
                 ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }
@@ -481,28 +458,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return func;
     }
 
-    private void createWorkVector()
-    {
-        diagonal = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
-
-        gradientStore = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
-        rho = new NativeArray<float>(corrections, Allocator.Persistent);                  // Stores the scalars rho.
-        alpha = new NativeArray<float>(corrections, Allocator.Persistent);               // Stores the alphas in computation of H*g.
-        steps = new NativeArray<float>(numberOfVariables * corrections, Allocator.Persistent);          // Stores the last M search steps.
-        delta = new NativeArray<float>(numberOfVariables * corrections, Allocator.Persistent);
-    }
-
     public void Dispose()
     {
         currentSolution.Dispose();
-
-        diagonal.Dispose();
-        gradientStore.Dispose();
-        rho.Dispose();
-        alpha.Dispose();
-        steps.Dispose();
-        delta.Dispose();
-
+        Disposed(diagonal, gradientStore, rho, alpha, steps, delta);
     }
 }
 

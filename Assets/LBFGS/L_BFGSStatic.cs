@@ -5,12 +5,30 @@ using Unity.Mathematics;
 public unsafe static class L_BFGSStatic
 {
     #region Constandard
+    /// <summary>
+    ///   Gets or sets the number of corrections used in the L-BFGS
+    ///   update. Recommended values are between 3 and 7. Default is 5.
+    /// </summary>
+    public const int CORRECTION=5;
+    /// <summary>
+    /// Max Inner LoopCount
+    /// Looks we dont need that ,we controll loop outside
+    /// </summary>
+    public const int MAXLOOPCOUNT=40;
+    /// <summary>
+    /// Min gradient step of BFGS
+    /// it should less than STEP_MIN.
+    /// </summary>
+    public const float EPSILION = STEP_MIN / 2;
+
     private const float FITNESS_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
-    public const float STEP_MIN = 1e-5f;
+    private const float STEP_MIN = 1e-5f;
     private const float STEP_MAX = 180f;
     private const float RANGLE_MIN = -1;
     private const float RANGE_MAX = 1;
+
+
     #endregion
 
     #region  PublicFunc
@@ -46,7 +64,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArra
 ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preFitness, ref float fitness, ref float fitnessX, ref float fitnessY, ref float gradientInitialX, ref float gradientInitialY,
 ref int funcState, ref int innerLoopCount, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
 ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
-ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal, ref int corrections, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
+ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
 ref NativeArray<float> currentSolution)
     {
         InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState, ref innerLoopCount, ref isLoopInside, ref isInBracket, ref stage1);
@@ -62,12 +80,12 @@ ref NativeArray<float> currentSolution)
             // Compute -H*g using the formula given in:
             //   Nocedal, J. 1980, "Updating quasi-Newton matrices with limited storage",
             //   Mathematics of Computation, Vol.24, No.151, pp. 773-782.
-            int bound = math.min(iterations - 1, corrections);
+            int bound = math.min(iterations - 1, CORRECTION);
             for (int i = 0; i < numberOfVariables; i++)
             {
                 gradientStore[i] = -gradient[i];
             }
-            UpdatingQuasi_Newton(diagonal, rho, gradientStore, steps, alpha, delta, numberOfVariables, corrections, point, bound, sumY);
+            UpdatingQuasi_Newton(diagonal, rho, gradientStore, steps, alpha, delta, numberOfVariables, CORRECTION, point, bound, sumY);
 
             // Store the search direction
             matrixPoint = point * numberOfVariables;
@@ -114,7 +132,7 @@ ref NativeArray<float> currentSolution)
 
     public static bool InsideLoopHead(
     ref float stepBoundMin, ref float stepBoundMax, ref float stepBoundX, ref float stepBoundY, ref float innerLoopStep,
-    ref int innerLoopCount, ref int maxInnerLoop, ref int numberOfVariables, ref int funcState,ref int matrixPoint,
+    ref int innerLoopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint,
     ref bool isInBracket,
     ref NativeArray<float> currentSolution, ref NativeArray<float> diagonal, ref NativeArray<float> steps
     )
@@ -142,7 +160,7 @@ ref NativeArray<float> currentSolution)
         if (
             (isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) ||//OYM：step在bound外
             (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-            (innerLoopCount >= maxInnerLoop - 1) || (funcState == 0))
+            (innerLoopCount >= MAXLOOPCOUNT - 1) || (funcState == 0))
         {
             innerLoopStep = stepBoundX;
         }
@@ -161,7 +179,7 @@ ref NativeArray<float> currentSolution)
 
     public static void InisdeLoopTail(
         ref float preGradientSum, ref float preFitness, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float fitness, ref float fitnessTolerance, ref float fitnessX, ref float fitnessY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
-        ref int innerLoopCount, ref int numberOfVariables, ref int maxInnerLoop, ref int funcState, ref int matrixPoint,
+        ref int innerLoopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,
         ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> gradient, ref NativeArray<float> steps
         )
@@ -174,7 +192,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         float fitnesstest1 = preFitness + innerLoopStep * gradientTest;
 
         // Test for convergence.
-        if (innerLoopCount >= maxInnerLoop)
+        if (innerLoopCount >= MAXLOOPCOUNT)
         {
             isLoopOutside = false;
             isLoopInside= false;
@@ -291,7 +309,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
     public static bool OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
-           ref int innerLoopCount, ref int evaluations, ref int matrixPoint, ref int point, ref int corrections, ref int numberOfVariables,
+           ref int innerLoopCount, ref int evaluations, ref int matrixPoint, ref int point, ref int numberOfVariables,
            ref bool isLoopOutside,
            ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> currentSolution
         )
@@ -309,7 +327,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
         // point loop
         point++;
-        if (point == corrections)
+        if (point == CORRECTION)
         {
             point = 0;
         }
@@ -326,7 +344,26 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
         return true;
     }
-
+    public static void CreateWorkVector(int numberOfVariables,
+    out NativeArray<float> diagonal, out NativeArray<float> gradientStore, out NativeArray<float> rho, out NativeArray<float> alpha, out NativeArray<float> steps, out NativeArray<float> delta
+    )
+    {
+        diagonal = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
+        gradientStore = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
+        rho = new NativeArray<float>(CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
+        alpha = new NativeArray<float>(CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
+        steps = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
+        delta = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);
+    }
+    public static void Disposed(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
+    {
+        diagonal.Dispose();
+        gradientStore.Dispose();
+        rho.Dispose();
+        alpha.Dispose();
+        steps.Dispose();
+        delta.Dispose();
+    }
     #endregion
 
 
@@ -611,7 +648,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
     #region PrivateFunc
 
-    public static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref int innerLoopCount, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
+    private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref int innerLoopCount, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
     {
         width = STEP_MAX - STEP_MIN;
         width1 = width / 0.5f;

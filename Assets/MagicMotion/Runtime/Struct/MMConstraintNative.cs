@@ -38,6 +38,12 @@ namespace MagicMotion
         public float colliderFitness;
         public float positionChangeFitness;
         public float muscleChangeFitness;
+        internal float fitnessSum;
+
+        internal void ClacFitness()
+        {
+            fitnessSum = positionFitness + muscleFitness + lookAtFitness + colliderFitness + positionChangeFitness + muscleChangeFitness;
+        }
     }
 
     public struct MMPositionConstraint
@@ -45,6 +51,8 @@ namespace MagicMotion
         public float3 position;
         public float3 weight3;
         public float3 tolerance3;
+        internal float cumulativeLength;
+
         public bool isVaild
         {
             get { return math.all(weight3 == 0); }

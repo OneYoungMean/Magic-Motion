@@ -200,7 +200,7 @@ namespace BioIK2
 
         private static void ComputeLocalRotation(float3 currentMotion, float3 LSA,float3 ADPADRSA, quaternion AnimatedDefaultRotation, out float3 localPosition, out quaternion localRotation)
         {
-            localRotation = math.mul(AnimatedDefaultRotation, quaternion.Euler(currentMotion));
+            localRotation = math.mul(AnimatedDefaultRotation, quaternion.Euler(currentMotion,math.RotationOrder.XYZ));
             localPosition = ADPADRSA + math.mul(localRotation, LSA);
         }
 
