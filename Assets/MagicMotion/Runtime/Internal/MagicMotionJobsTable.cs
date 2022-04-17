@@ -122,7 +122,7 @@ namespace MagicMotion
 
                             float hipsDirectionDistance = math.length(hipsDirection);
 
-                            float restDistance = positionConstraint.lengthSum;
+                            float restDistance = jointConstraint.lengthSum;
 
                             float forceLength = math.max(hipsDirectionDistance - restDistance, 0);
 
@@ -327,24 +327,29 @@ namespace MagicMotion
                 float3 jointPosition = jointTransform.pos;
 
                 float3 constraintPosition = positionConstraint.position;
+
                 float3 torlerace3 =math.max(math.EPSILON, positionConstraint.tolerance3);
+
                 float3 weight3 = positionConstraint.weight3;
 
                 float3 direction = constraintPosition - jointPosition;
 
-                direction = direction / torlerace3;
-                float directionLength = math.length(direction);
-                float loss = 0;
-                if (directionLength!=0)
+                if (math.all(direction == 0))
                 {
-                    float newDirectionLength = math.max(0, directionLength - 1);
-
-                    direction = (direction / directionLength * newDirectionLength) * torlerace3;
-
-                    loss= math.csum(direction * direction * weight3);
-                    loss *= math.PI * math.PI / (positionConstraint.lengthSum * positionConstraint.lengthSum);
+                    return;
                 }
+/*
+                direction = direction / torlerace3;
 
+                float directionLength = math.length(direction);
+
+                float newDirectionLength = math.max(0, directionLength - 1);
+
+                direction = (direction / directionLength * newDirectionLength) * torlerace3;*/
+
+                float loss = math.csum(direction * direction * weight3);
+
+                loss *= constraintNative.lengthSum * constraintNative.lengthSum;
 
                 jointloss.positionloss = loss;
             }
@@ -391,16 +396,25 @@ namespace MagicMotion
                 float3 torlerace3 = math.max(math.EPSILON, positionConstraint.tolerance3); 
                 float3 weight3 = positionConstraint.weight3;
 
-                float3 direction = constraintPosition - jointPosition; 
+                float3 direction = constraintPosition - jointPosition;
+                if (math.all(direction == 0))
+                {
+                    return;
+                }
+/*                direction = direction / torlerace3;
 
-                direction = direction / torlerace3;
-                float directionLength = math.length(direction) - 1;
-                directionLength = math.max(0, directionLength);
+                float directionLength = math.length(direction);
 
-                direction = (direction * directionLength) * torlerace3;
+                float newDirectionLength = math.max(0, directionLength - 1);
 
-                float loss = math.lengthsq(direction * weight3);
-                jointloss.positionloss = loss;
+                direction = (direction / directionLength * newDirectionLength) * torlerace3;*/
+
+                float loss = math.csum(direction * direction * weight3);
+
+                loss *= 0.1f;
+                //loss =;
+
+               // jointloss.positionChangeloss = -loss;
             }
 
             private static void UpdateMuscleChangeloss(ref MMJoinloss jointloss, float3 Dof3, MMConstraintNative constraintNative)
@@ -415,7 +429,6 @@ namespace MagicMotion
                 jointloss.muscleChangeloss = loss;
             }
         }
-        [BurstCompile]
         public struct MainControllerJob : IJobParallelFor
         {
             //OYM：感觉计算量超级的大啊
@@ -535,13 +548,27 @@ namespace MagicMotion
             }
 
         }
+
         public struct JointToTransformJob : IJobParallelForTransform
         {
+            public NativeArray<MMConstraintNative> constraintNatives;
+            [ReadOnly]
             public NativeSlice<RigidTransform> jointTransformNatives;
+
+            public int muscleLength;
+            public int jointLength;
             public void Execute(int index, TransformAccess transform)
             {
                 transform.position = jointTransformNatives[index].pos;
                 transform.rotation=jointTransformNatives[index].rot;
+
+                for (int i = 0; i < muscleLength+1; i++)
+                {
+                    int point = i * jointLength+ index;
+                    var constraintNativeData = constraintNatives[point];
+                    constraintNativeData.positionChangeConstraint.oldPosition = jointTransformNatives[index].pos;
+                    constraintNatives[point] = constraintNativeData;
+                }
             }
         }
     }

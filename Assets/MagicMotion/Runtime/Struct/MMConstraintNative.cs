@@ -23,6 +23,7 @@ namespace MagicMotion
     /// </summary>
     public struct MMConstraintNative
     {
+        public float lengthSum;
         public MMPositionConstraint positionConstraint;
         public MMMuscleConstraint muscleConstraint;
         public MMLookAtConstraint lookAtConstraint;
@@ -67,7 +68,7 @@ namespace MagicMotion
         public float3 position;
         public float3 weight3;
         public float3 tolerance3;
-        public float lengthSum;
+
 
         public bool isVaild
         {

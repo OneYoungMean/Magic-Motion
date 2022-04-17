@@ -9,7 +9,7 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION=16;
+    public const int CORRECTION=3;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
@@ -27,8 +27,6 @@ public unsafe static class L_BFGSStatic
     private const float STEP_MAX = 180f;
     private const float RANGLE_MIN = -1;
     private const float RANGE_MAX = 1;
-
-
     #endregion
 
     #region  PublicFunc
@@ -71,8 +69,8 @@ ref NativeArray<float> currentSolution)
         iterations++;
         if (iterations != 1)
         {
-            float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);//OYM：这个地方等于0？
-            if (sumY==0)
+            float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);
+            if (sumY == 0)//OYM：巧妙的小设计，用来重新选择收敛方向
             {
                 isLoopOutside=false;
                 return;

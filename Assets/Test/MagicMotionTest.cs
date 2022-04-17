@@ -45,6 +45,8 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
             var bioJoint = bioJoints[i];
             var bioParent = bioJoint.parent?.gameObject. GetComponentInParent<BioJoint>();
             int parentIndex=Array.IndexOf(bioJoints, bioJoint.parent);
+            var currentConstraint=constraintNativeArray[i] ;
+
             MMJointNative currentJoint = new MMJointNative()
             {
                 isVaild = true,
@@ -73,8 +75,12 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
                 currentJoint.length = math.length(currentJoint.localPosition);
             }
 
+            currentConstraint.positionChangeConstraint.weight3 = 1;
+            currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;
+
             jointNativeArray[i]=currentJoint;
             jointTransformArray[i]=bioJoint.transform;
+            constraintNativeArray[i] = currentConstraint;
         }
         for (int i = 0; i < bioConstraints.Length; i++)
         {
@@ -95,7 +101,7 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
                     constraintTransformArray[i] = (bioConstraint as Position).Target;
                     while (joint.parentIndex!=-1)
                     {
-                        constraint.positionConstraint.lengthSum += joint.length;
+                        constraint.lengthSum += joint.length;
                         joint = jointNativeArray[joint.parentIndex];
                     }
                     break;

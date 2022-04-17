@@ -370,6 +370,7 @@ namespace MagicMotion
             jointToTransformJob = new JointToTransformJob()
             {
                 jointTransformNatives = jointTransformNativeArray.Slice(0, jointCount),
+                constraintNatives=constraintNativeArray,
             };
         }
 
