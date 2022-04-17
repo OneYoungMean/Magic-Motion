@@ -30,19 +30,35 @@ namespace MagicMotion
         public MMPositionChangeConstraint positionChangeConstraint;
         public MMMuscleChangeConstraint muscleChangeConstraint;
     }
-    public struct MMJoinFitness
+    public struct MMJoinloss
     {
-        public float positionFitness;
-        public float muscleFitness;
-        public float lookAtFitness;
-        public float colliderFitness;
-        public float positionChangeFitness;
-        public float muscleChangeFitness;
-        internal float fitnessSum;
+        public float positionloss;
+        public float muscleloss;
+        public float lookAtloss;
+        public float colliderloss;
+        public float positionChangeloss;
+        public float muscleChangeloss;
+        internal float lossSum;
 
-        internal void ClacFitness()
+        public void Clacloss()
         {
-            fitnessSum = positionFitness + muscleFitness + lookAtFitness + colliderFitness + positionChangeFitness + muscleChangeFitness;
+            lossSum = positionloss + muscleloss + lookAtloss + colliderloss + positionChangeloss + muscleChangeloss;
+            Clear();
+        }
+
+        public void Clear()
+        {
+            positionloss = 0;
+            muscleloss = 0;
+            lookAtloss = 0;
+            colliderloss = 0;
+            positionChangeloss = 0;
+            muscleChangeloss = 0;
+        }
+
+        public override string ToString()
+        {
+            return lossSum.ToString();
         }
     }
 
@@ -51,11 +67,11 @@ namespace MagicMotion
         public float3 position;
         public float3 weight3;
         public float3 tolerance3;
-        internal float cumulativeLength;
+        public float lengthSum;
 
         public bool isVaild
         {
-            get { return math.all(weight3 == 0); }
+            get { return !math.all(weight3 == 0); }
         }
     }
 
@@ -65,7 +81,7 @@ namespace MagicMotion
         public float3 weight3;
         public bool isVaild
         {
-            get { return math.all(tolerance3 == 1); }
+            get { return !math.all(tolerance3 == 0); }
         }
     }
 
@@ -77,7 +93,7 @@ namespace MagicMotion
         public float tolerance;
         public bool isVaild
         {
-            get { return weight == 0; }
+            get { return weight != 0; }
         }
     }
 
@@ -90,7 +106,7 @@ namespace MagicMotion
         public float weight;
         public bool isVaild
         {
-            get { return weight == 0; }
+            get { return weight != 0; }
         }
     }
 
@@ -101,7 +117,7 @@ namespace MagicMotion
         public float3 weight3;
         public bool isVaild
         {
-            get { return math.all(weight3 == 0); }
+            get { return !math.all(weight3 == 0); }
         }
     }
     public struct MMMuscleChangeConstraint
@@ -111,7 +127,7 @@ namespace MagicMotion
         public float3 weight3;
         public bool isVaild
         {
-            get { return math.all(weight3 == 0); }
+            get { return !math.all(weight3 == 0); }
         }
     }
 

@@ -37,7 +37,7 @@ namespace BioIK2
         private MotionType motionType => segment.character.motionType;
         void OnEnable()
         {
-            parent = gameObject.GetComponentInParent<BioJoint>();
+            parent = transform.parent.gameObject.GetComponentInParent<BioJoint>();
         }
         // Start is called before the first frame update
         void Start()

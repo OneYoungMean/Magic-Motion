@@ -18,7 +18,7 @@ using Unity.Collections;
 //
 //    This library is distributed in the hope that it will be useful,
 //    but WITHOUT ANY WARRANTY; without even the implied warranty of
-//    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//    MERCHANTABILITY or loss FOR A PARTICULAR PURPOSE.  See the GNU
 //    Lesser General Public License for more details.
 //
 //    You should have received a copy of the GNU Lesser General Public
@@ -122,7 +122,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     // those values need not be modified
 
     // Line search parameters
-    public float fitnessTolerance = 1f;
+    public float lossTolerance = 1f;
 
     public float gradientTolerance = 1e-5f;
     private int iterations;
@@ -131,7 +131,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     public int numberOfVariables;
 
 
-    private float fitness;   // value at current solution f(x)
+    private float loss;   // value at current solution f(x)
 
     private bool isLoopInside;
     private float innerLoopStep;
@@ -143,7 +143,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private int funcState;
     private bool isInBracket;
     private bool stage1;
-    private float preFitness;
+    private float preloss;
     private float width;
     private float width1;
 
@@ -157,10 +157,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private NativeArray<float> gradient;         // gradient at current solution
 
     private float stepBoundX;
-    private float fitnessX;
+    private float lossX;
     private float gradientInitialX;
     private float stepBoundY;
-    private float fitnessY;
+    private float lossY;
     private float gradientInitialY;
     private float preGradientSum;
     private float stepBoundMin;
@@ -283,13 +283,13 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public float Precision
     {
-        get { return fitnessTolerance; }
+        get { return lossTolerance; }
         set
         {
             if (value <= 1e-4)
                 throw new ArgumentOutOfRangeException("value");
 
-            fitnessTolerance = value;
+            lossTolerance = value;
         }
     }
 
@@ -309,7 +309,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     public float Value
     {
-        get { return fitness; }
+        get { return loss; }
     }
 
     #endregion
@@ -401,13 +401,18 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         // Copy initial guess for solution
         UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), values.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
 
-        return minimize();
+        minimize();
+
+        UnsafeUtility.MemCpy(values.GetUnsafePtr(), currentSolution.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
+
+        return loss;
     }
 
     private float minimize()
     {
+        ClearData(diagonal, gradientStore, rho, alpha, steps, delta);
         // Make initial evaluation
-        fitness = GetFunction(currentSolution);
+        loss = GetFunction(currentSolution);
         gradient = GetGradient(currentSolution);
         //OYM：InitializeLoop
         InitializeLoop(ref innerLoopStep, ref iterations,ref evaluations,ref innerLoopCount,ref point,ref matrixPoint,ref isLoopOutside,ref gradient,ref diagonal,ref steps);
@@ -415,7 +420,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         // outside loop
         while (isLoopOutside)
         {
-            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preFitness,ref fitness,ref fitnessX,ref fitnessY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
+            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preloss,ref loss,ref lossX,ref lossY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
             if (!isLoopOutside) break;
 
             //inner loop
@@ -424,10 +429,10 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref innerLoopCount,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
 
                 // Reevaluate function and gradient
-                fitness = GetFunction(currentSolution);
+                loss = GetFunction(currentSolution);
                 gradient = GetGradient(currentSolution);
 
-              InisdeLoopTail(ref preGradientSum,ref preFitness,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref fitness,ref fitnessTolerance,ref fitnessX,ref fitnessY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref innerLoopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
+              InisdeLoopTail(ref preGradientSum,ref preloss,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref loss,ref lossTolerance,ref lossX,ref lossY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref innerLoopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
                 if (!isLoopInside) break;
             }
             if (!isLoopOutside) break;
@@ -437,7 +442,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
                 ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }
 
-        return fitness; // return the minimum value found (at solution x)
+        return loss; // return the minimum value found (at solution x)
     }
 
     private NativeArray<float> GetGradient(NativeArray<float> args)

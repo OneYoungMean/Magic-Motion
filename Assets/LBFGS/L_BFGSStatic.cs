@@ -21,7 +21,7 @@ public unsafe static class L_BFGSStatic
     /// </summary>
     public const float EPSILION = STEP_MIN / 2;
 
-    private const float FITNESS_TOLERENCE = 1e-3f;
+    private const float loss_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-5f;
     private const float STEP_MAX = 180f;
@@ -61,7 +61,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArra
 
 
     public static void OutsideLoopHead(
-ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preFitness, ref float fitness, ref float fitnessX, ref float fitnessY, ref float gradientInitialX, ref float gradientInitialY,
+ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preloss, ref float loss, ref float lossX, ref float lossY, ref float gradientInitialX, ref float gradientInitialY,
 ref int funcState, ref int innerLoopCount, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
 ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
@@ -71,8 +71,12 @@ ref NativeArray<float> currentSolution)
         iterations++;
         if (iterations != 1)
         {
-            float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);
-
+            float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);//OYM：这个地方等于0？
+            if (sumY==0)
+            {
+                isLoopOutside = false;
+                return;
+            }
             // Compute the diagonal of the Hessian
             // or use an approximation by the user.
             ComputeDiagonal(diagonal, delta, matrixPoint, numberOfVariables, sumY);
@@ -116,8 +120,8 @@ ref NativeArray<float> currentSolution)
             return;
             // throw new LineSearchFailedException(0, "The search direction is not a descent direction.");
         }
-        // safe fitness and gradient
-        preFitness = fitness;
+        // safe loss and gradient
+        preloss = loss;
         UnsafeUtility.MemCpy(diagonal.GetUnsafePtr(), currentSolution.GetUnsafePtr(), numberOfVariables * UnsafeUtility.SizeOf<float>());
 
         // The variables stx, fx, dgx contain the values of the
@@ -126,7 +130,7 @@ ref NativeArray<float> currentSolution)
         // The variables sty, fy, dgy contain the value of the
         // step, function, and derivative at the other endpoint
         // of the interval of uncertainty.
-        fitnessX = fitnessY = preFitness;
+        lossX = lossY = preloss;
         gradientInitialX = gradientInitialY = preGradientSum;
     }
 
@@ -178,7 +182,7 @@ ref NativeArray<float> currentSolution)
     }
 
     public static void InisdeLoopTail(
-        ref float preGradientSum, ref float preFitness, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float fitness, ref float fitnessTolerance, ref float fitnessX, ref float fitnessY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
+        ref float preGradientSum, ref float preloss, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float loss, ref float lossTolerance, ref float lossX, ref float lossY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
         ref int innerLoopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,
         ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> gradient, ref NativeArray<float> steps
@@ -188,8 +192,8 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         float gradientTemp = GetGreadientSum(gradient
             , steps, matrixPoint, numberOfVariables);
 
-        float gradientTest = FITNESS_TOLERENCE * preGradientSum;
-        float fitnesstest1 = preFitness + innerLoopStep * gradientTest;
+        float gradientTest = loss_TOLERENCE * preGradientSum;
+        float losstest1 = preloss + innerLoopStep * gradientTest;
 
         // Test for convergence.
         if (innerLoopCount >= MAXLOOPCOUNT)
@@ -209,7 +213,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
         //The step size has reached the upper bound.
-        if (innerLoopStep == STEP_MAX && fitness <= fitnesstest1 && gradientTemp <= gradientTest)
+        if (innerLoopStep == STEP_MAX && loss <= losstest1 && gradientTemp <= gradientTest)
         {
             //OYM：answer out the max
             isLoopOutside = false;
@@ -218,7 +222,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
         //The step size has reached the lower bound.
-        if (innerLoopStep == STEP_MIN && (fitness > fitnesstest1 || gradientTemp >= gradientTest))
+        if (innerLoopStep == STEP_MIN && (loss >= losstest1 || gradientTemp >= gradientTest))
         {
             isLoopOutside = false;
             isLoopInside = false;
@@ -234,7 +238,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
         // successful
-        if (fitness <= fitnesstest1 && math.abs(gradientTemp) <= fitnessTolerance * (-preGradientSum))
+        if (loss <= losstest1 && math.abs(gradientTemp) <= lossTolerance * (-preGradientSum))
         {
             isLoopOutside = true;
             isLoopInside = false;
@@ -246,8 +250,8 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         // In the first stage we seek a step for which the modified
         // function has a nonpositive value and nonnegative derivative.
         if (stage1 &&
-            fitness <= fitnesstest1 &&
-            gradientTemp >= math.min(FITNESS_TOLERENCE, fitnessTolerance) * preGradientSum)
+            loss <= losstest1 &&
+            gradientTemp >= math.min(loss_TOLERENCE, lossTolerance) * preGradientSum)
         {
             stage1 = false;
         }
@@ -257,13 +261,13 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         // a nonpositive function value and nonnegative derivative, and
         // if a lower function value has been obtained but the decrease
         // is not sufficient.
-        if (stage1 && fitness <= fitnessX && fitness > fitnesstest1)
+        if (stage1 && loss <= lossX && loss > losstest1)
         {
             // Define the modified function and derivative values.
 
-            float fm = fitness - innerLoopStep * gradientTest;
-            float fxm = fitnessX - stepBoundX * gradientTest;
-            float fym = fitnessY - stepBoundY * gradientTest;
+            float fm = loss - innerLoopStep * gradientTest;
+            float fxm = lossX - stepBoundX * gradientTest;
+            float fym = lossY - stepBoundY * gradientTest;
 
             float dgm = gradientTemp - gradientTest;
             float dgxm = gradientInitialX - gradientTest;
@@ -277,8 +281,8 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
                 fm, dgm, ref isInBracket, out funcState);
 
             // Reset the function and gradient values for f.
-            fitnessX = fxm + stepBoundX * gradientTest;
-            fitnessY = fym + stepBoundY * gradientTest;
+            lossX = fxm + stepBoundX * gradientTest;
+            lossY = fym + stepBoundY * gradientTest;
             gradientInitialX = dgxm + gradientTest;
             gradientInitialY = dgym + gradientTest;
         }
@@ -288,10 +292,10 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             // and to compute the new step.
 
             SearchStep(
-                ref stepBoundX, ref fitnessX, ref gradientInitialX,
-                ref stepBoundY, ref fitnessY, ref gradientInitialY,
+                ref stepBoundX, ref lossX, ref gradientInitialX,
+                ref stepBoundY, ref lossY, ref gradientInitialY,
                 ref innerLoopStep,
-                fitness, gradientTemp, ref isInBracket, out funcState);
+                loss, gradientTemp, ref isInBracket, out funcState);
         }
 
         // Force a sufficient decrease in the size of the
@@ -319,10 +323,20 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
         // Compute the new step and
         // new gradient differences
+        bool isZero = true;
         for (int i = 0; i < numberOfVariables; i++)
         {
             steps[matrixPoint + i] *= innerLoopStep;
             delta[matrixPoint + i] = gradient[i] - gradientStore[i];
+            if (delta[matrixPoint + i]!=0)
+            {
+                isZero = false;
+            }
+
+        }
+        if (isZero)
+        {
+
         }
 
         // point loop
@@ -355,6 +369,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         steps = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
         delta = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);
     }
+
     public static void Disposed(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
     {
         diagonal.Dispose();
@@ -363,6 +378,16 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         alpha.Dispose();
         steps.Dispose();
         delta.Dispose();
+    }
+
+    public static void ClearData(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
+    {
+        ClearData(diagonal);
+        ClearData(gradientStore);
+        ClearData(rho);
+        ClearData(alpha);
+        ClearData(steps);
+        ClearData(delta);
     }
     #endregion
 
@@ -426,9 +451,9 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     }
 
     // TODO: Move to separate classes
-    private static void SearchStep(ref float stepBoundX, ref float fitnessX, ref float gradientX,
-                                ref float stepBoundY, ref float fitnessY, ref float gradientY,
-                                ref float step, float fitnessTemp, float gradientTemp,
+    private static void SearchStep(ref float stepBoundX, ref float lossX, ref float gradientX,
+                                ref float stepBoundY, ref float lossY, ref float gradientY,
+                                ref float step, float lossTemp, float gradientTemp,
                                 ref bool isInBracket, out int funcState)
     {
         bool bound;
@@ -445,7 +470,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         // Determine if the derivatives have opposite sign.
         float signDerivatives = gradientTemp * (gradientX / math.abs(gradientX));//OYM: 这里应该换上一个符号函数
 
-        if (fitnessTemp > fitnessX)//OYM: 可以被优化？
+        if (lossTemp > lossX)//OYM: 可以被优化？
         {
             // First case. A higher function value.
             // The minimum is bracketed. If the cubic step is closer
@@ -454,7 +479,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             funcState = 1;
             bound = true;
-            float theta = 3.0f * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float theta = 3.0f * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
             float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
             float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
 
@@ -466,7 +491,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             float q = gamma - gradientX + gamma + gradientTemp;
             float r = p / q;
             stpc = stepBoundX + r * (step - stepBoundX);
-            stpq = stepBoundX + ((gradientX / ((fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX)) / 2) * (step - stepBoundX);
+            stpq = stepBoundX + ((gradientX / ((lossX - lossTemp) / (step - stepBoundX) + gradientX)) / 2) * (step - stepBoundX);
 
             if (math.abs(stpc - stepBoundX) < math.abs(stpq - stepBoundX))
             {
@@ -488,7 +513,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             funcState = 2;
             bound = false;
-            float theta = 3 * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float theta = 3 * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
             float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
             float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
 
@@ -525,7 +550,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             funcState = 3;
             bound = true;
-            float theta = 3 * (fitnessX - fitnessTemp) / (step - stepBoundX) + gradientX + gradientTemp;
+            float theta = 3 * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
             float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
             float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s)));
 
@@ -577,7 +602,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             if (isInBracket)
             {
-                float theta = 3 * (fitnessTemp - fitnessY) / (stepBoundY - step) + gradientY + gradientTemp;
+                float theta = 3 * (lossTemp - lossY) / (stepBoundY - step) + gradientY + gradientTemp;
                 float s = math.max(math.abs(theta), math.max(math.abs(gradientY), math.abs(gradientTemp)));
                 float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientY / s) * (gradientTemp / s));
 
@@ -605,10 +630,10 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         // Update the interval of uncertainty. This update does not
         // depend on the new step or the case analysis above.
 
-        if (fitnessTemp > fitnessX)
+        if (lossTemp > lossX)
         {
             stepBoundY = step;
-            fitnessY = fitnessTemp;
+            lossY = lossTemp;
             gradientY = gradientTemp;
         }
         else
@@ -616,11 +641,11 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             if (signDerivatives < 0.0)
             {
                 stepBoundY = stepBoundX;
-                fitnessY = fitnessX;
+                lossY = lossX;
                 gradientY = gradientX;
             }
             stepBoundX = step;
-            fitnessX = fitnessTemp;
+            lossX = lossTemp;
             gradientX = gradientTemp;
         }
 
@@ -647,6 +672,10 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
 
     #region PrivateFunc
+    private static void ClearData<T>(NativeArray<T> data) where T : struct
+    {
+        UnsafeUtility.MemClear(data.GetUnsafePtr(), data.Length * UnsafeUtility.SizeOf<T>());
+    }
 
     private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref int innerLoopCount, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
     {

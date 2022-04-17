@@ -12,7 +12,7 @@ namespace MagicMotion
     /// <summary>
     /// The Gene,containing 64x8byte(ulong),like array of ulong;
     /// 0-56 is joint data ,57 is empty but occupy data. 
-    /// 63 is fitness data
+    /// 63 is loss data
     /// </summary>
     [StructLayout(LayoutKind.Explicit)]
     public unsafe struct Gene_Safe : System.IEquatable<Gene_Safe>, IComparable<Gene_Safe>, IFormattable
@@ -27,7 +27,7 @@ namespace MagicMotion
         public ulong First => start;
         public ulong Last => end;
 
-        public double Fitness
+        public double loss
         {
             get
             {
@@ -143,16 +143,16 @@ namespace MagicMotion
 
         public string ToString(string format, IFormatProvider formatProvider)
         {
-            return $"Length ={Length}, Fitness ={Fitness},First={First},Last={Last}";
+            return $"Length ={Length}, loss ={loss},First={First},Last={Last}";
         }
 
         public int CompareTo(Gene_Safe other)
         {
-            if (Fitness > other.Fitness)
+            if (loss > other.loss)
             {
                 return 1;
             }
-            else if (Fitness < other.Fitness)
+            else if (loss < other.loss)
             {
                 return -1;
             }

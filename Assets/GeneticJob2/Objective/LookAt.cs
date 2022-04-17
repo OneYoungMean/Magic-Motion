@@ -9,7 +9,7 @@ namespace BioIK2
     {
         [SerializeField] public Transform Target;
         [SerializeField] private Vector3 targetPositon;
-        [SerializeField] private Vector3 ViewingDirection = Vector3.forward;
+        [SerializeField] public Vector3 ViewingDirection = Vector3.forward;
         [SerializeField] private float MaximumError = 0.1f;
 
         public override bool CheckConvergence(float3 worldPosition, quaternion worldRotation, BioNode node, NativeArray<float3> configuration)
