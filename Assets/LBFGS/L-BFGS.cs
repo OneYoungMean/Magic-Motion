@@ -136,7 +136,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private bool isLoopInside;
     private float innerLoopStep;
 
-    private int innerLoopCount;
+    private int loopCount;
     private int point;
     private int matrixPoint;
     private bool isLoopOutside;
@@ -415,29 +415,29 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         loss = GetFunction(currentSolution);
         gradient = GetGradient(currentSolution);
         //OYM：InitializeLoop
-        InitializeLoop(ref innerLoopStep, ref iterations,ref evaluations,ref innerLoopCount,ref point,ref matrixPoint,ref isLoopOutside,ref gradient,ref diagonal,ref steps);
+        InitializeLoop(ref innerLoopStep, ref iterations,ref evaluations,ref loopCount,ref point,ref matrixPoint,ref isLoopOutside,ref gradient,ref diagonal,ref steps);
 
         // outside loop
         while (isLoopOutside)
         {
-            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preloss,ref loss,ref lossX,ref lossY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref innerLoopCount,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
+            OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preloss,ref loss,ref lossX,ref lossY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
             if (!isLoopOutside) break;
 
             //inner loop
             while (isLoopInside)
             {
-                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref innerLoopCount,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
+                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref loopCount,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
 
                 // Reevaluate function and gradient
                 loss = GetFunction(currentSolution);
                 gradient = GetGradient(currentSolution);
 
-              InisdeLoopTail(ref preGradientSum,ref preloss,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref loss,ref lossTolerance,ref lossX,ref lossY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref innerLoopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
+              InisdeLoopTail(ref preGradientSum,ref preloss,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref loss,ref lossTolerance,ref lossX,ref lossY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref loopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
                 if (!isLoopInside) break;
             }
             if (!isLoopOutside) break;
             OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
-                ref innerLoopCount,ref evaluations,ref matrixPoint,ref point, ref  numberOfVariables,
+                ref loopCount,ref matrixPoint,ref point, ref  numberOfVariables,
                 ref isLoopOutside,
                 ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }

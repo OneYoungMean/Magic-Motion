@@ -121,7 +121,7 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
     // Update is called once per frame
     void Update()
     {
-        motionKernel.Update(Time.deltaTime,40);
+        motionKernel.Update(Time.deltaTime);
     }
     private void OnDestroy()
     {

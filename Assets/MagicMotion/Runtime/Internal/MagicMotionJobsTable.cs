@@ -147,6 +147,12 @@ namespace MagicMotion
         [BurstCompile]
         public struct MuscleToJointJob : IJobParallelFor
         {
+
+            /// <summary>
+            /// global data ,to control loop's work
+            /// </summary>
+            [ReadOnly, NativeDisableParallelForRestriction]
+            internal NativeArray<MMGlobalData> globalDataNative;
             [NativeDisableParallelForRestriction]
             public NativeArray<float3> Dof3s;
             [ReadOnly]
@@ -165,6 +171,11 @@ namespace MagicMotion
 
             public  void Execute(int index)
             {
+                if (!globalDataNative[0].isContinue)
+                {
+                    return;
+                }
+
                 int offset = index * jointCount;
 
                 for (int i = 0; i < muscleCount; i++)//OYM：第0行留给loss，1~muscleCount留给gradient
@@ -187,6 +198,11 @@ namespace MagicMotion
         [BurstCompile]
         public struct BuildTransformJob : IJobParallelFor
         {
+            /// <summary>
+            /// global data ,to control loop's work
+            /// </summary>
+            [ReadOnly, NativeDisableParallelForRestriction]
+            internal NativeArray<MMGlobalData> globalDataNative;
             [NativeDisableParallelForRestriction]
             public NativeArray<RigidTransform> jointTransformNatives;
             [ReadOnly]
@@ -200,6 +216,11 @@ namespace MagicMotion
 
             public void Execute(int index)
             {
+                if (!globalDataNative[0].isContinue)
+                {
+                    return;
+                }
+
                 int offset = index * jointLength;
                 for (int i = 0; i < jointLength; i++)
                 {
@@ -247,6 +268,12 @@ namespace MagicMotion
         [BurstCompile]
         public struct CaclulatelossJob : IJobParallelFor
         {
+            /// <summary>
+            /// global data ,to control loop's work
+            /// </summary>
+            [ReadOnly,NativeDisableParallelForRestriction]
+            internal NativeArray<MMGlobalData> globalDataNative;
+
             [ReadOnly]
             public NativeArray<MMConstraintNative> constraintNatives;
             [ReadOnly]
@@ -257,6 +284,10 @@ namespace MagicMotion
 
             public void Execute(int index)
             {
+                if (!globalDataNative[0].isContinue)
+                {
+                    return;
+                }
                 MMConstraintNative constraintNative = constraintNatives[index];
                 MMJoinloss jointloss = jointlossNatives[index];
                 RigidTransform jointTransform = jointTransformNatives[index];
@@ -414,7 +445,11 @@ namespace MagicMotion
             /// <summary>
             /// BFGS 求解应用到的变量
             /// </summary>
-            public NativeArray<MMLBFGSNative> LBFGSNatives;
+            public NativeArray<MMLBFGSSolver> LBFGSSolvers;
+            /// <summary>
+            /// global data ,to control loop's work
+            /// </summary>
+            internal NativeArray<MMGlobalData> globalDataNative;
             [NativeDisableParallelForRestriction]
             public NativeArray<float> diagonal;
             [NativeDisableParallelForRestriction]
@@ -427,7 +462,8 @@ namespace MagicMotion
             public NativeArray<float> steps;
             [NativeDisableParallelForRestriction]
             public NativeArray<float> delta;
-
+            [NativeDisableParallelForRestriction]
+            internal NativeArray<float> losses;
             #endregion
             /// <summary>
             ///  variable's count ,is the same as muscle's count.
@@ -449,17 +485,18 @@ namespace MagicMotion
             /// max loop count.
             /// </summary>
             public float loss;
-            [NativeDisableParallelForRestriction]
-            internal NativeArray<float> losses;
 
             public void Execute(int index)
             {
                 PreOptimizeProcess();
-                var LBFGSSolver = LBFGSNatives[index];
+                var LBFGSSolver = LBFGSSolvers[index];
+                var globalData = globalDataNative[index];
 
-                LBFGSSolver.Optimize(loss, diagonal, gradientStore, rho, alpha, steps, delta, muscleValueNatives, gradients);
-                losses[0] = loss;
-                LBFGSNatives[index] = LBFGSSolver;
+                LBFGSSolver.Optimize(loss,ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValueNatives, gradients);
+                losses[globalData.leastLoopCount] = loss;
+
+                LBFGSSolvers[index] = LBFGSSolver;
+                globalDataNative[index] = globalData;
                 PostOptimizeProcess();
             }
 

@@ -17,7 +17,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration = 40;
+        public const int iteration =128;
         #region  NativeArrayData
         public JobHandle MainHandle;
 
@@ -29,6 +29,7 @@ namespace MagicMotion
 
         private NativeArray<MMConstraintNative> constraintNativeArray;
 
+
         private NativeArray<float3> Dof3NativeArray;
         private NativeArray<float> muscleValueNativeArray;
         private NativeArray<RigidTransform> jointTransformNativeArray;
@@ -37,7 +38,9 @@ namespace MagicMotion
         private TransformAccessArray constraintTransformArray;
 
 
-        private NativeArray<MMLBFGSNative> LBFGSNatives;
+        private NativeArray<MMLBFGSSolver> LBFGSNatives;
+        private NativeArray<MMGlobalData> globalDataNativeArray;
+
         private NativeArray<float> gradientStore;
         private NativeArray<float> gradients;
         private NativeArray<float> diagonal;
@@ -163,7 +166,7 @@ namespace MagicMotion
             MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
 
         }
-        public void Update(float deltatime,int iterationCount)
+        public void Update(float deltatime)
         {
             if (!MainHandle.IsCompleted)
             {
@@ -177,35 +180,40 @@ namespace MagicMotion
                 solver.Reset();
                 solver.numberOfVariables = muscleCount;
                 LBFGSNatives[i] = solver;
-            }
-            getConstraintTransformJob.RunReadOnly(constraintTransformArray);
-/*            for (int i = 0; i < 16; i++)
-            {
-                LBFGSSolver.Minimize(muscleValueNativeArray);
-            }*/
 
-            /*            rigHipPositionJob.Run(muscleCount + 1);*/
+                var globalData = globalDataNativeArray[i];
+                globalData.leastLoopCount = iteration;
+                globalDataNativeArray[i] = globalData;
+
+            }
+            if (false)
+            {
+                getConstraintTransformJob.RunReadOnly(constraintTransformArray);
+                for (int i = 0; i < iteration; i++)
+                {
+                    muscleToJointJob.Run(muscleCount + 1);
+                    buildTransformJob.Run(muscleCount + 1);
+                    caclulatelossJob.Run(parallelDataCount);
+                    mainControllerJob.Run(1);
+                }
+                jointToTransformJob.Schedule(jointTransformArray).Complete();
+            }
+            else
+            {
+                Debug.Log(losses[iteration-1]+" ~ "+ losses[0]);
+
+            MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32,MainHandle);
             for (int i = 0; i < iteration; i++)
             {
-                muscleToJointJob.Run(muscleCount + 1);
-                buildTransformJob.Run(muscleCount + 1);
-                caclulatelossJob.Run(parallelDataCount);
-                mainControllerJob.Run(1);
+                MainHandle=muscleToJointJob.Schedule(muscleCount+1, 8, MainHandle);
+                MainHandle = buildTransformJob.Schedule(muscleCount + 1, 8, MainHandle);
+                MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
+                MainHandle = mainControllerJob.Schedule(1, 1, MainHandle);
             }
-            muscleToJointJob.Run(muscleCount + 1);
-            buildTransformJob.Run(muscleCount + 1);
-            jointToTransformJob.Schedule(jointTransformArray).Complete();
+            MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);
+            }
 
-            /*            MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32,MainHandle);
-                        MainHandle = rigHipPositionJob.Schedule(muscleCount + 1, 4, MainHandle);
-                        for (int i = 0; i < iterationCount; i++)
-                        {
-                            MainHandle=muscleToJointJob.Schedule(muscleCount+1, 4, MainHandle);
-                            MainHandle = buildTransformJob.Schedule(muscleCount + 1, 4, MainHandle);
-                            MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
-                            MainHandle = mainControllerJob.Schedule(1, 1, MainHandle);
-                        }
-                        MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
+
         }
         public void Dispose()
         {
@@ -227,6 +235,7 @@ namespace MagicMotion
             constraintTransformArray.Dispose();
 
             LBFGSNatives.Dispose();
+            globalDataNativeArray.Dispose();
             gradients.Dispose();
             losses.Dispose();
 
@@ -285,12 +294,15 @@ namespace MagicMotion
 
             gradients = new NativeArray<float>(muscleCount, Allocator.Persistent);
 
-            LBFGSNatives = new NativeArray<MMLBFGSNative>(1, Allocator.Persistent);
-            LBFGSNatives[0] = MMLBFGSNative.identity;
+            LBFGSNatives = new NativeArray<MMLBFGSSolver>(1, Allocator.Persistent);
+
+            globalDataNativeArray = new NativeArray<MMGlobalData>(1, Allocator.Persistent);
+
+            LBFGSNatives[0] = MMLBFGSSolver.identity;
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
-            losses=new NativeArray<float>(iteration*2, Allocator.Persistent);
+            losses=new NativeArray<float>(iteration, Allocator.Persistent);
         }
         private void BuildJobDataInternal()
         {
@@ -311,6 +323,7 @@ namespace MagicMotion
             };
             muscleToJointJob = new MuscleToJointJob()
             {
+                globalDataNative= globalDataNativeArray,
                 Dof3s = Dof3NativeArray,
                 musclesNatives = muscleNativeArray,
                 musclesValues = muscleValueNativeArray,
@@ -319,14 +332,16 @@ namespace MagicMotion
             };
              buildTransformJob = new BuildTransformJob()
             {
-                jointTransformNatives = jointTransformNativeArray,
+                 globalDataNative = globalDataNativeArray,
+                 jointTransformNatives = jointTransformNativeArray,
                 jointNatives = jointNativeArray,
                 Dof3s = Dof3NativeArray,
                 jointLength = jointCount,
             };
              caclulatelossJob = new CaclulatelossJob()
             {
-                constraintNatives = constraintNativeArray,
+                 globalDataNative = globalDataNativeArray,
+                 constraintNatives = constraintNativeArray,
                 jointlossNatives = jointlossNativeArray,
                 jointTransformNatives= jointTransformNativeArray,
                 Dof3s = Dof3NativeArray,
@@ -334,10 +349,11 @@ namespace MagicMotion
 
              mainControllerJob = new MainControllerJob()
             {
-                jointlossNatives = jointlossNativeArray,
+                 globalDataNative = globalDataNativeArray,
+                 jointlossNatives = jointlossNativeArray,
                 muscleValueNatives = muscleValueNativeArray,
                 gradients = gradients,
-                LBFGSNatives = LBFGSNatives,
+                LBFGSSolvers = LBFGSNatives,
                 diagonal = diagonal,
                 gradientStore = gradientStore,
                  losses= losses,

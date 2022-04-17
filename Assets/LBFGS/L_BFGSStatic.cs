@@ -9,17 +9,17 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION=5;
+    public const int CORRECTION=16;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT=40;
+    public const int MAXLOOPCOUNT=16;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
-    public const float EPSILION = STEP_MIN / 2;
+    public const float EPSILION = STEP_MIN ;
 
     private const float loss_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
@@ -34,13 +34,13 @@ public unsafe static class L_BFGSStatic
     #region  PublicFunc
     public static void InitializeLoop(
 ref float innerLoopStep,
-ref int iterations, ref int evaluations, ref int innerLoopCount, ref int point, ref int matrixPoint,
+ref int iterations, ref int evaluations, ref int loopCount, ref int point, ref int matrixPoint,
 ref bool isLoopOutside,
 ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArray<float> steps
 )
     {
         // Initialization
-        InitializeBeforeLoop(ref innerLoopStep, ref iterations, ref evaluations, ref innerLoopCount, ref point, ref matrixPoint, ref isLoopOutside);
+        InitializeBeforeLoop(ref innerLoopStep, ref iterations, ref loopCount, ref point, ref matrixPoint, ref isLoopOutside);
 
         // Obtain initial Hessian
         for (int i = 0; i < diagonal.Length; i++)
@@ -62,19 +62,19 @@ ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArra
 
     public static void OutsideLoopHead(
 ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preloss, ref float loss, ref float lossX, ref float lossY, ref float gradientInitialX, ref float gradientInitialY,
-ref int funcState, ref int innerLoopCount, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
+ref int funcState,  ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
 ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
 ref NativeArray<float> currentSolution)
     {
-        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState, ref innerLoopCount, ref isLoopInside, ref isInBracket, ref stage1);
+        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState,  ref isLoopInside, ref isInBracket, ref stage1);
         iterations++;
         if (iterations != 1)
         {
             float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);//OYM：这个地方等于0？
             if (sumY==0)
             {
-                isLoopOutside = false;
+                isLoopOutside=false;
                 return;
             }
             // Compute the diagonal of the Hessian
@@ -136,7 +136,7 @@ ref NativeArray<float> currentSolution)
 
     public static bool InsideLoopHead(
     ref float stepBoundMin, ref float stepBoundMax, ref float stepBoundX, ref float stepBoundY, ref float innerLoopStep,
-    ref int innerLoopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint,
+    ref int loopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint,
     ref bool isInBracket,
     ref NativeArray<float> currentSolution, ref NativeArray<float> diagonal, ref NativeArray<float> steps
     )
@@ -164,7 +164,7 @@ ref NativeArray<float> currentSolution)
         if (
             (isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) ||//OYM：step在bound外
             (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-            (innerLoopCount >= MAXLOOPCOUNT - 1) || (funcState == 0))
+            (loopCount >= MAXLOOPCOUNT - 1) || (funcState == 0))
         {
             innerLoopStep = stepBoundX;
         }
@@ -183,12 +183,12 @@ ref NativeArray<float> currentSolution)
 
     public static void InisdeLoopTail(
         ref float preGradientSum, ref float preloss, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float loss, ref float lossTolerance, ref float lossX, ref float lossY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
-        ref int innerLoopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,
+        ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,
         ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> gradient, ref NativeArray<float> steps
         )
     {
-        innerLoopCount++;
+        loopCount++;
         float gradientTemp = GetGreadientSum(gradient
             , steps, matrixPoint, numberOfVariables);
 
@@ -196,7 +196,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         float losstest1 = preloss + innerLoopStep * gradientTest;
 
         // Test for convergence.
-        if (innerLoopCount >= MAXLOOPCOUNT)
+        if (loopCount >= MAXLOOPCOUNT)
         {
             isLoopOutside = false;
             isLoopInside= false;
@@ -313,30 +313,17 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
     public static bool OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
-           ref int innerLoopCount, ref int evaluations, ref int matrixPoint, ref int point, ref int numberOfVariables,
+           ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,
            ref bool isLoopOutside,
            ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> currentSolution
         )
     {
-        // Register evaluations
-        evaluations += innerLoopCount;
-
         // Compute the new step and
         // new gradient differences
-        bool isZero = true;
         for (int i = 0; i < numberOfVariables; i++)
         {
             steps[matrixPoint + i] *= innerLoopStep;
             delta[matrixPoint + i] = gradient[i] - gradientStore[i];
-            if (delta[matrixPoint + i]!=0)
-            {
-                isZero = false;
-            }
-
-        }
-        if (isZero)
-        {
-
         }
 
         // point loop
@@ -677,7 +664,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         UnsafeUtility.MemClear(data.GetUnsafePtr(), data.Length * UnsafeUtility.SizeOf<T>());
     }
 
-    private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref int innerLoopCount, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
+    private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
     {
         width = STEP_MAX - STEP_MIN;
         width1 = width / 0.5f;
@@ -686,7 +673,6 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         preGradientSum = 0f;
 
         funcState = 1;
-        innerLoopCount = 0;
 
         isLoopInside = true;
 
@@ -694,12 +680,11 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         stage1 = true;
     }
 
-    private static void InitializeBeforeLoop(ref float innerLoopStep, ref int iterations, ref int evaluations, ref int innerLoopCount, ref int point, ref int matrixPoint, ref bool isLoopOutside)
+    private static void InitializeBeforeLoop(ref float innerLoopStep, ref int iterations, ref int loopCount, ref int point, ref int matrixPoint, ref bool isLoopOutside)
     {
         innerLoopStep = 0;
         iterations = 0;
-        evaluations = 1;
-        innerLoopCount = 0;
+        loopCount = 0;
         point = 0;
         matrixPoint = 0;
         isLoopOutside = true;
