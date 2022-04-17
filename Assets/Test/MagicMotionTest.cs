@@ -75,8 +75,14 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
                 currentJoint.length = math.length(currentJoint.localPosition);
             }
 
-            currentConstraint.positionChangeConstraint.weight3 = 1;
-            currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;
+            if (currentJoint.parentIndex != -1)
+            {
+                currentConstraint.lengthSum = currentJoint.length+ constraintNativeArray[currentJoint.parentIndex].lengthSum;
+            }
+            currentConstraint.muscleChangeConstraint.weight3 = 0.51f;
+            //currentConstraint.positionChangeConstraint.tolerance3 = 0.01f;
+            /*            currentConstraint.positionChangeConstraint.weight3 = 1;
+                        currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*/
 
             jointNativeArray[i]=currentJoint;
             jointTransformArray[i]=bioJoint.transform;
@@ -99,11 +105,6 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
                     constraint.positionConstraint.weight3= 1;
                     transformToConstraint.constraintType = MMConstraintType.Position;
                     constraintTransformArray[i] = (bioConstraint as Position).Target;
-                    while (joint.parentIndex!=-1)
-                    {
-                        constraint.lengthSum += joint.length;
-                        joint = jointNativeArray[joint.parentIndex];
-                    }
                     break;
                 case ObjectiveType.LookAt:
                     constraint.lookAtConstraint.weight = 1;

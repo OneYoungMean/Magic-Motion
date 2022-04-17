@@ -226,6 +226,15 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
             {
                 return;
             }
+            else if (leastLoopCount==1)
+            {
+                leastLoopCount--;
+                return;
+            }
+            else
+            {
+                leastLoopCount--;
+            }
             this.loss = loss;
             while (true)
             {
@@ -254,7 +263,6 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         {
                             InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
                             state = LBFGSState.InsideLoopTail;
-                            leastLoopCount--;
                             return;
                         }
                         else
@@ -295,7 +303,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         }
                         else
                         {
-                            leastLoopCount = 0;
+                            leastLoopCount = 1;
                             return;
                         }
 

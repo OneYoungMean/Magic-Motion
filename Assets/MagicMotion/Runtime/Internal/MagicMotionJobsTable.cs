@@ -349,7 +349,7 @@ namespace MagicMotion
 
                 float loss = math.csum(direction * direction * weight3);
 
-                loss *= constraintNative.lengthSum * constraintNative.lengthSum;
+                loss *= math.PI*math.PI/( constraintNative.lengthSum * constraintNative.lengthSum);
 
                 jointloss.positionloss = loss;
             }
@@ -424,11 +424,12 @@ namespace MagicMotion
                 float3 weight3 = constraintNative.muscleChangeConstraint.weight3;
 
                 float3 Dof3Change = math.abs( Dof3 - oldDof3);
-                Dof3Change = math.max(0, Dof3Change - torlerence3);
+                Dof3Change = math.max(0, Dof3Change - torlerence3)* weight3;
                 float loss = math.csum(Dof3Change);
-                jointloss.muscleChangeloss = loss;
+                jointloss.muscleChangeloss = loss* loss;
             }
         }
+        [BurstCompile]
         public struct MainControllerJob : IJobParallelFor
         {
             //OYM：感觉计算量超级的大啊
@@ -551,10 +552,12 @@ namespace MagicMotion
 
         public struct JointToTransformJob : IJobParallelForTransform
         {
+            [NativeDisableParallelForRestriction]
             public NativeArray<MMConstraintNative> constraintNatives;
             [ReadOnly]
             public NativeSlice<RigidTransform> jointTransformNatives;
-
+            [ReadOnly]
+            public NativeSlice<float3> Dof3s;
             public int muscleLength;
             public int jointLength;
             public void Execute(int index, TransformAccess transform)
@@ -567,6 +570,7 @@ namespace MagicMotion
                     int point = i * jointLength+ index;
                     var constraintNativeData = constraintNatives[point];
                     constraintNativeData.positionChangeConstraint.oldPosition = jointTransformNatives[index].pos;
+                    constraintNativeData.muscleChangeConstraint.oldDof3 = Dof3s[index];
                     constraintNatives[point] = constraintNativeData;
                 }
             }

@@ -20,7 +20,7 @@ namespace MagicMotion.Mono
             {
                 constraints=new List<MMConstraint>();
 
-                for (int i = 0; i < joints.Length; i++)
+/*                for (int i = 0; i < joints.Length; i++)
                 {
                     var joint = joints[i];
                     GameObject positionIK = new GameObject("IK_" + joints[i].name + "_Position");
@@ -31,7 +31,7 @@ namespace MagicMotion.Mono
 
                     joint.constraints[(int)positionConstriant.GetConstraintType()] =positionConstriant;
                     constraints.Add(positionConstriant);
-                }
+                }*/
 
                 for (int i = 0; i < joints.Length; i++)
                 {
@@ -47,19 +47,6 @@ namespace MagicMotion.Mono
                 }
             }
             isInitialize = true;
-        }
-
-        public void Regular()
-        {
-            for (int i = 0; i < constraints.Count; i++)
-            {
-                if (constraints[i]==null)
-                {
-                    constraints.RemoveAt(i);
-                    i--;
-                }
-                constraints[i].index = i;
-            }
         }
 
         public MMConstraintNative[] GetNativeDatas()

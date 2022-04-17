@@ -37,7 +37,6 @@ namespace MagicMotion
         private TransformAccessArray jointTransformArray;
         private TransformAccessArray constraintTransformArray;
 
-
         private NativeArray<MMLBFGSSolver> LBFGSNatives;
         private NativeArray<MMGlobalData> globalDataNativeArray;
 
@@ -161,9 +160,10 @@ namespace MagicMotion
             initializeMuscleJob.Run(muscleCount);
             muscleToJointJob.Run(muscleCount);
             buildTransformJob.Run(muscleCount);
-/*            MainHandle = initializeMuscleJob.Schedule(muscleCount, 32, MainHandle);
-            MainHandle= muscleToJointJob.Schedule (muscleCount,32, MainHandle);
-            MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
+
+            /*            MainHandle = initializeMuscleJob.Schedule(muscleCount, 32, MainHandle);
+                        MainHandle= muscleToJointJob.Schedule (muscleCount,32, MainHandle);
+                        MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
 
         }
         public void Update(float deltatime)
@@ -184,7 +184,6 @@ namespace MagicMotion
                 var globalData = globalDataNativeArray[i];
                 globalData.leastLoopCount = iteration;
                 globalDataNativeArray[i] = globalData;
-
             }
             if (false)
             {
@@ -206,7 +205,7 @@ namespace MagicMotion
             for (int i = 0; i < iteration; i++)
             {
                 MainHandle=muscleToJointJob.Schedule(muscleCount+1, 8, MainHandle);
-                MainHandle = buildTransformJob.Schedule(muscleCount + 1, 8, MainHandle);
+                MainHandle = buildTransformJob.Schedule(muscleCount + 1,8, MainHandle);
                 MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
                 MainHandle = mainControllerJob.Schedule(1, 1, MainHandle);
             }
@@ -370,7 +369,11 @@ namespace MagicMotion
             jointToTransformJob = new JointToTransformJob()
             {
                 jointTransformNatives = jointTransformNativeArray.Slice(0, jointCount),
+                Dof3s  =Dof3NativeArray.Slice(0, jointCount),
                 constraintNatives=constraintNativeArray,
+                jointLength=jointCount,
+                muscleLength=muscleCount,
+
             };
         }
 
