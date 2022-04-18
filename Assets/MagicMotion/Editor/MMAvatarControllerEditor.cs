@@ -6,34 +6,37 @@ using UnityEditor;
 namespace MagicMotion.UnityEditor
 {
     using Mono;
-    [CustomEditor(typeof(MMAvatarController))]
+    [CustomEditor(typeof(MMJointController))]
     public class MMAvatarControllerEditor : Editor
     {
-        MMAvatarController controller;
+        MMJointController controller;
         public void OnEnable()
         {
-            controller = (MMAvatarController)target;
+            controller = (MMJointController)target;
         }
 
         public override void OnInspectorGUI()
         {
+            if (!Application.isPlaying)
+            {
+                if (controller.isInitialize)
+                {
+                    var muscles = controller.motionMuscles;
+                    for (int i = 0; i < muscles.Length; i++)
+                    {
+                        muscles[i].value = EditorGUILayout.Slider(muscles[i].muscleName, muscles[i].value, -1, 1);
+                    }
+                    controller.UpdateMotion();
+                }
+                else
+                {
+                    if (GUILayout.Button("Generate Joint and muscle"))
+                    {
+                        controller.Initialize();
+                    }
+                }
+            }
 
-            if (controller.isInitialize)
-            {
-                var muscles = controller.motionMuscles;
-                for (int i = 0; i < muscles.Length; i++)
-                {
-                    muscles[i].value = EditorGUILayout.Slider(muscles[i].muscleName, muscles[i].value, -1, 1);
-                }
-                controller.UpdateMotion();
-            }
-            else
-            {
-                if (GUILayout.Button("Generate Joint and muscle"))
-                {
-                    controller.Initialize();
-                }
-            }
             serializedObject.ApplyModifiedProperties();
         }
     }

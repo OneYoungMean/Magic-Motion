@@ -8,7 +8,7 @@ namespace MagicMotion
 
     public struct TransformToConstraintNative
     {
-        public int constraintIndex;
+        public int jointIndex;
         public  MMConstraintType constraintType;
     }
 }

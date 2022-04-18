@@ -21,7 +21,12 @@ namespace MagicMotion.Mono
         /// <summary>
         /// Constraint target
         /// </summary>
-        public Transform targetJointTransform;
+        public Transform targetTransform;
+        /// <summary>
+        /// joint lookat direction
+        /// </summary>
+        public Vector3 jointDirection;
+
         /// <summary>
         /// initialLocalPosition;
         /// </summary>
@@ -31,10 +36,11 @@ namespace MagicMotion.Mono
         /// </summary>
         private Quaternion initalLocalRotation;
 
-        public override void Initialize()
+        public void AddTarget(Transform targetTransform)
         {
-            initalLocalPosition = transform.localPosition;
-            initalLocalRotation = transform.localRotation;
+            this.targetTransform = targetTransform;
+            initalLocalPosition = targetTransform.localPosition;
+            initalLocalRotation = targetTransform.localRotation;
         }
 
 /*        public override MMConstraintNative GetNativeData()
@@ -48,7 +54,7 @@ namespace MagicMotion.Mono
             };
         }*/
 
-        public override void ResetPositionAndRotation()
+        public override void Reset()
         {
             transform.localPosition = initalLocalPosition;
             transform.localRotation = initalLocalRotation;
@@ -57,6 +63,22 @@ namespace MagicMotion.Mono
         public override MMConstraintType GetConstraintType()
         {
            return MMConstraintType.LookAt;
+        }
+
+        public LookAtConstraint GetNativeData()
+        {
+            return new LookAtConstraint()
+            {
+                weight = weight,
+                tolerance = tolerance,
+                direction = jointDirection,
+            };
+        }
+
+        public void OnDrawGizmos()
+        {
+            Gizmos.color = Color.yellow;
+            Gizmos.DrawSphere(targetTransform.position, 0.05f);
         }
     }
 

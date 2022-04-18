@@ -16,6 +16,9 @@ namespace MagicMotion
         Position = 0,
         Rotation = 1,
         LookAt = 2,
+        Collider=3,
+        PositionChange=4,
+        DofChange=5
     }
     /// <summary>
     /// The joint constraint.
@@ -24,12 +27,13 @@ namespace MagicMotion
     public struct MMConstraintNative
     {
         public float lengthSum;
-        public MMPositionConstraint positionConstraint;
-        public MMMuscleConstraint muscleConstraint;
-        public MMLookAtConstraint lookAtConstraint;
-        public MMColliderConstraint colliderConstraint;
-        public MMPositionChangeConstraint positionChangeConstraint;
-        public MMMuscleChangeConstraint muscleChangeConstraint;
+        public PositionConstraint positionConstraint;
+        public DofConstraint DofConstraint;
+        public LookAtConstraint lookAtConstraint;
+        public ColliderConstraint colliderConstraint;
+        public PositionChangeConstraint positionChangeConstraint;
+        public DofChangeConstraint  DofChangeConstraint ;
+
     }
     public struct MMJoinloss
     {
@@ -63,7 +67,7 @@ namespace MagicMotion
         }
     }
 
-    public struct MMPositionConstraint
+    public struct PositionConstraint
     {
         public float3 position;
         public float3 weight3;
@@ -76,7 +80,7 @@ namespace MagicMotion
         }
     }
 
-    public struct MMMuscleConstraint
+    public struct DofConstraint
     {
         public float3 tolerance3;
         public float3 weight3;
@@ -86,7 +90,7 @@ namespace MagicMotion
         }
     }
 
-    public struct MMLookAtConstraint
+    public struct LookAtConstraint
     {
         public float3 position;
         public float3 direction;
@@ -98,7 +102,7 @@ namespace MagicMotion
         }
     }
 
-    public struct MMColliderConstraint
+    public struct ColliderConstraint
     {
         public float3 localPosition;
         public float3 localDirection;
@@ -111,7 +115,7 @@ namespace MagicMotion
         }
     }
 
-    public struct MMPositionChangeConstraint
+    public struct PositionChangeConstraint
     {
         public float3 oldPosition;
         public float3 tolerance3;
@@ -121,7 +125,7 @@ namespace MagicMotion
             get { return !math.all(weight3 == 0); }
         }
     }
-    public struct MMMuscleChangeConstraint
+    public struct DofChangeConstraint 
     {
         public float3 oldDof3;
         public float3 torlerence3;

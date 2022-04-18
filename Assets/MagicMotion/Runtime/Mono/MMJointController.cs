@@ -10,10 +10,11 @@ using System;
 
 namespace MagicMotion.Mono
 {
-    public class MMAvatarController : MonoBehaviour
+    public class MMJointController : MonoBehaviour
     {
-
+        public const float LOOKAT_LENGTH = 0.1f;
         #region  Field&Property
+        public GameObject ConstraintAimRoot;
         /// <summary>
         /// target animator
         /// </summary>
@@ -26,6 +27,10 @@ namespace MagicMotion.Mono
         /// generate muscle
         /// </summary>
         public MMMuscle[] motionMuscles;
+        /// <summary>
+        /// generate constraint
+        /// </summary>
+        public List<MMConstraint> motionConstraints;
         /// <summary>
         /// is controller initialize?
         /// </summary>
@@ -43,14 +48,42 @@ namespace MagicMotion.Mono
         #endregion
 
         #region LocalFunc
-        public void GetNativeDatas()
+        public void RegisterData(MagicMotionKernel kernel)
         {
-            
-        }
+            if (kernel == null) 
+            {
+                return;
+            }
 
-        public Transform[] GetJointTransform()
-        {
-            return null;
+            MMMuscleNative[] muscleNatives = new MMMuscleNative[motionMuscles.Length];
+            for (int i = 0; i < motionMuscles.Length; i++)
+            {
+                muscleNatives[i] = motionMuscles[i].GetNativeData();
+            }
+            kernel.SetMuscleSata(muscleNatives);
+            MMJointNative[] jointNative =new MMJointNative[motionJoints.Length];
+            Transform[] jointTransforms = new Transform[motionJoints.Length];
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                jointNative[i] = motionJoints[i].GetNativeJointData();
+                jointTransforms[i] = motionJoints[i].transform;
+                 
+            }
+            kernel.SetJointData(jointNative, jointTransforms);
+
+            MMConstraintNative[] constraintNatives = new MMConstraintNative[motionJoints.Length];
+            List<TransformToConstraintNative> transformToConstraintCollect =new List<TransformToConstraintNative>();
+            List<Transform> aimTransformCollect =new List<Transform>();
+
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+               motionJoints[i].GetNativeConstraintData(out MMConstraintNative constraint, out List<TransformToConstraintNative> transformToConstraints, out List<Transform> aimTransforms);
+                constraintNatives[i]=constraint;
+                transformToConstraintCollect.AddRange(transformToConstraints);
+                aimTransformCollect.AddRange(aimTransforms);
+
+            }
+            kernel.SetConstraintData(constraintNatives,transformToConstraintCollect.ToArray(),aimTransformCollect.ToArray());
         }
 
         public void UpdateMotion()
@@ -129,6 +162,15 @@ namespace MagicMotion.Mono
                 }
             }
             this.animator = animator;
+
+            Initialize1();
+            Initialize2();
+
+            isInitialize = true;
+        }
+
+        private void Initialize1()
+        {
 
             Avatar avatar = animator.avatar;
             var humandescription = avatar.humanDescription;
@@ -216,7 +258,7 @@ namespace MagicMotion.Mono
                     currentJoint.initiallocalRotation = currentJoint.transform.rotation;
                     currentJoint.initiallocalPosition = currentJoint.transform.position;
 
-                    currentJoint.length= currentJoint.cumulativeLength = 0;
+                    currentJoint.length = currentJoint.cumulativeLength = 0;
                 }
                 else
                 {
@@ -225,8 +267,8 @@ namespace MagicMotion.Mono
                     currentJoint.initiallocalPosition = math.mul(math.inverse(parentJoint.transform.rotation), (float3)(currentJoint.transform.position - parentJoint.transform.position));
 
                     currentJoint.parent = parentJoint;
-                    currentJoint.length =math.length(currentJoint.initiallocalRotation);
-                    currentJoint.cumulativeLength = currentJoint.parent.length+currentJoint.length;
+                    currentJoint.length = math.length(currentJoint.initiallocalRotation);
+                    currentJoint.cumulativeLength = currentJoint.parent.length + currentJoint.length;
                 }
 
 
@@ -250,10 +292,79 @@ namespace MagicMotion.Mono
 
             }
             #endregion
-
+            currentPose.muscles = muscleValue;
+            humanPoseHandler.SetHumanPose(ref currentPose);
             Regular();
 
-            isInitialize = true;
+        }
+        public void Initialize2()
+        {
+            motionConstraints = new List<MMConstraint>();
+            ConstraintAimRoot = new GameObject("Aim Root");
+            ConstraintAimRoot.transform.parent= transform;
+            ConstraintAimRoot.transform.localPosition = Vector3.zero;
+            ConstraintAimRoot.transform.localRotation = Quaternion.identity;
+
+            AddConstraint(MMConstraintType.Position);
+        }
+
+        private void AddConstraint(MMConstraintType constraintType)
+        {
+            for (int i = 1; i < motionJoints.Length; i++)
+            {
+                var joint = motionJoints[i];
+                MMConstraint constraint;
+                switch (constraintType)
+                {
+                    case MMConstraintType.Position:
+                        GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
+                        positionIK.transform.parent = ConstraintAimRoot.transform;
+                        positionIK.transform.position = joint.transform.position;
+                        var positionConstraint =
+                       joint.gameObject.AddComponent<MMPositionConstraint>();
+                        
+                        positionConstraint.weight3 =Vector3.one;
+                        positionConstraint.AddTarget(positionIK.transform);
+                        constraint = positionConstraint;
+                        break;
+                    case MMConstraintType.Rotation:
+                        constraint = null;
+                        break;
+                    case MMConstraintType.LookAt:
+
+                        GameObject lookAtIK = new GameObject("IK_" + motionJoints[i].name + "_Lookat");
+                        lookAtIK.transform.parent = ConstraintAimRoot.transform;
+                        lookAtIK.transform.position = joint.transform.position + LOOKAT_LENGTH * joint.transform.forward;
+                        var lookatConstraint= joint.gameObject.AddComponent<MMLookConstraint>();
+                        lookatConstraint.weight=1;
+                        lookatConstraint.jointDirection = Vector3.forward;
+                        lookatConstraint.AddTarget(lookAtIK.transform);
+                        constraint = lookatConstraint;
+
+                        break;
+                    case MMConstraintType.Collider:
+                        constraint = null;
+                        break;
+                    case MMConstraintType.PositionChange:
+                        var positionChangeConstraint = joint.gameObject.AddComponent<MMPositionChangeConstraint>();
+                        positionChangeConstraint.weight3 = Vector3.one;
+                        constraint=positionChangeConstraint;
+                        break;
+                    case MMConstraintType.DofChange:
+                        var DofChangeConstraint = joint.gameObject.AddComponent<MMPositionChangeConstraint>();
+                        DofChangeConstraint.weight3 = Vector3.one;
+                        constraint = DofChangeConstraint;
+                        break;
+                    default:
+                        constraint= null;
+                        break;
+                }
+                joint.constraints[(int)constraintType] = constraint;
+                if (constraint!=null)
+                {
+                    motionConstraints.Add(constraint);
+                }
+            }
         }
         /// <summary>
         /// Remove empty element or sort something 
@@ -296,7 +407,7 @@ namespace MagicMotion.Mono
         /// <param name="minAngle"></param>
         /// <param name="maxAngle"></param>
         /// <param name="axis"></param>
-        public static void GetMuscleRangeAndAxis(Transform targetBone, HumanPose currentPose, HumanPoseHandler humanPoseHandler, int muscleIndex, out float minAngle, out float maxAngle, out float3 axis)
+        private static void GetMuscleRangeAndAxis(Transform targetBone, HumanPose currentPose, HumanPoseHandler humanPoseHandler, int muscleIndex, out float minAngle, out float maxAngle, out float3 axis)
         {
             float[] muscleValue = currentPose.muscles;
             //defaultValue = 0;
@@ -335,7 +446,7 @@ namespace MagicMotion.Mono
         /// <param name="muscleName"></param>
         /// <param name="boneName"></param>
         /// <returns></returns>
-        public static bool GetMuscleData(int muscleIndex, out int boneIndex, out int dof, out string muscleName, out string boneName)
+        private static bool GetMuscleData(int muscleIndex, out int boneIndex, out int dof, out string muscleName, out string boneName)
         {
             dof = -1;
             muscleName = null;

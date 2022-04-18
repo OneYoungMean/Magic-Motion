@@ -76,11 +76,11 @@ namespace MagicMotion.Mono
         public HumanBodyBones humanBodyBone;
 
 
-        public MMJointNative GetNativeData()
+        public MMJointNative GetNativeJointData()
         {
             return new MMJointNative()
             {
-                parentIndex = parent.jointIndex,
+                parentIndex = parent==null?-1: parent.jointIndex,
                 localPosition = initiallocalPosition,
                 localRotation = initiallocalRotation,
                 maxRange = maxRange,
@@ -91,6 +91,61 @@ namespace MagicMotion.Mono
                 isVaild = enabled,
             };
     }
+
+        public void GetNativeConstraintData(out MMConstraintNative constraint,out List<TransformToConstraintNative>transformToConstraints,out List<Transform> transforms )
+        {
+             constraint=default(MMConstraintNative);
+            constraint.lengthSum = cumulativeLength;
+            transformToConstraints =new List<TransformToConstraintNative>();
+            transforms=new List<Transform>();
+
+            for (int i = 0; i < constraints.Length; i++)
+            {
+                var constraintData = constraints[i];
+                if (constraintData==null)
+                {
+                    continue;
+                }
+
+                var type = (MMConstraintType)i;
+                switch (type)
+                {
+                    case MMConstraintType.Position:
+                        var positionConstraint = constraintData as MMPositionConstraint;
+                        constraint.positionConstraint= positionConstraint.GetNativeData();
+                        transformToConstraints.Add(new TransformToConstraintNative()
+                        {
+                            jointIndex = jointIndex,
+                            constraintType = type
+                        });
+                        transforms.Add(positionConstraint.targetTransform);
+                        break;
+                    case MMConstraintType.Rotation:
+                        break;
+                    case MMConstraintType.LookAt:
+                        var lookAtConstraint = constraintData as MMLookConstraint;
+                        constraint.lookAtConstraint = lookAtConstraint.GetNativeData();
+
+                        transformToConstraints.Add(new TransformToConstraintNative()
+                        {
+                            jointIndex = jointIndex,
+                            constraintType = type
+                        });
+                        transforms.Add(lookAtConstraint.targetTransform);
+                        break;
+                    case MMConstraintType.Collider:
+                        break;
+                    case MMConstraintType.PositionChange:
+                        constraint.positionChangeConstraint = (constraintData as MMPositionChangeConstraint).GetNativeData();
+                        break;
+                    case MMConstraintType.DofChange:
+                        constraint.DofChangeConstraint = (constraintData as MMDofChangeConstraint).GetNativeData();
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
     }
 
 }

@@ -218,7 +218,7 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
 
-        public void Optimize(float loss,ref int leastLoopCount,
+        public void Optimize(float loss, ref int leastLoopCount,//OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
 NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta, NativeArray<float> currentSolution, NativeArray<float> gradient
             )
         {

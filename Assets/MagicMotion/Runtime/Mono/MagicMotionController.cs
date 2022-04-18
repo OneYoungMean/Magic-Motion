@@ -36,11 +36,15 @@ namespace MagicMotion.Mono
         /// <summary>
         /// To convert human animator as native data.
         /// </summary>
-        private MMAvatarController muscleAndJointController;
+        private MMJointController jointController;
         /// <summary>
-        /// All constraint manager
+        /// MotionKernel
         /// </summary>
-        private MMConstraintsController constraintsController;
+        private MagicMotionKernel kernel;
+        /// <summary>
+        /// is Initialize
+        /// </summary>
+        private bool isInitial;
         #endregion
 
         #region UnityFunc
@@ -48,7 +52,20 @@ namespace MagicMotion.Mono
         void Start()
         {
 
-            ValueCheck();
+            bool isValueCheck = ValueCheck();
+            if (!isValueCheck)
+            {
+                return;
+            }
+            Initialize();
+        }
+        void Update()
+        {
+            if (!isInitial)
+            {
+                return;
+            }
+            kernel.Update(Time.deltaTime);
         }
         #endregion
 
@@ -58,7 +75,7 @@ namespace MagicMotion.Mono
         /// </summary>
         /// <exception cref="NullReferenceException"></exception>
         /// <exception cref="InvalidOperationException"></exception>
-        private void ValueCheck()
+        private bool ValueCheck()
         {
             //OYM£ºcharacter and muscleAndJointController
             if (characterAnimator == null)
@@ -73,16 +90,20 @@ namespace MagicMotion.Mono
             {
                 throw new InvalidOperationException("characterAnimator is not human");
             }
-            if (muscleAndJointController==null)
+            if (jointController==null)
             {
-                muscleAndJointController = gameObject.AddComponent<MMAvatarController>();
-                muscleAndJointController.Initialize(characterAnimator);
+                jointController = gameObject.AddComponent<MMJointController>();
             }
-
-            ValueCheck(inputMode);
+            if (kernel == null)
+            {
+                kernel = new MagicMotionKernel();
+            }
+            return ValueCheck(inputMode);
+            
         }
         private bool ValueCheck(InputMode inputMode)
         {
+            
             switch (inputMode)
             {
                 case InputMode.FromHumanAnimator:
@@ -93,10 +114,6 @@ namespace MagicMotion.Mono
                     }
                     break;
                 case InputMode.FromIK:
-                    if (constraintsController==null)
-                    {
-                        BuildConstraintController();
-                    }
                     break;
                 case InputMode.FromAPI:
                     break;
@@ -107,47 +124,16 @@ namespace MagicMotion.Mono
         }
          private void Initialize()
         {
-            
-        }
-
-        private void BuildConstraintController()
-        {
-            var IKRoot = new GameObject(characterAnimator.name + " IKRoot");
-            IKRoot.transform.parent = characterAnimator.transform;
-            IKRoot.transform.localPosition = Vector3.zero;
-            IKRoot.transform.rotation = Quaternion.identity;
-            IKRoot.transform.localScale = Vector3.one;
-
-            constraintsController = IKRoot.AddComponent<MMConstraintsController>();
-            constraintsController.Initialize( muscleAndJointController.motionJoints);
-
+            jointController.Initialize(characterAnimator);
+            jointController.RegisterData(kernel);
+            kernel.Initialize();
+            isInitial = true;
         }
         #endregion
 
         #region StaticFunc
 
         #endregion
-
-
-
-
-
-
-        // Update is called once per frame
-        void Update()
-        {
-            switch (inputMode)
-            {
-                case InputMode.FromHumanAnimator:
-                    break;
-                case InputMode.FromIK:
-                    break;
-                case InputMode.FromAPI:
-                    break;
-                default:
-                    break;
-            }
-        }
     }
 }
 

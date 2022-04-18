@@ -79,7 +79,7 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
             {
                 currentConstraint.lengthSum = currentJoint.length+ constraintNativeArray[currentJoint.parentIndex].lengthSum;
             }
-            currentConstraint.muscleChangeConstraint.weight3 = 0.51f;
+            currentConstraint.DofChangeConstraint.weight3 = 0.51f;
             //currentConstraint.positionChangeConstraint.tolerance3 = 0.01f;
             /*            currentConstraint.positionChangeConstraint.weight3 = 1;
                         currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*/
@@ -95,7 +95,7 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
             int contraintIndex = Array.IndexOf(jointTransformArray, bioConstraint.transform);
             var constraint =constraintNativeArray[contraintIndex];
             var transformToConstraint = transformToConstraintArray[i];
-            transformToConstraint.constraintIndex = contraintIndex;
+            transformToConstraint.jointIndex = contraintIndex;
 
             var joint = jointNativeArray[contraintIndex];
 

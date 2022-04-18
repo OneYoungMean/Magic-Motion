@@ -17,16 +17,16 @@ namespace MagicMotion.Mono
         /// the constraint error's weight;
         /// </summary>
         [Range(0, 1)]
-        public float3 weight3=1;
+        public Vector3 weight3;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>
-        [Range(MIN__TOLERENCE, 1f)]
-        public float3 tolerance3= MIN__TOLERENCE;
+        [Range(0, 1f)]
+        public Vector3 tolerance3;
         /// <summary>
         /// Constraint target
         /// </summary>
-        public Transform targetJointTransform;
+        public Transform targetTransform;
 
         /// <summary>
         /// initialLocalPosition;
@@ -38,10 +38,11 @@ namespace MagicMotion.Mono
         private Quaternion initalLocalRotation;
 
 
-        public override void Initialize()
+        public void AddTarget(Transform targetTransform)
         {
-            initalLocalPosition = transform.localPosition;
-            initalLocalRotation = transform.localRotation;
+            this.targetTransform = targetTransform;
+            initalLocalPosition = targetTransform.localPosition;
+            initalLocalRotation = targetTransform.localRotation;
         }
 
 /*        public override MMConstraintNative GetNativeData()
@@ -56,7 +57,7 @@ namespace MagicMotion.Mono
 
         }*/
 
-        public override void ResetPositionAndRotation()
+        public override void Reset()
         {
             transform.localPosition = initalLocalPosition;
             transform.localRotation = initalLocalRotation;
@@ -66,6 +67,22 @@ namespace MagicMotion.Mono
         public override MMConstraintType GetConstraintType()
         {
             return MMConstraintType.Position;
+        }
+
+        public PositionConstraint GetNativeData()
+        {
+            return new PositionConstraint()
+            {
+                weight3 = weight3,
+                tolerance3 = tolerance3,
+                position = targetTransform.position
+            };
+        }
+
+        public void OnDrawGizmos()
+        {
+            Gizmos.color = Color.red;
+            Gizmos.DrawSphere(targetTransform.position,0.02f);
         }
     }
 }

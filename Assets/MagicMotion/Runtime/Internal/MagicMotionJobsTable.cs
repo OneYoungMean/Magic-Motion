@@ -60,7 +60,7 @@ namespace MagicMotion
             public int jointLength;
             public void Execute(int index, TransformAccess transform)
             {
-                int point = transformToConstrainNatives[index].constraintIndex;
+                int point = transformToConstrainNatives[index].jointIndex;
                 MMConstraintType type = transformToConstrainNatives[index].constraintType;
                var constraint = constraintNatives[ point];
 
@@ -112,7 +112,7 @@ namespace MagicMotion
                     {
                         MMConstraintNative jointConstraint = constraintNatives[offset+i];
 
-                        MMPositionConstraint positionConstraint = jointConstraint.positionConstraint;
+                        PositionConstraint positionConstraint = jointConstraint.positionConstraint;
 
                         if (positionConstraint.isVaild)//OYM：据说这个人畜无害的小判断会破坏向量化，但是俺寻思这么一点计算量也看不出来
                         {
@@ -297,7 +297,7 @@ namespace MagicMotion
                 {
                     UpdatePositionloss(ref jointloss, jointTransform, constraintNative);
                 }
-                if (constraintNative.muscleConstraint.isVaild)
+                if (constraintNative.DofConstraint.isVaild)
                 {
                     UpdateMuscleloss(ref jointloss, Dof3, constraintNative);
                 }
@@ -314,7 +314,7 @@ namespace MagicMotion
                 {
                     UpdatePositionChangeloss(ref jointloss, jointTransform, constraintNative);
                 }
-                if (constraintNative.muscleChangeConstraint.isVaild)
+                if (constraintNative.DofChangeConstraint .isVaild)
                 {
                     UpdateMuscleChangeloss(ref jointloss, Dof3, constraintNative);
                 }
@@ -323,7 +323,7 @@ namespace MagicMotion
             }
             private static void UpdatePositionloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
             {
-                MMPositionConstraint positionConstraint = constraintNative.positionConstraint;
+                PositionConstraint positionConstraint = constraintNative.positionConstraint;
                 float3 jointPosition = jointTransform.pos;
 
                 float3 constraintPosition = positionConstraint.position;
@@ -355,15 +355,15 @@ namespace MagicMotion
             }
             private static void UpdateMuscleloss(ref MMJoinloss jointloss, float3 Dof3, MMConstraintNative constraintNative)
             {
-                float3 tolerance3 = constraintNative.muscleConstraint.tolerance3;
-                float3 weight3 = constraintNative.muscleConstraint.weight3;
+                float3 tolerance3 = constraintNative.DofConstraint.tolerance3;
+                float3 weight3 = constraintNative.DofConstraint.weight3;
                 float3 Dof3Outside = math.max(math.abs(Dof3) - tolerance3,0);
                 float loss =math.csum(Dof3Outside * weight3);
                 jointloss.muscleloss = loss;
             }
             private static void UpdateLookAtloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
             { 
-            MMLookAtConstraint lookAtConstraint = constraintNative.lookAtConstraint;
+            LookAtConstraint lookAtConstraint = constraintNative.lookAtConstraint;
             float3 jointPosition = jointTransform.pos;
             quaternion jointRotation = jointTransform.rot;
 
@@ -389,7 +389,7 @@ namespace MagicMotion
             }
             private static void UpdatePositionChangeloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
             {
-                MMPositionChangeConstraint positionConstraint = constraintNative.positionChangeConstraint;
+                PositionChangeConstraint positionConstraint = constraintNative.positionChangeConstraint;
                 float3 jointPosition = jointTransform.pos;
 
                 float3 constraintPosition = positionConstraint.oldPosition;
@@ -419,13 +419,13 @@ namespace MagicMotion
 
             private static void UpdateMuscleChangeloss(ref MMJoinloss jointloss, float3 Dof3, MMConstraintNative constraintNative)
             {
-                float3 oldDof3 = constraintNative.muscleChangeConstraint.oldDof3;
-                float3 torlerence3 = constraintNative.muscleChangeConstraint.torlerence3;
-                float3 weight3 = constraintNative.muscleChangeConstraint.weight3;
+                float3 oldDof3 = constraintNative.DofChangeConstraint .oldDof3;
+                float3 torlerence3 = constraintNative.DofChangeConstraint .torlerence3;
+                float3 weight3 = constraintNative.DofChangeConstraint .weight3;
 
                 float3 Dof3Change = math.abs( Dof3 - oldDof3);
                 Dof3Change = math.max(0, Dof3Change - torlerence3)* weight3;
-                float loss = math.csum(Dof3Change);
+                float loss = math.csum(Dof3Change)/3;
                 jointloss.muscleChangeloss = loss* loss;
             }
         }
@@ -570,7 +570,7 @@ namespace MagicMotion
                     int point = i * jointLength+ index;
                     var constraintNativeData = constraintNatives[point];
                     constraintNativeData.positionChangeConstraint.oldPosition = jointTransformNatives[index].pos;
-                    constraintNativeData.muscleChangeConstraint.oldDof3 = Dof3s[index];
+                    constraintNativeData.DofChangeConstraint .oldDof3 = Dof3s[index];
                     constraintNatives[point] = constraintNativeData;
                 }
             }
