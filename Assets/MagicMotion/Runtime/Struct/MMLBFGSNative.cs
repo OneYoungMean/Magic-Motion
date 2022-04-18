@@ -251,7 +251,16 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         if (isLoopOutside)
                         {
                             OutsideLoopHead(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref innerLoopStep, ref preloss, ref loss, ref lossX, ref lossY, ref gradientInitialX, ref gradientInitialY, ref funcState, ref iterations, ref matrixPoint, ref numberOfVariables, ref point, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref delta, ref steps, ref diagonal , ref gradientStore, ref gradient, ref rho, ref alpha, ref currentSolution);
-                            state = LBFGSState.InsideLoopHead;
+                            if (isLoopOutside)
+                            {
+                                state = LBFGSState.InsideLoopHead;
+                            }
+                            else
+                            {
+                                state =LBFGSState.Finish;
+                                return;
+                            }
+
                         }
                         else
                         {
