@@ -1,6 +1,6 @@
 ﻿namespace MagicMotion
 {
-    public struct MMMuscleNative
+    public struct MMMuscleData
     {
         /// <summary>
         /// the muscle index,range 0-95

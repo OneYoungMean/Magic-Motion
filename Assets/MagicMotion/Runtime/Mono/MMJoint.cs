@@ -76,9 +76,9 @@ namespace MagicMotion.Mono
         public HumanBodyBones humanBodyBone;
 
 
-        public MMJointNative GetNativeJointData()
+        public JointData GetNativeJointData()
         {
-            return new MMJointNative()
+            return new JointData()
             {
                 parentIndex = parent==null?-1: parent.jointIndex,
                 localPosition = initiallocalPosition,

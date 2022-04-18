@@ -2,7 +2,7 @@
 
 namespace MagicMotion
 {
-    public struct MMJointNative
+    public struct JointData
     {
         /// <summary>
         ///  Is the joint vaild?

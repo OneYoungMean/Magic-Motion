@@ -12,8 +12,8 @@ public class MagicMotionTest : MonoBehaviour
     MagicMotionKernel motionKernel;
     public BioJoint[] bioJoints;
     public BioObjective[] bioConstraints;
-    MMJointNative[] jointNativeArray;
-    MMMuscleNative[] muscleNativeArray;
+    JointData[] jointNativeArray;
+    MMMuscleData[] muscleNativeArray;
     MMConstraintNative[] constraintNativeArray;
     TransformToConstraintNative[] transformToConstraintArray;
     Transform[] jointTransformArray;
@@ -24,10 +24,10 @@ public class MagicMotionTest : MonoBehaviour
         bioJoints=gameObject.GetComponentsInChildren<BioJoint>();
         bioConstraints = gameObject.GetComponentsInChildren<BioObjective>();
 
-        jointNativeArray=new MMJointNative[bioJoints.Length];
+        jointNativeArray=new JointData[bioJoints.Length];
         constraintNativeArray=new MMConstraintNative[bioJoints.Length];
         jointTransformArray=new Transform[bioJoints.Length];
-        muscleNativeArray = new MMMuscleNative[bioJoints.Length * 3];
+        muscleNativeArray = new MMMuscleData[bioJoints.Length * 3];
 transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length];
         constraintTransformArray=new Transform[bioConstraints.Length];
 
@@ -47,7 +47,7 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
             int parentIndex=Array.IndexOf(bioJoints, bioJoint.parent);
             var currentConstraint=constraintNativeArray[i] ;
 
-            MMJointNative currentJoint = new MMJointNative()
+            JointData currentJoint = new JointData()
             {
                 isVaild = true,
                 maxRange = 15f,
