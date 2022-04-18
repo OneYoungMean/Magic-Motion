@@ -140,8 +140,9 @@ namespace MagicMotion
         private float GetLoss(NativeArray<float> solution)
         {
             UnsafeUtility.MemCpy(muscleValueNativeArray.GetUnsafePtr(), solution.GetUnsafePtr(), solution.Length * UnsafeUtility.SizeOf<float>());
-            mainControllerJob.Run(1);
+            mainControllerJob.Run();
             caclulatelossJob.Run(parallelDataCount);
+            Debug.Log(losses[0]);
             return losses[0];
         }
         private NativeArray<float> GetGradient(NativeArray<float> solution) 
@@ -188,32 +189,37 @@ namespace MagicMotion
                 globalData.leastLoopCount = iteration-1;
                 globalData.isInitialize = false;
                 globalDataNativeArray[i] = globalData;
+
+                var solver = LBFGSNatives[0];
+                solver.numberOfVariables = muscleCount;
+                LBFGSNatives[0]=solver;
             }
             Debug.Log(losses[iteration - 2] + " ~ " + losses[0]);
             if (true)
             {
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 scheduleConstraintDataJob.Run(parallelDataCount);
-                /*                for (int i = 0; i < iteration; i++)
-                                {
-                                    mainControllerJob.Run(1);
-                                    caclulatelossJob.Run(parallelDataCount);
-                                }*/
-                mainControllerJob.Run(1);
-                caclulatelossJob.Run(parallelDataCount);
-                LBFGSSolver.Minimize(muscleValueNativeArray);
+                for (int i = 0; i < iteration; i++)
+                {
+                    mainControllerJob.Run();
+                    caclulatelossJob.Run(parallelDataCount);
+                }
+                /*                mainControllerJob.Run(1);
+                                caclulatelossJob.Run(parallelDataCount);
+                                LBFGSSolver.Minimize(muscleValueNativeArray);*/
                 jointToTransformJob.Schedule(jointTransformArray).Complete();
             }
             else
             {
 
             MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32,MainHandle);
-            for (int i = 0; i < iteration; i++)
+                MainHandle= scheduleConstraintDataJob.Schedule(1,1, MainHandle);
+                for (int i = 0; i < iteration; i++)
             {
 /*                MainHandle=muscleToJointJob.Schedule(muscleCount+1, 8, MainHandle);
                 MainHandle = buildTransformJob.Schedule(muscleCount + 1,8, MainHandle);*/
                 MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
-                MainHandle = mainControllerJob.Schedule(1, 1, MainHandle);
+                MainHandle = mainControllerJob.Schedule(MainHandle);
             }
             MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);
             }

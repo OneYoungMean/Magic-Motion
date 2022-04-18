@@ -336,7 +336,7 @@ namespace MagicMotion
             {
                 float3 direction = jointTransform.pos - relatedTransform.pos;
                 jointTransform.pos = math.mul(muscleGradientRotation,direction)+ relatedTransform.pos;
-                jointTransform.rot = math.mul(jointTransform.rot, muscleGradientRotation);
+                jointTransform.rot = math.mul( muscleGradientRotation, jointTransform.rot);
             }
 
             private static void UpdatePositionloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
@@ -448,7 +448,7 @@ namespace MagicMotion
             }
         }
         [BurstCompile]
-        public struct MainControllerJob : IJobParallelFor
+        public struct MainControllerJob : IJob
         {
             //OYM：感觉计算量超级的大啊
             //OYM：等我回来在写注释
@@ -504,7 +504,7 @@ namespace MagicMotion
             /// muscles value ,containing joint index and dof index.
             /// </summary>
             public NativeArray<MMMuscleData> muscleDatas;
-            [NativeDisableParallelForRestriction, ReadOnly]
+            [NativeDisableParallelForRestriction]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
@@ -535,26 +535,18 @@ namespace MagicMotion
             /// loss Value;
             /// </summary>
             public float loss;
-            public void Execute(int index)
+            public void Execute()
             {
-
+                int index = 0;
                 var globalData = globalDataNative[index];
-                if (globalData.isInitialize)
-                {
-
-                       PreOptimizeProcess();
+                PreOptimizeProcess();//OYM：瓶颈正在这里
+                //OYM：以及额外的bug还需要修复
                 var LBFGSSolver = LBFGSSolvers[index];
-               // LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-                losses[0] = loss;
+                LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
+                losses[globalData.leastLoopCount] = loss;
 
                 LBFGSSolvers[index] = LBFGSSolver;
-                    PostOptimizeProcess();
-                }
-                else
-                {
-                    PostOptimizeProcess();
-                    globalData.isInitialize = true;
-                }
+                PostOptimizeProcess();
                 globalDataNative[index] = globalData;
             }
 
@@ -613,7 +605,7 @@ math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
                         after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);
                     }
 
-                    quaternion change = math.mul(math.inverse(before), after);
+                    quaternion change = math.mul( after, math.inverse(before));
                     quaternion worldRot = jointTransformNatives[muscleData.jointIndex].rot;
                     change = math.mul(worldRot, math.mul(change, math.inverse(worldRot)));
                     muscleGradientRotations[i] = change;
@@ -685,26 +677,28 @@ math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
             {
                 loss = Collectloss(jointlossNatives, 0, constraintLength,jointLength);
 
-                int offset = 0;
+                int offset = jointLength;
                 for (int i = 0; i < muscleLength; i++)
                 {
-                    float lossTemp = Collectloss(jointlossNatives, offset, muscleRelativeCounts[i], jointLength);
-                    offset += muscleRelativeCounts[i];
-
-                    float gradientTemp = CollectGradient(jointlossNatives,relationDatas, offset, muscleRelativeCounts[i], jointLength);
+                    float gradientTemp = CollectGradient(jointlossNatives,relationDatas, offset, constraintLength, muscleRelativeCounts[i]);
                     gradients[i] = gradientTemp;
+                    offset += muscleRelativeCounts[i];
                 }
             }
 
             private static float Collectloss(NativeArray<MMJoinloss> losses, int offset, int constraintlength,int jointLength)
             {
                 float loss = 0;
-
-                for (int i = 0; i < jointLength; i++)
+                if (constraintlength!=0)
                 {
-                    loss += losses[i+offset].lossSum;
+                    for (int i = 0; i < jointLength; i++)
+                    {
+                        loss += losses[i + offset].lossSum;
+                    }
+
+                    loss = math.sqrt(loss / constraintlength);
                 }
-                loss = math.sqrt(loss / constraintlength);
+
                 return loss;
             }
             private static float CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas, int offset, int constraintlength, int jointLength)

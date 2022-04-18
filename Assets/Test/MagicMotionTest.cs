@@ -22,8 +22,8 @@ public class MagicMotionTest : MonoBehaviour
     void Start()
     {
         bioJoints=gameObject.GetComponentsInChildren<BioJoint>();
-        bioConstraints = gameObject.GetComponentsInChildren<BioObjective>();
-
+        //bioConstraints = gameObject.GetComponentsInChildren<BioObjective>();
+        bioConstraints=new BioObjective[0];
         jointNativeArray=new JointData[bioJoints.Length];
         constraintNativeArray=new MMConstraintNative[bioJoints.Length];
         jointTransformArray=new Transform[bioJoints.Length];
@@ -79,10 +79,10 @@ transformToConstraintArray=new TransformToConstraintNative[bioConstraints.Length
             {
                 currentConstraint.lengthSum = currentJoint.length+ constraintNativeArray[currentJoint.parentIndex].lengthSum;
             }
-            currentConstraint.DofChangeConstraint.weight3 = 0.51f;
-            //currentConstraint.positionChangeConstraint.tolerance3 = 0.01f;
-            /*            currentConstraint.positionChangeConstraint.weight3 = 1;
-                        currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*/
+            /*  currentConstraint.DofChangeConstraint.weight3 = 0.51f;
+             //currentConstraint.positionChangeConstraint.tolerance3 = 0.01f;
+                        currentConstraint.positionChangeConstraint.weight3 = 1;
+                         currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*/
 
             jointNativeArray[i]=currentJoint;
             jointTransformArray[i]=bioJoint.transform;
