@@ -322,7 +322,7 @@ namespace MagicMotion.Mono
                 {
                     case MMConstraintType.Position:
                         GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
-                        positionIK.transform.parent = joint.parent?.transform;
+
                         positionIK.transform.position = joint.transform.position;
                         var positionConstraint =
                        joint.gameObject.AddComponent<MMPositionConstraint>();
@@ -330,6 +330,14 @@ namespace MagicMotion.Mono
                         positionConstraint.weight3 =Vector3.one;
                         positionConstraint.AddTarget(positionIK.transform);
                         constraint = positionConstraint;
+                        if (joint.parent != null && joint.parent.constraints[(int)constraintType] != null)
+                        {
+                            positionIK.transform.parent =( joint.parent.constraints[(int)constraintType] as MMPositionConstraint).targetTransform;
+                        }
+                        else
+                        {
+                            positionIK.transform.parent = ConstraintAimRoot.transform;
+                        }
                         break;
                     case MMConstraintType.Rotation:
                         constraint = null;

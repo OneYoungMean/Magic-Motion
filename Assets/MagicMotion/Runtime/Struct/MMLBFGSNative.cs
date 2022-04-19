@@ -208,8 +208,8 @@ namespace MagicMotion
         public float loss;
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
-            lossTolerance =1f,
-            gradientTolerance = 0.1f,
+            lossTolerance =0.9f,
+            gradientTolerance =1E-10f,
             state = LBFGSState.Initialize
         };
 
@@ -222,19 +222,6 @@ namespace MagicMotion
 NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta, NativeArray<float> currentSolution, NativeArray<float> gradient
             )
         {
-            if (leastLoopCount==0)
-            {
-                return;
-            }
-            else if (leastLoopCount==1)
-            {
-                leastLoopCount--;
-                return;
-            }
-            else
-            {
-                leastLoopCount--;
-            }
             this.loss = loss;
             while (true)
             {
@@ -258,6 +245,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                             else
                             {
                                 state =LBFGSState.Finish;
+                                leastLoopCount--;
                                 return;
                             }
 
@@ -270,8 +258,9 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                     case LBFGSState.InsideLoopHead:
                         if (isLoopInside)
                         {
-                            InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
+                            InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref leastLoopCount, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
                             state = LBFGSState.InsideLoopTail;
+                            leastLoopCount--;
                             return;
                         }
                         else
@@ -280,7 +269,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         }
                         break;
                     case LBFGSState.InsideLoopTail:
-                        InisdeLoopTail(ref preGradientSum, ref preloss, ref innerLoopStep, ref stepBoundMin, ref stepBoundMax, ref loss, ref lossTolerance, ref lossX, ref lossY, ref stepBoundX, ref stepBoundY, ref gradientInitialX, ref gradientInitialY, ref width, ref width1, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref gradient, ref steps);
+                        InisdeLoopTail(ref preGradientSum, ref preloss, ref innerLoopStep, ref stepBoundMin, ref stepBoundMax, ref loss, ref lossTolerance, ref lossX, ref lossY, ref stepBoundX, ref stepBoundY, ref gradientInitialX, ref gradientInitialY, ref width, ref width1, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref leastLoopCount, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref gradient, ref steps);
                         if (isLoopInside)
                         {
                             state = LBFGSState.InsideLoopHead;
@@ -305,14 +294,13 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         }
                         break;
                     case LBFGSState.Finish:
-                        if (leastLoopCount>=L_BFGSStatic.MAXLOOPCOUNT)
+                        if (leastLoopCount>0)
                         {
                             state = LBFGSState.Initialize;
                             break;
                         }
                         else
                         {
-                            leastLoopCount = 1;
                             return;
                         }
 

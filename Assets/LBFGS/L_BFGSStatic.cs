@@ -14,7 +14,7 @@ public unsafe static class L_BFGSStatic
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT=16;
+    public const int MAXLOOPCOUNT=128;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
@@ -24,7 +24,7 @@ public unsafe static class L_BFGSStatic
     private const float loss_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-5f;
-    private const float STEP_MAX = 180f;
+    private const float STEP_MAX = 5;
     private const float RANGLE_MIN = -1;
     private const float RANGE_MAX = 1;
     #endregion
@@ -134,7 +134,7 @@ ref NativeArray<float> currentSolution)
 
     public static bool InsideLoopHead(
     ref float stepBoundMin, ref float stepBoundMax, ref float stepBoundX, ref float stepBoundY, ref float innerLoopStep,
-    ref int loopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint,
+    ref int loopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint, ref int leastLoopCount,
     ref bool isInBracket,
     ref NativeArray<float> currentSolution, ref NativeArray<float> diagonal, ref NativeArray<float> steps
     )
@@ -162,7 +162,7 @@ ref NativeArray<float> currentSolution)
         if (
             (isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) ||//OYM：step在bound外
             (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-            (loopCount >= MAXLOOPCOUNT - 1) || (funcState == 0))
+            (loopCount >= MAXLOOPCOUNT - 1) ||(leastLoopCount<=1)|| (funcState == 0))
         {
             innerLoopStep = stepBoundX;
         }
@@ -181,7 +181,7 @@ ref NativeArray<float> currentSolution)
 
     public static void InisdeLoopTail(
         ref float preGradientSum, ref float preloss, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float loss, ref float lossTolerance, ref float lossX, ref float lossY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
-        ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,
+        ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,ref int leastLoopCount,
         ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
 ref NativeArray<float> gradient, ref NativeArray<float> steps
         )
@@ -194,7 +194,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         float losstest1 = preloss + innerLoopStep * gradientTest;
 
         // Test for convergence.
-        if (loopCount >= MAXLOOPCOUNT)
+        if (loopCount >= L_BFGSStatic.MAXLOOPCOUNT|| leastLoopCount<=0)
         {
             isLoopOutside = false;
             isLoopInside= false;

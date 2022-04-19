@@ -89,7 +89,7 @@ namespace MagicMotion
             public NativeArray<RigidTransform> jointTransforms;
             [ReadOnly,NativeDisableParallelForRestriction]
             public NativeArray<float3> Dof3s;
-
+            [NativeDisableParallelForRestriction]
             public NativeArray<MMConstraintNative> constraints;
             public void Execute(int index)
             {
@@ -539,11 +539,14 @@ namespace MagicMotion
             {
                 int index = 0;
                 var globalData = globalDataNative[index];
+
                 PreOptimizeProcess();//OYM：瓶颈正在这里
-                //OYM：以及额外的bug还需要修复
+                                     //OYM：以及额外的bug还需要修复
+                losses[globalData.leastLoopCount] = loss;
                 var LBFGSSolver = LBFGSSolvers[index];
                 LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-                losses[globalData.leastLoopCount] = loss;
+
+
 
                 LBFGSSolvers[index] = LBFGSSolver;
                 PostOptimizeProcess();
@@ -710,7 +713,7 @@ math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
                     int point = i + offset;
                     JointRelationData relationData = relationDatas[point];
 
-                    gradientTemp += losses[point].lossSum- losses[relationData.jointIndex].lossSum;
+                    gradientTemp +=math.sqrt (losses[point].lossSum)- math.sqrt(losses[relationData.jointIndex].lossSum);
                 }
                 //gradientTemp = math.sign(gradientTemp)*math.sqrt(math.abs( gradientTemp) / constraintlength);
                 gradientTemp /= L_BFGSStatic.EPSILION;

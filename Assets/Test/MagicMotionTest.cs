@@ -22,8 +22,8 @@ public class MagicMotionTest : MonoBehaviour
     void Start()
     {
         bioJoints=gameObject.GetComponentsInChildren<BioJoint>();
-        //bioConstraints = gameObject.GetComponentsInChildren<BioObjective>();
-        bioConstraints=new BioObjective[0];
+        bioConstraints = gameObject.GetComponentsInChildren<BioObjective>();
+        //bioConstraints=new BioObjective[0];
         jointNativeArray=new JointData[bioJoints.Length];
         constraintNativeArray=new MMConstraintNative[bioJoints.Length];
         jointTransformArray=new Transform[bioJoints.Length];

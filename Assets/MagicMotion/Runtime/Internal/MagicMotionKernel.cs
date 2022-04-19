@@ -17,7 +17,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =128;
+        public const int iteration =256;
         #region  NativeArrayData
         public JobHandle MainHandle;
 
@@ -194,8 +194,8 @@ namespace MagicMotion
                 solver.numberOfVariables = muscleCount;
                 LBFGSNatives[0]=solver;
             }
-            Debug.Log(losses[iteration - 2] + " ~ " + losses[0]);
-            if (true)
+            Debug.Log(losses[iteration - 1] + " ~ " + losses[0]);
+            if (false)
             {
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 scheduleConstraintDataJob.Run(parallelDataCount);
@@ -211,17 +211,17 @@ namespace MagicMotion
             }
             else
             {
-
-            MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32,MainHandle);
-                MainHandle= scheduleConstraintDataJob.Schedule(1,1, MainHandle);
+                MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32,MainHandle);
+                MainHandle= scheduleConstraintDataJob.Schedule(parallelDataCount, 1, MainHandle);
                 for (int i = 0; i < iteration; i++)
-            {
-/*                MainHandle=muscleToJointJob.Schedule(muscleCount+1, 8, MainHandle);
-                MainHandle = buildTransformJob.Schedule(muscleCount + 1,8, MainHandle);*/
-                MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
-                MainHandle = mainControllerJob.Schedule(MainHandle);
-            }
-            MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);
+                {
+                        /*                MainHandle=muscleToJointJob.Schedule(muscleCount+1, 8, MainHandle);
+                                        MainHandle = buildTransformJob.Schedule(muscleCount + 1,8, MainHandle);*/
+                        MainHandle = mainControllerJob.Schedule(MainHandle);
+                        MainHandle = caclulatelossJob.Schedule(parallelDataCount, 32, MainHandle);
+
+                }
+                MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);
             }
 
 

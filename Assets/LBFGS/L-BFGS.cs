@@ -426,13 +426,14 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             //inner loop
             while (isLoopInside)
             {
-                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref loopCount,ref numberOfVariables,ref funcState,ref matrixPoint, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
+                int temp = L_BFGSStatic.MAXLOOPCOUNT;
+                InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref loopCount,ref numberOfVariables,ref funcState,ref matrixPoint,ref temp, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
 
                 // Reevaluate function and gradient
                 loss = GetFunction(currentSolution);
                 gradient = GetGradient(currentSolution);
 
-              InisdeLoopTail(ref preGradientSum,ref preloss,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref loss,ref lossTolerance,ref lossX,ref lossY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref loopCount,ref numberOfVariables,ref funcState, ref matrixPoint, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
+              InisdeLoopTail(ref preGradientSum,ref preloss,ref innerLoopStep,ref stepBoundMin,ref stepBoundMax,ref loss,ref lossTolerance,ref lossX,ref lossY,ref stepBoundX,ref stepBoundY,ref gradientInitialX,ref gradientInitialY,ref width,ref width1,ref loopCount,ref numberOfVariables,ref funcState, ref matrixPoint,ref temp, ref isLoopOutside, ref isLoopInside , ref isInBracket,ref stage1,ref gradient,ref steps);
                 if (!isLoopInside) break;
             }
             if (!isLoopOutside) break;
