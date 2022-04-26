@@ -20,7 +20,7 @@ namespace MagicMotion.Mono
             return MMConstraintType.PositionChange;
         }
 
-        public override void Reset()
+        public override void ReSet()
         {
             
         }

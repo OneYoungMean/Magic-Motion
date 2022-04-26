@@ -17,7 +17,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =256;
+        public const int iteration =128;
         #region  NativeArrayData
         public JobHandle MainHandle;
 
@@ -89,6 +89,7 @@ namespace MagicMotion
 
         private int parallelDataCount;
         private int[] muscleRelativedCounts;
+        private float[] muscleValues;
         #endregion
 
         #region PublicFunc
@@ -104,13 +105,24 @@ namespace MagicMotion
             this.jointsTransforms = jointsTransforms;
             jointCount = joints.Length;
 
+            
+
 
 
         }
-        public void SetMuscleSata(MMMuscleData[] muscles)
+        public void SetMuscleSata(MMMuscleData[] muscles,float[] muscleValues = null)
         {
             this.muscles = muscles;
             muscleCount = muscles.Length;
+
+            if (muscleValues == null)
+            {
+                this.muscleValues = new float[muscleCount];
+            }
+            else
+            {
+                this.muscleValues = muscleValues;
+            }
         }
         public void Initialize()
         {
@@ -128,7 +140,7 @@ namespace MagicMotion
             BuildNativeDataInternal();
             BuildJobDataInternal();
             BuildMainThreadTest();
-            Reset();
+            //Reset();
             isCreated =true;
         }
 
@@ -182,7 +194,6 @@ namespace MagicMotion
                 return;
             }
 
-            MainHandle = default(JobHandle);
             for (int i = 0; i < LBFGSNatives.Length; i++)
             {
                 var globalData = globalDataNativeArray[i];
@@ -355,7 +366,7 @@ namespace MagicMotion
             }
 
             muscleDataArray = new NativeArray<MMMuscleData>(muscles, Allocator.Persistent);
-            muscleValueNativeArray = new NativeArray<float>(muscles.Length, Allocator.Persistent);
+            muscleValueNativeArray = new NativeArray<float>(muscleValues, Allocator.Persistent);
             muscleGradientRotationArray =new NativeArray<quaternion>(muscles.Length, Allocator.Persistent);
             muscleRelativeCountArray =new NativeArray<int>(muscleRelativedCounts, Allocator.Persistent);
 

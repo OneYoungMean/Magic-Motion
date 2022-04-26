@@ -90,7 +90,7 @@ namespace MagicMotion.Mono
             {
                 throw new InvalidOperationException("characterAnimator is not human");
             }
-            if (jointController==null)
+            if (jointController==null&&!gameObject.TryGetComponent<MMJointController>(out jointController))
             {
                 jointController = gameObject.AddComponent<MMJointController>();
             }

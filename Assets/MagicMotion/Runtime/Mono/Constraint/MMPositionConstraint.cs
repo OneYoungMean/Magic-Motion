@@ -57,7 +57,7 @@ namespace MagicMotion.Mono
 
         }*/
 
-        public override void Reset()
+        public override void ReSet()
         {
             transform.localPosition = initalLocalPosition;
             transform.localRotation = initalLocalRotation;

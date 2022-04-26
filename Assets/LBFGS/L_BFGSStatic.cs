@@ -9,24 +9,24 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION=3;
+    public const int CORRECTION=10;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT=128;
+    public const int MAXLOOPCOUNT = 64;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
     public const float EPSILION = STEP_MIN ;
 
-    private const float loss_TOLERENCE = 1e-3f;
+    private const float loss_TOLERENCE = 1e-5f;
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-5f;
-    private const float STEP_MAX = 5;
-    private const float RANGLE_MIN = -1;
-    private const float RANGE_MAX = 1;
+    private const float STEP_MAX =2f;
+    private const float RANGLE_MIN = -0.5f;
+    private const float RANGE_MAX = 0.5f;
     #endregion
 
     #region  PublicFunc
@@ -436,93 +436,79 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     }
 
     // TODO: Move to separate classes
-    private static void SearchStep(ref float stepBoundX, ref float lossX, ref float gradientX,
-                                ref float stepBoundY, ref float lossY, ref float gradientY,
-                                ref float step, float lossTemp, float gradientTemp,
-                                ref bool isInBracket, out int funcState)
+    internal static void SearchStep(ref float stx, ref float fx, ref float dx,
+                            ref float sty, ref float fy, ref float dy,
+                            ref float stp, float fp, float dp,
+                            ref bool brackt, out int info)
     {
         bool bound;
         float stpc, stpf, stpq;
+        float stpmax = STEP_MAX;
+        float stpmin = STEP_MIN;
+        info = 0;
 
-        funcState = 0;
-
-        if ((isInBracket && (step <= math.min(stepBoundX, stepBoundY) || step >= math.max(stepBoundX, stepBoundY))) ||//OYM: 不连续解的情况
-            (gradientX * (step - stepBoundX) >= 0.0) || (STEP_MAX < STEP_MIN))//OYM: 丢解的情况（跟算法有关）
-        {
-            return;
-        }
+        if ((brackt && (stp <= math.min(stx, sty) || stp >= math.max(stx, sty))) ||
+            (dx * (stp - stx) >= 0.0) || (stpmax < stpmin)) return;
 
         // Determine if the derivatives have opposite sign.
-        float signDerivatives = gradientTemp * (gradientX / math.abs(gradientX));//OYM: 这里应该换上一个符号函数
+        float sgnd = dp * (dx / math.abs(dx));
 
-        if (lossTemp > lossX)//OYM: 可以被优化？
+        if (fp > fx)
         {
             // First case. A higher function value.
             // The minimum is bracketed. If the cubic step is closer
             // to stx than the quadratic step, the cubic step is taken,
             // else the average of the cubic and quadratic steps is taken.
 
-            funcState = 1;
+            info = 1;
             bound = true;
-            float theta = 3.0f * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
-            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
+            float theta = 3.0f * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
-            if (step < stepBoundX)
-            {
-                gamma = -gamma;
-            }
-            float p = gamma - gradientX + theta;
-            float q = gamma - gradientX + gamma + gradientTemp;
+            if (stp < stx) gamma = -gamma;
+
+            float p = gamma - dx + theta;
+            float q = gamma - dx + gamma + dp;
             float r = p / q;
-            stpc = stepBoundX + r * (step - stepBoundX);
-            stpq = stepBoundX + ((gradientX / ((lossX - lossTemp) / (step - stepBoundX) + gradientX)) / 2) * (step - stepBoundX);
+            stpc = stx + r * (stp - stx);
+            stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2) * (stp - stx);
 
-            if (math.abs(stpc - stepBoundX) < math.abs(stpq - stepBoundX))
-            {
+            if (math.abs(stpc - stx) < math.abs(stpq - stx))
                 stpf = stpc;
-            }
-
             else
-            {
                 stpf = stpc + (stpq - stpc) / 2.0f;
-            }
-            isInBracket = true;
+
+            brackt = true;
         }
-        else if (signDerivatives < 0.0)
+        else if (sgnd < 0.0)
         {
             // Second case. A lower function value and derivatives of
             // opposite sign. The minimum is bracketed. If the cubic
             // step is closer to stx than the quadratic (secant) step,
             // the cubic step is taken, else the quadratic step is taken.
 
-            funcState = 2;
+            info = 2;
             bound = false;
-            float theta = 3 * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
-            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s));
+            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
-            if (step > stepBoundX)
-            {
-                gamma = -gamma;
-            }
-            float p = (gamma - gradientTemp) + theta;
-            float q = ((gamma - gradientTemp) + gamma) + gradientX;
+            if (stp > stx) gamma = -gamma;
+
+            float p = (gamma - dp) + theta;
+            float q = ((gamma - dp) + gamma) + dx;
             float r = p / q;
-            stpc = step + r * (stepBoundX - step);
-            stpq = step + (gradientTemp / (gradientTemp - gradientX)) * (stepBoundX - step);
+            stpc = stp + r * (stx - stp);
+            stpq = stp + (dp / (dp - dx)) * (stx - stp);
 
-            if (math.abs(stpc - step) > math.abs(stpq - step))
-            {
+            if (math.abs(stpc - stp) > math.abs(stpq - stp))
                 stpf = stpc;
-            }
-            else
-            {
-                stpf = stpq;
-            }
-            isInBracket = true;
+            else stpf = stpq;
+
+            brackt = true;
         }
-        else if (math.abs(gradientTemp) < math.abs(gradientX))
+        else if (math.abs(dp) < math.abs(dx))
         {
             // Third case. A lower function value, derivatives of the
             // same sign, and the magnitude of the derivative decreases.
@@ -533,44 +519,35 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             // computed and if the minimum is bracketed then the step
             // closest to stx is taken, else the step farthest away is taken.
 
-            funcState = 3;
+            info = 3;
             bound = true;
-            float theta = 3 * (lossX - lossTemp) / (step - stepBoundX) + gradientX + gradientTemp;
-            float s = math.max(math.abs(theta), math.max(math.abs(gradientX), math.abs(gradientTemp)));
-            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (gradientX / s) * (gradientTemp / s)));
+            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
 
-            if (step > stepBoundX)
-            {
-                gamma = -gamma;
-            }
+            if (stp > stx) gamma = -gamma;
 
-            float p = (gamma - gradientTemp) + theta;
-            float q = (gamma + (gradientX - gradientTemp)) + gamma;
+            float p = (gamma - dp) + theta;
+            float q = (gamma + (dx - dp)) + gamma;
             float r = p / q;
 
             if (r < 0.0 && gamma != 0.0)
-            {
-                stpc = step + r * (stepBoundX - step);
-            }
-            else if (step > stepBoundX)
-            {
-                stpc = STEP_MAX;
-            }
-            else
-            {
-                stpc = STEP_MIN;
-            }
-            stpq = step + (gradientTemp / (gradientTemp - gradientX)) * (stepBoundX - step);
+                stpc = stp + r * (stx - stp);
+            else if (stp > stx)
+                stpc = stpmax;
+            else stpc = stpmin;
 
-            if (isInBracket)
+            stpq = stp + (dp / (dp - dx)) * (stx - stp);
+
+            if (brackt)
             {
-                if (math.abs(step - stpc) < math.abs(step - stpq))
+                if (math.abs(stp - stpc) < math.abs(stp - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
             else
             {
-                if (math.abs(step - stpc) > math.abs(step - stpq))
+                if (math.abs(stp - stpc) > math.abs(stp - stpq))
                     stpf = stpc;
                 else stpf = stpq;
             }
@@ -582,73 +559,61 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             // not decrease. If the minimum is not bracketed, the step
             // is either stpmin or stpmax, else the cubic step is taken.
 
-            funcState = 4;
+            info = 4;
             bound = false;
 
-            if (isInBracket)
+            if (brackt)
             {
-                float theta = 3 * (lossTemp - lossY) / (stepBoundY - step) + gradientY + gradientTemp;
-                float s = math.max(math.abs(theta), math.max(math.abs(gradientY), math.abs(gradientTemp)));
-                float gamma = s * math.sqrt((theta / s) * (theta / s) - (gradientY / s) * (gradientTemp / s));
+                float theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
+                float s = math.max(math.abs(theta), math.max(math.abs(dy), math.abs(dp)));
+                float gamma = s * math.sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
 
-                if (step > stepBoundY)
-                {
-                    gamma = -gamma;
-                }
-                float p = (gamma - gradientTemp) + theta;
-                float q = ((gamma - gradientTemp) + gamma) + gradientY;
+                if (stp > sty) gamma = -gamma;
+
+                float p = (gamma - dp) + theta;
+                float q = ((gamma - dp) + gamma) + dy;
                 float r = p / q;
-                stpc = step + r * (stepBoundY - step);
+                stpc = stp + r * (sty - stp);
                 stpf = stpc;
             }
-            else if (step > stepBoundX)
-            {
-                stpf = STEP_MAX;
-            }
-
-            else
-            {
-                stpf = STEP_MIN;
-            }
+            else if (stp > stx)
+                stpf = stpmax;
+            else stpf = stpmin;
         }
 
         // Update the interval of uncertainty. This update does not
         // depend on the new step or the case analysis above.
 
-        if (lossTemp > lossX)
+        if (fp > fx)
         {
-            stepBoundY = step;
-            lossY = lossTemp;
-            gradientY = gradientTemp;
+            sty = stp;
+            fy = fp;
+            dy = dp;
         }
         else
         {
-            if (signDerivatives < 0.0)
+            if (sgnd < 0.0)
             {
-                stepBoundY = stepBoundX;
-                lossY = lossX;
-                gradientY = gradientX;
+                sty = stx;
+                fy = fx;
+                dy = dx;
             }
-            stepBoundX = step;
-            lossX = lossTemp;
-            gradientX = gradientTemp;
+            stx = stp;
+            fx = fp;
+            dx = dp;
         }
 
         // Compute the new step and safeguard it.
-        stpf = math.min(STEP_MAX, stpf);
-        stpf = math.max(STEP_MIN, stpf);
-        step = stpf;
+        stpf = math.min(stpmax, stpf);
+        stpf = math.max(stpmin, stpf);
+        stp = stpf;
 
-        if (isInBracket && bound)
+        if (brackt && bound)
         {
-            if (stepBoundY > stepBoundX)
-            {
-                step = math.min(stepBoundX + 0.66f * (stepBoundY - stepBoundX), step);
-            }
+            if (sty > stx)
+                stp = math.min(stx + 0.66f * (sty - stx), stp);
             else
-            {
-                step = math.max(stepBoundX + 0.66f * (stepBoundY - stepBoundX), step);
-            }
+                stp = math.max(stx + 0.66f * (sty - stx), stp);
         }
 
         return;

@@ -35,12 +35,14 @@ namespace MagicMotion
 {
     public enum LBFGSState : Byte
     {
+        
         Initialize = 0,
-        OutsideLoopHead = 1,
-        InsideLoopHead = 2,
-        InsideLoopTail = 3,
-        OutsideLoopTail = 4,
-        Finish = 5
+        Refresh=1,
+        OutsideLoopHead = 2,
+        InsideLoopHead = 3,
+        InsideLoopTail = 4,
+        OutsideLoopTail = 5,
+        Finish = 6
     }
 
     #region summary
@@ -227,7 +229,12 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
             {
                 switch (state)
                 {
-                    case LBFGSState.Initialize:
+                    case LBFGSState.Initialize://OYM£ºdeal first in;
+                        {
+                            state = LBFGSState.Refresh;
+                            return;
+                        }
+                    case LBFGSState.Refresh:
                         {
                             ClearData(diagonal, gradientStore, rho, alpha, steps, delta);
                             InitializeLoop(ref innerLoopStep, ref iterations, ref evaluations, ref loopCount, ref point, ref matrixPoint, ref isLoopOutside, ref gradient, ref diagonal, ref steps);
@@ -296,7 +303,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                     case LBFGSState.Finish:
                         if (leastLoopCount>0)
                         {
-                            state = LBFGSState.Initialize;
+                            state = LBFGSState.Refresh;
                             break;
                         }
                         else

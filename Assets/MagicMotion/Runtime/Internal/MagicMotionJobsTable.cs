@@ -572,45 +572,22 @@ namespace MagicMotion
                     float3 Dof3 = Dof3s[muscleData.jointIndex];
                     Dof3[muscleData.dof] = muscleValue;
 
-                    float3 Dof3toRadian = math.radians(
-    math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
-+ math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
+                    float3 Dof3toRadian = math.radians(  math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))+ math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
                     quaternion before = quaternion.identity;
-                    if (Dof3[0] != 0)
-                    {
-                        before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), before);
-                    }
-                    if (Dof3[1] != 0)
-                    {
-                        before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), before);
-                    }
-                    if (Dof3[2] != 0)
-                    {
-                        before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), before);
-                    }
+                    if (Dof3[0] != 0){ before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), before); }
+                    if (Dof3[1] != 0)  {before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), before); }
+                    if (Dof3[2] != 0)   {before = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), before); }
 
                     Dof3[muscleData.dof] = muscleValue + L_BFGSStatic.EPSILION;
 
                     quaternion after = quaternion.identity;
-                    Dof3toRadian = math.radians(
-math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
-+ math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
-                    if (Dof3[0] != 0)
-                    {
-                        after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after);
-                    }
-                    if (Dof3[1] != 0)
-                    {
-                        after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after);
-                    }
-                    if (Dof3[2] != 0)
-                    {
-                        after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);
-                    }
+                    Dof3toRadian = math.radians(math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))+ math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
+                    if (Dof3[0] != 0){after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after);}
+                    if (Dof3[1] != 0) {after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after);  }
+                    if (Dof3[2] != 0) { after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);}
 
-                    quaternion change = math.mul( after, math.inverse(before));
                     quaternion worldRot = jointTransformNatives[muscleData.jointIndex].rot;
-                    change = math.mul(worldRot, math.mul(change, math.inverse(worldRot)));
+                    quaternion change = math.mul(worldRot, math.mul(math.mul(after, math.inverse(before)), math.inverse(worldRot)));
                     muscleGradientRotations[i] = change;
                 }
             }

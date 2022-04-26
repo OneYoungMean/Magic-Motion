@@ -62,7 +62,12 @@ namespace MagicMotion.Mono
             {
                 muscleDatas[i] = motionMuscles[i].GetNativeData();
             }
-            kernel.SetMuscleSata(muscleDatas);
+            float[] muscleValues=new float[muscleDatas.Length];
+            for (int i = 0; i < motionMuscles.Length; i++)
+            {
+                muscleValues[i] = motionMuscles[i].value;
+            }
+            kernel.SetMuscleSata(muscleDatas, muscleValues);
             JointData[] jointData =new JointData[motionJoints.Length];
             Transform[] jointTransforms = new Transform[motionJoints.Length];
             for (int i = 0; i < motionJoints.Length; i++)
@@ -198,7 +203,9 @@ namespace MagicMotion.Mono
                     Transform targetJoint = animator.GetBoneTransform((HumanBodyBones)jointIndex);
                     if (targetJoint != null)
                     {
+
                         motionMuscles[i] = targetJoint.gameObject.AddComponent<MMMuscle>();
+                        motionMuscles[i].value = muscleValue[muscleIndex];
                         motionMuscles[i].dof = dof;
                         motionMuscles[i].muscleIndex = muscleIndex;
                         motionMuscles[i].muscleName = muscleName;
@@ -294,18 +301,20 @@ namespace MagicMotion.Mono
 
             }
             Regular();
-
+            UpdateMotion();
             #endregion
-            currentPose.muscles = muscleValue;
-            humanPoseHandler.SetHumanPose(ref currentPose);
+            //currentPose.muscles = muscleValue;
+            //humanPoseHandler.SetHumanPose(ref currentPose);
 
 
         }
-        public void Initialize2()
+        private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
             ConstraintAimRoot = new GameObject("Aim Root");
-            ConstraintAimRoot.transform.parent= transform;
+
+
+            ConstraintAimRoot.transform.parent = transform;
             ConstraintAimRoot.transform.localPosition = Vector3.zero;
             ConstraintAimRoot.transform.localRotation = Quaternion.identity;
 
@@ -323,7 +332,7 @@ namespace MagicMotion.Mono
                     case MMConstraintType.Position:
                         GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
 
-                        positionIK.transform.position = joint.transform.position;
+
                         var positionConstraint =
                        joint.gameObject.AddComponent<MMPositionConstraint>();
                         
@@ -336,8 +345,9 @@ namespace MagicMotion.Mono
                         }
                         else
                         {
-                            positionIK.transform.parent = ConstraintAimRoot.transform;
+                            positionIK.transform.parent = transform;
                         }
+                        positionIK.transform.position = joint.transform.position;
                         break;
                     case MMConstraintType.Rotation:
                         constraint = null;

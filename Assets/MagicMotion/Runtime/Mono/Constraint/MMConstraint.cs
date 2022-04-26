@@ -5,7 +5,7 @@ namespace MagicMotion.Mono
 {
     public abstract class MMConstraint:MonoBehaviour
     {
-        public abstract void Reset();
+        public abstract void ReSet();
 
         public abstract MMConstraintType GetConstraintType();
 
