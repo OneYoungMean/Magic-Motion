@@ -215,10 +215,10 @@ public class FullBodyIK : MonoBehaviour
         m_Graph.SetTimeUpdateMode(DirectorUpdateMode.GameTime);//OYM：更新时间源
         var output = AnimationPlayableOutput.Create(m_Graph, "output", m_Animator);
 
-        var clip = SampleUtility.LoadAnimationClipFromFbx("DefaultMale/Models/DefaultMale_Humanoid", "Idle");//OYM：设置动作
+/*        var clip = SampleUtility.LoadAnimationClipFromFbx("DefaultMale/Models/DefaultMale_Humanoid", "Idle");//OYM：设置动作
         var clipPlayable = AnimationClipPlayable.Create(m_Graph, clip);//OYM：设置图
         clipPlayable.SetApplyFootIK(false);//OYM：关闭footik
-        clipPlayable.SetApplyPlayableIK(false);//OYM：关闭onanimator ik的调用
+        clipPlayable.SetApplyPlayableIK(false);//OYM：关闭onanimator ik的调用*/
 
         var job = new FullBodyIKJob();
         job.stiffness = stiffness;
@@ -245,7 +245,7 @@ public class FullBodyIK : MonoBehaviour
 
 
         m_IKPlayable = AnimationScriptPlayable.Create(m_Graph, job, 1);
-        m_IKPlayable.ConnectInput(0, clipPlayable, 0, 1.0f);
+ /*       m_IKPlayable.ConnectInput(0, clipPlayable, 0, 1.0f);*/
 
         output.SetSourcePlayable(m_IKPlayable);
 
