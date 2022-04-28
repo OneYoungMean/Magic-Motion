@@ -9,24 +9,24 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION=10;
+    public const int CORRECTION=3;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT = 64;
+    public const int MAXLOOPCOUNT = 128;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
     public const float EPSILION = STEP_MIN ;
 
-    private const float loss_TOLERENCE = 1e-5f;
+    private const float loss_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-5f;
-    private const float STEP_MAX =2f;
-    private const float RANGLE_MIN = -0.5f;
-    private const float RANGE_MAX = 0.5f;
+    private const float STEP_MAX =5f;
+    private const float RANGLE_MIN = -1f;
+    private const float RANGE_MAX = 1f;
     #endregion
 
     #region  PublicFunc
@@ -130,6 +130,7 @@ ref NativeArray<float> currentSolution)
         // of the interval of uncertainty.
         lossX = lossY = preloss;
         gradientInitialX = gradientInitialY = preGradientSum;
+
     }
 
     public static bool InsideLoopHead(
