@@ -1191,7 +1191,7 @@ namespace SA
 		}
 
 		//--------------------------------------------------------------------------------------------------------------------
-
+		//OYM：这里是构造一个Lookat矩阵？这里一堆的方法,本质上都是,look x, rotate y,区别暂时不清楚,先继续往下看
 		public static bool SAFBIKComputeBasisFromXZLockX( out Matrix3x3 basis, ref Vector3 dirX, ref Vector3 dirZ )
 		{
 			CheckNormalized( dirX );
@@ -1206,7 +1206,7 @@ namespace SA
 			}
 		}
 
-        public static bool SAFBIKComputeBasisFromXYLockX(out Matrix3x3 basis, ref Vector3 dirX, ref Vector3 dirY)//OYM：这里是构造一个Lookat矩阵？
+        public static bool SAFBIKComputeBasisFromXYLockX(out Matrix3x3 basis, ref Vector3 dirX, ref Vector3 dirY)
         {
 			CheckNormalized( dirX );
 			Vector3 baseZ = Vector3.Cross( dirX, dirY );

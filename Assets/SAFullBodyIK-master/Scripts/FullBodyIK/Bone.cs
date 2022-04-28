@@ -72,12 +72,12 @@ namespace SA
 			public Matrix3x3 _defaultBasis = Matrix3x3.identity;
 			public Vector3 _defaultLocalTranslate = Vector3.zero;       // transform.position - transform.parent.position
             public Vector3 _defaultLocalDirection = Vector3.zero;//OYM：初始的朝向（包含父级的localrotation）       // _defaultLocalTranslate.Normalize()
-            public FastLength _defaultLocalLength = new FastLength();	// _defaultLocalTranslate.magnitude
+            public FastLength _defaultLocalLength = new FastLength();   // _defaultLocalTranslate.magnitude
 
-			// Internal values. Acepted public accessing. Because faster than property methods.
-			// Memo: These values are modified in Prepare().
-			public Matrix3x3 _localAxisBasis = Matrix3x3.identity;
-			public Matrix3x3 _localAxisBasisInv = Matrix3x3.identity;
+            // Internal values. Acepted public accessing. Because faster than property methods.
+            // Memo: These values are modified in Prepare().
+            public Matrix3x3 _localAxisBasis = Matrix3x3.identity; //OYM：暂时不知道是做啥的,似乎是一个lookat的旋转矩阵
+            public Matrix3x3 _localAxisBasisInv = Matrix3x3.identity;
 			public Quaternion _localAxisRotation = Quaternion.identity;
 			public Quaternion _localAxisRotationInv = Quaternion.identity;
 			public Matrix3x3 _worldToBoneBasis = Matrix3x3.identity;

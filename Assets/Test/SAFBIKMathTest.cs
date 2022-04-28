@@ -24,7 +24,7 @@ public class SAFBIKMathTest : MonoBehaviour
         Vector3 dirA = transform.position - targetA.position;
         Vector3 dirB = transform.position - targetB.position;
 
-        SAFBIKComputeBasisFromXYLockX(out Matrix3x3 basis, dirA.normalized, dirB.normalized);
+        SAFBIKComputeBasisFromXZLockZ(out Matrix3x3 basis, dirA.normalized, dirB.normalized);
         SAFBIKMatGetRot(out Quaternion rotation, ref basis);
         transform.rotation = rotation;
     }
