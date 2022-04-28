@@ -210,7 +210,7 @@ namespace MagicMotion
         public float loss;
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
-            lossTolerance =0.9f,
+            lossTolerance =1f,
             gradientTolerance =1E-10f,
             state = LBFGSState.Initialize
         };
@@ -232,7 +232,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                     case LBFGSState.Initialize://OYM£ºdeal first in;
                         {
                             state = LBFGSState.Refresh;
-                            return;
+                            break;
                         }
                     case LBFGSState.Refresh:
                         {
