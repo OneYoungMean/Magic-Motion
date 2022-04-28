@@ -19,7 +19,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =1;
+        public const int iteration =2;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -217,10 +217,11 @@ namespace MagicMotion
                 globalDataNativeArray[i] = globalData;
 
                 var solver = LBFGSNatives[0];
+                solver.state = LBFGSState.Initialize;
                 solver.numberOfVariables = muscleCount;
                 LBFGSNatives[0]=solver;
             }
-            float start = losses[iteration - 1];
+            float start = losses[iteration];
             float end = losses[0];
             Debug.Log(start + " ~ " + end);
             if (true)
@@ -232,7 +233,7 @@ namespace MagicMotion
                 loopTask = Task.Run(() =>
                 {
                     scheduleConstraintDataJob.Run(parallelDataCount);
-                    for (int i = 0; i < iteration; i++)
+                    for (int i = 0; i < iteration+1; i++)
                     {
                         muscleToDof3Job.Run(muscleCount);
                         dof3ToRotationJob.Run(jointCount);
@@ -241,7 +242,6 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
-
                 });
             }
             else
@@ -419,7 +419,7 @@ namespace MagicMotion
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
-            losses=new NativeArray<float>(iteration, Allocator.Persistent);
+            losses=new NativeArray<float>(iteration+1, Allocator.Persistent);
         }
         private void BuildJobDataInternal()
         {
