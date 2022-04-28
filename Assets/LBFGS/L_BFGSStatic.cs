@@ -19,7 +19,7 @@ public unsafe static class L_BFGSStatic
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
-    public const float EPSILION = STEP_MIN ;
+    public const float EPSILION = STEP_MIN;
 
     private const float loss_TOLERENCE = 1e-3f;
     private const float xTolerance = 1e-20f; // machine precision
@@ -310,7 +310,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         isLoopInside = true;
     }
 
-    public static bool OutsideLoopTail(
+    public static void OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
            ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,
            ref bool isLoopOutside,
@@ -338,11 +338,10 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         xnorm = math.max(1f, xnorm);
 
         // isSuccessful
-        if (gnorm / xnorm <= gradientTolerance)
+        if (gnorm/ numberOfVariables <= gradientTolerance)
         {
             isLoopOutside = false;
         }
-        return true;
     }
     public static void CreateWorkVector(int numberOfVariables,
     out NativeArray<float> diagonal, out NativeArray<float> gradientStore, out NativeArray<float> rho, out NativeArray<float> alpha, out NativeArray<float> steps, out NativeArray<float> delta

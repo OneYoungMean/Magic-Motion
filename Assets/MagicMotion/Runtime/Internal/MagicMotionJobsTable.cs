@@ -26,7 +26,7 @@ namespace MagicMotion
 
             public void Execute(int index)
             {
-                musclesValues[index] = 0;
+                musclesValues[index] = math.clamp(musclesValues[index],-1,1);
             }
         }
         public struct InitializeJointJob : IJobParallelForTransform
@@ -700,7 +700,7 @@ namespace MagicMotion
                 jointloss.muscleChangeloss = loss * loss;
             }
         }
-        [BurstCompile]
+       // [BurstCompile]
         public struct MainControllerJob : IJob
         {
             //OYM：感觉计算量超级的大啊
@@ -777,127 +777,25 @@ namespace MagicMotion
 
                 PreOptimizeProcess();//OYM：瓶颈正在这里
                                      //OYM：以及额外的bug还需要修复
-                losses[globalData.leastLoopCount] = loss;
+
                 var LBFGSSolver = LBFGSSolvers[index];
                 LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-
+                losses[globalData.leastLoopCount] = loss;
                 LBFGSSolvers[index] = LBFGSSolver;
-                PostOptimizeProcess();
                 globalDataNative[index] = globalData;
             }
 
-            public void PostOptimizeProcess()
-            {
-                
-                //Dof3ToQuaternion();
-                //BuildTransform();
-                //GetMuscleGradientRotation();
-            }
 
-/*            public void Dof3ToQuaternion()
-            {
-                for (int i = 0; i < jointLength; i++)
-                {
-                    int point = i;
-                    JointData currentJoint = jointDatas[point];
 
-                    float3 Dof3 = Dof3s[point];
-
-                    float3 Dof3toRadian = math.radians(
-                        math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
-                    + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION))
-                    );
-                    quaternion eulerAngle = quaternion.identity;
-                    if (Dof3[0] != 0)
-                    {
-                        eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), eulerAngle);
-                    }
-                    if (Dof3[1] != 0)
-                    {
-                        eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), eulerAngle);
-                    }
-                    if (Dof3[2] != 0)
-                    {
-                        eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), eulerAngle);
-                    }
-
-                    Dof3Quaternions[point] = eulerAngle;
-                }
-            }*/
-
-/*            private void GetMuscleGradientRotation()
-            {
-                for (int i = 0; i < muscleLength; i++)
-                {
-                    var muscleData = muscleDatas[i];
-                    var muscleValue = muscleValues[i];
-                    var currentJoint = jointDatas[muscleData.jointIndex];
-
-                    float3 Dof3 = Dof3s[muscleData.jointIndex];
-
-                    Dof3[muscleData.dof] = muscleValue + L_BFGSStatic.EPSILION;
-                    quaternion before = Dof3Quaternions[muscleData.jointIndex];
-                    quaternion after = quaternion.identity;
-                    float3 Dof3toRadian = math.radians(math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0)) + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
-                    if (Dof3[0] != 0) { after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after); }
-                    if (Dof3[1] != 0) { after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after); }
-                    if (Dof3[2] != 0) { after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after); }
-
-                    quaternion worldRot = jointTransformNatives[muscleData.jointIndex].rot;
-                    quaternion change = math.mul(worldRot, math.mul(math.mul(after, math.inverse(before)), math.inverse(worldRot)));
-                    muscleGradientRotations[i] = change;
-                }
-            }*/
-/*            private void BuildTransform()
-            {
-                for (int i = 0; i < jointLength; i++)
-                {
-                    int point = i;
-                    JointData currentJoint = jointDatas[point];
-                    RigidTransform currentTransform = jointTransformNatives[point];
-                    quaternion eulerAngle = Dof3Quaternions[point];
-                    quaternion parentRotation; float3 parentPosition;
-
-                    if (currentJoint.parentIndex == -1)
-                    {
-                        parentPosition = float3.zero;
-                        parentRotation = quaternion.identity;
-                    }
-                    else
-                    {
-                        RigidTransform parentTransform = jointTransformNatives[currentJoint.parentIndex];
-                        parentPosition = parentTransform.pos;
-                        parentRotation = parentTransform.rot;
-                    }
-                    currentTransform.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
-                    currentTransform.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
-                    jointTransformNatives[point] = currentTransform;
-                }
-            }*/
-
-/*            private void MuscleToDof3()
-            {
-                for (int i = 0; i < muscleLength; i++)
-                {
-                    var muscleData = muscleDatas[i];
-                    var muscleValue = muscleValues[i];
-                    float3 targetDof3 = Dof3s[muscleData.jointIndex];
-                    targetDof3[muscleData.dof] = muscleValue;
-                    Dof3s[muscleData.jointIndex] = targetDof3;
-                }
-            }*/
 
             private void PreOptimizeProcess()
             {
-                CollectlossAndGradient();
+            
+                loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
+                CollectGradient(jointlossNatives, relationDatas, jointLength, parallelLength, gradients);
             }
 
-            private void CollectlossAndGradient()
-            {
-                UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
-                loss = Collectloss(jointlossNatives, 0, constraintLength,jointLength);
-                CollectGradient(jointlossNatives, relationDatas, jointLength,parallelLength, gradients);
-            }
+
 
             private static float Collectloss(NativeArray<MMJoinloss> losses, int offset, int constraintlength,int jointLength)
             {
@@ -914,19 +812,20 @@ namespace MagicMotion
 
                 return loss;
             }
-            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas,int jointLength, int parallelLength,NativeArray<float>gradient)
+            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas,int jointLength, int parallelLength,NativeArray<float>gradients)
             {
+                UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
 
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
 
                     float gradientTemp =math.sqrt (losses[i].lossSum)- math.sqrt(losses[relationData.jointIndex].lossSum);
-                    gradient[relationData.relatedMuscleIndex] += gradientTemp;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp;
                 }
-                for (int i = 0; i < gradient.Length; i++)
+                for (int i = 0; i < gradients.Length; i++)
                 {
-                    gradient[i]/=L_BFGSStatic.EPSILION;
+                    gradients[i]/=L_BFGSStatic.EPSILION;
                 }
                 //gradientTemp = math.sign(gradientTemp)*math.sqrt(math.abs( gradientTemp) / constraintlength);
             }

@@ -211,7 +211,7 @@ namespace MagicMotion
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
             lossTolerance =1f,
-            gradientTolerance =1E-10f,
+            gradientTolerance =0f,
             state = LBFGSState.Initialize
         };
 

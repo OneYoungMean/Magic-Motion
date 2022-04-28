@@ -19,7 +19,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =128;
+        public const int iteration =1;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -131,6 +131,7 @@ namespace MagicMotion
             {
                 this.muscleValues = muscleValues;
             }
+
         }
         public void Initialize()
         {
@@ -211,7 +212,7 @@ namespace MagicMotion
             for (int i = 0; i < LBFGSNatives.Length; i++)
             {
                 var globalData = globalDataNativeArray[i];
-                globalData.leastLoopCount = iteration-1;
+                globalData.leastLoopCount = iteration;
                 globalData.isInitialize = false;
                 globalDataNativeArray[i] = globalData;
 
@@ -219,15 +220,18 @@ namespace MagicMotion
                 solver.numberOfVariables = muscleCount;
                 LBFGSNatives[0]=solver;
             }
-            Debug.Log(losses[iteration - 1] + " ~ " + losses[0]);
+            float start = losses[iteration - 1];
+            float end = losses[0];
+            Debug.Log(start + " ~ " + end);
             if (true)
             {
                 /*                ;*/
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 jointToTransformJob.Schedule(jointTransformArray).Complete();
-                scheduleConstraintDataJob.Run(parallelDataCount);
+
                 loopTask = Task.Run(() =>
                 {
+                    scheduleConstraintDataJob.Run(parallelDataCount);
                     for (int i = 0; i < iteration; i++)
                     {
                         muscleToDof3Job.Run(muscleCount);
@@ -237,6 +241,7 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
+
                 });
             }
             else
@@ -400,7 +405,7 @@ namespace MagicMotion
 
             jointlossNativeArray = new NativeArray<MMJoinloss>(parallelDataCount, Allocator.Persistent);
 
-            Dof3NativeArray = new NativeArray<float3>(parallelDataCount, Allocator.Persistent);
+            Dof3NativeArray = new NativeArray<float3>(jointCount, Allocator.Persistent);
 
             Dof3QuaternionNativeArray = new NativeArray<quaternion>(jointCount, Allocator.Persistent);
 
