@@ -621,7 +621,7 @@ namespace MagicMotion
             {
             
                 loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
-                CollectGradient(jointlossNatives, relationDatas, loss, jointLength, parallelLength, constraintLength, gradients);
+                CollectGradient(jointlossNatives, relationDatas, muscleRelativeCounts, jointLength, parallelLength, constraintLength, gradients);
             }
 
 
@@ -641,7 +641,7 @@ namespace MagicMotion
 
                 return loss;
             }
-            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas, float loss, int jointLength, int parallelLength, int constraintLength, NativeArray<float>gradients)
+            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas , NativeArray<int>relativeCounts, int jointLength, int parallelLength, int constraintLength, NativeArray<float>gradients)
             {
                 UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
 
@@ -650,7 +650,7 @@ namespace MagicMotion
                     JointRelationData relationData = relationDatas[i];
 
                     float gradientTemp = losses[i].lossSum-losses[relationData.jointIndex].lossSum;
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp/ constraintLength;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp/ relativeCounts[relationData.jointIndex];
                 }
             }
         }
