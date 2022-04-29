@@ -194,15 +194,27 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         float gradientTest = loss_TOLERENCE * preGradientSum;
         float losstest1 = preloss + innerLoopStep * gradientTest;
 
-        // Test for convergence.
-        if (loopCount >= L_BFGSStatic.MAXLOOPCOUNT|| leastLoopCount<=0)
+
+
+        // successful
+        if (loss <= losstest1 &&(
+            math.abs(gradientTemp) <= lossTolerance * (-preGradientSum)|| 
+            (loopCount >= L_BFGSStatic.MAXLOOPCOUNT || leastLoopCount <= 0)))
         {
+            isLoopOutside = true;
+            isLoopInside = false;
+            return;
+
+        }
+
+        if(loopCount >= L_BFGSStatic.MAXLOOPCOUNT || leastLoopCount <= 0)
+        {
+
             isLoopOutside = false;
-            isLoopInside= false;
+            isLoopInside = false;
             return;
             //throw new LineSearchFailedException(3, "Maximum number of function evaluations has been reached.");
         }
-
         //Rounding errors prevent further progress.
         if ((isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) || funcState == 0)
         {
@@ -221,12 +233,14 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
         //The step size has reached the lower bound.
+        //OYM：主要就是这个地方作妖
         if (innerLoopStep == STEP_MIN && (loss >= losstest1 || gradientTemp >= gradientTest))
         {
+
             isLoopOutside = false;
             isLoopInside = false;
             return;
-        }
+        } 
 
         //Relative width of the interval of uncertainty is at machine precision
         if (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
@@ -236,14 +250,6 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             return;
         }
 
-        // successful
-        if (loss <= losstest1 && math.abs(gradientTemp) <= lossTolerance * (-preGradientSum))
-        {
-            isLoopOutside = true;
-            isLoopInside = false;
-            return;
-
-        }
 
         // Not converged yet. Continuing with the search.
         // In the first stage we seek a step for which the modified
@@ -314,11 +320,17 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
          ref float innerLoopStep, ref float gradientTolerance,
            ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,
            ref bool isLoopOutside,
-           ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> currentSolution
+           ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> diagonal, ref NativeArray<float> currentSolution
         )
     {
-        // Compute the new step and
-        // new gradient differences
+             if (!isLoopOutside)
+                {
+                    UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), diagonal.GetUnsafePtr(), numberOfVariables * UnsafeUtility.SizeOf<float>());
+                    return;
+                }
+
+                        // Compute the new step and
+                        // new gradient differences
         for (int i = 0; i < numberOfVariables; i++)
         {
             steps[matrixPoint + i] *= innerLoopStep;
@@ -342,6 +354,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         {
             isLoopOutside = false;
         }
+
     }
     public static void CreateWorkVector(int numberOfVariables,
     out NativeArray<float> diagonal, out NativeArray<float> gradientStore, out NativeArray<float> rho, out NativeArray<float> alpha, out NativeArray<float> steps, out NativeArray<float> delta
@@ -631,8 +644,8 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     {
         width = STEP_MAX - STEP_MIN;
         width1 = width / 0.5f;
-        stepBoundX = 0f;
-        stepBoundY = 0f;
+        stepBoundX = STEP_MIN;
+        stepBoundY = STEP_MAX;
         preGradientSum = 0f;
 
         funcState = 1;

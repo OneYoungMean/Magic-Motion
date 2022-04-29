@@ -440,7 +440,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
                 ref loopCount,ref matrixPoint,ref point, ref  numberOfVariables,
                 ref isLoopOutside,
-                ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
+              ref diagonal, ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }
 
         return loss; // return the minimum value found (at solution x)
