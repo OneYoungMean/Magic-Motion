@@ -220,7 +220,7 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
 
-        public void Optimize(float loss, ref int leastLoopCount,//OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
+        public void Optimize(float loss, ref int leastLoopCount,ref float gradientSum, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
 NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta, NativeArray<float> currentSolution, NativeArray<float> gradient
             )
         {
@@ -245,6 +245,8 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         if (isLoopOutside)
                         {
                             OutsideLoopHead(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref innerLoopStep, ref preloss, ref loss, ref lossX, ref lossY, ref gradientInitialX, ref gradientInitialY, ref funcState, ref iterations, ref matrixPoint, ref numberOfVariables, ref point, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref delta, ref steps, ref diagonal , ref gradientStore, ref gradient, ref rho, ref alpha, ref currentSolution);
+
+                            gradientSum = preGradientSum;
                             if (isLoopOutside)
                             {
                                 state = LBFGSState.InsideLoopHead;
@@ -288,7 +290,7 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         break;
                     case LBFGSState.OutsideLoopTail:
                         OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
-    ref loopCount, ref matrixPoint, ref point, ref numberOfVariables,
+    ref loopCount, ref matrixPoint, ref point, ref numberOfVariables,ref leastLoopCount,
     ref isLoopOutside,
     ref gradient, ref steps, ref delta, ref gradientStore, ref diagonal, ref currentSolution);
                         if (isLoopOutside)

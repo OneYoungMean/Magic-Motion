@@ -19,7 +19,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =5;
+        public const int iteration =32;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -55,7 +55,8 @@ namespace MagicMotion
         private NativeArray<float> delta;
         private NativeArray<float> rho;
 
-        private NativeArray<float> losses;
+        private NativeArray<float> lossNativeArray;
+        private NativeArray<float> gradientSumNativeArray;
         #endregion
 
         #region JobsData
@@ -79,6 +80,7 @@ namespace MagicMotion
         private MMMuscleData[] muscles;
         private TransformToConstraintNative[] transformToConstraints;
         private MMConstraintNative[] constraints;
+        private JointRelationData[] jointMapDatas;
 
         private Transform[] constraintTransforms;
         private Transform[] jointsTransforms;
@@ -88,7 +90,7 @@ namespace MagicMotion
         private int muscleCount;
         private bool isCreated;
         private BroydenFletcherGoldfarbShanno LBFGSSolver;
-        private JointRelationData[] jointMapDatas;
+
         #endregion
 
         #region Accessor
@@ -164,8 +166,8 @@ namespace MagicMotion
             UnsafeUtility.MemCpy(muscleValueNativeArray.GetUnsafePtr(), solution.GetUnsafePtr(), solution.Length * UnsafeUtility.SizeOf<float>());
             mainControllerJob.Run();
             caclulatelossJob.Run(parallelDataCount);
-            Debug.Log(losses[0]);
-            return losses[0];
+            Debug.Log(lossNativeArray[0]);
+            return lossNativeArray[0];
         }
         private NativeArray<float> GetGradient(NativeArray<float> solution) 
         {
@@ -241,8 +243,8 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
-                    float start = losses[iteration];
-                    float end = losses[0];
+                    float start = lossNativeArray[iteration];
+                    float end = lossNativeArray[0];
                     Debug.Log(start + " ~ " + end);
                 });
             }
@@ -289,8 +291,8 @@ namespace MagicMotion
             LBFGSNatives.Dispose();
             globalDataNativeArray.Dispose();
             gradients.Dispose();
-            losses.Dispose();
-
+            lossNativeArray.Dispose();
+            gradientSumNativeArray.Dispose();
             muscleGradientRotationArray.Dispose();
             jointRelationDataNativeArray.Dispose();
             muscleRelativeCountArray.Dispose();
@@ -421,7 +423,8 @@ namespace MagicMotion
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
-            losses=new NativeArray<float>(iteration+1, Allocator.Persistent);
+            lossNativeArray=new NativeArray<float>(iteration+1, Allocator.Persistent);
+            gradientSumNativeArray = new NativeArray<float>(iteration + 1, Allocator.Persistent);
         }
         private void BuildJobDataInternal()
         {
@@ -511,10 +514,12 @@ namespace MagicMotion
                 alpha = alpha,
                 steps = steps,
                 delta = delta,
-                losses = losses,
+                losses = lossNativeArray,
                 jointlossNatives = jointlossNativeArray,
                 muscleValues= muscleValueNativeArray,
                 relationDatas =jointRelationDataNativeArray,
+                muscleRelativeCounts=muscleRelativeCountArray,
+                gradientSums= gradientSumNativeArray,
                 parallelLength =parallelDataCount,
                 constraintLength =constraintTransforms.Length,
                 muscleLength = muscleCount,

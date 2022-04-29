@@ -21,10 +21,10 @@ public unsafe static class L_BFGSStatic
     /// </summary>
     public const float EPSILION = STEP_MIN;
 
-    private const float loss_TOLERENCE = 0f;
+    private const float loss_TOLERENCE =0f;
     private const float xTolerance = 1e-20f; // machine precision
-    private const float STEP_MIN = 1e-3f;
-    private const float STEP_MAX =1f;
+    private const float STEP_MIN =1e-5f;
+    private const float STEP_MAX =2f;
     private const float RANGLE_MIN = -1f;
     private const float RANGE_MAX = 1f;
     #endregion
@@ -318,7 +318,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
     public static void OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
-           ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,
+           ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,ref int leastLoopCount,
            ref bool isLoopOutside,
            ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> diagonal, ref NativeArray<float> currentSolution
         )
@@ -350,7 +350,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         xnorm = math.max(1f, xnorm);
 
         // isSuccessful
-        if (gnorm/ numberOfVariables <= gradientTolerance)
+        if (gnorm/ numberOfVariables <= gradientTolerance||leastLoopCount <= 0)
         {
             isLoopOutside = false;
         }

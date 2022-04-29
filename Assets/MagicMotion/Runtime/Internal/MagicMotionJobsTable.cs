@@ -558,6 +558,8 @@ namespace MagicMotion
             public NativeArray<float> delta;
             [NativeDisableParallelForRestriction]
             internal NativeArray<float> losses;
+            [NativeDisableParallelForRestriction]
+            internal NativeArray<float> gradientSums;
             #endregion
 
 
@@ -568,7 +570,11 @@ namespace MagicMotion
             public NativeArray<MMJoinloss> jointlossNatives;
             [NativeDisableParallelForRestriction, ReadOnly]
             public NativeArray<JointRelationData> relationDatas;
+            [NativeDisableParallelForRestriction, ReadOnly]
+            public NativeArray<int> muscleRelativeCounts;
             [NativeDisableParallelForRestriction]
+
+
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
@@ -601,8 +607,9 @@ namespace MagicMotion
                 PreOptimizeProcess();
                 losses[globalData.leastLoopCount] = loss;
                 var LBFGSSolver = LBFGSSolvers[index];
-                LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-
+                float gradientSum = gradientSums[globalData.leastLoopCount];
+                LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, ref gradientSum, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
+                gradientSums[globalData.leastLoopCount] = gradientSum;
                 LBFGSSolvers[index] = LBFGSSolver;
                 globalDataNative[index] = globalData;
             }
@@ -614,7 +621,7 @@ namespace MagicMotion
             {
             
                 loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
-                CollectGradient(jointlossNatives, relationDatas, jointLength, parallelLength, gradients);
+                CollectGradient(jointlossNatives, relationDatas, loss, jointLength, parallelLength, constraintLength, gradients);
             }
 
 
@@ -634,7 +641,7 @@ namespace MagicMotion
 
                 return loss;
             }
-            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas,int jointLength, int parallelLength,NativeArray<float>gradients)
+            private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas, float loss, int jointLength, int parallelLength, int constraintLength, NativeArray<float>gradients)
             {
                 UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
 
@@ -642,14 +649,9 @@ namespace MagicMotion
                 {
                     JointRelationData relationData = relationDatas[i];
 
-                    float gradientTemp =math.sqrt (losses[i].lossSum)- math.sqrt(losses[relationData.jointIndex].lossSum);
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp;
+                    float gradientTemp = losses[i].lossSum-losses[relationData.jointIndex].lossSum;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp/ constraintLength;
                 }
-                for (int i = 0; i < gradients.Length; i++)
-                {
-                    gradients[i]/=L_BFGSStatic.EPSILION;
-                }
-                //gradientTemp = math.sign(gradientTemp)*math.sqrt(math.abs( gradientTemp) / constraintlength);
             }
         }
 

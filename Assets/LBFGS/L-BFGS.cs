@@ -422,11 +422,11 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         {
             OutsideLoopHead(ref width, ref width1,ref stepBoundX,ref stepBoundY,ref preGradientSum,ref innerLoopStep,ref preloss,ref loss,ref lossX,ref lossY,ref gradientInitialX,ref gradientInitialY,ref funcState,ref iterations,ref matrixPoint,ref numberOfVariables, ref point, ref isLoopOutside,ref isLoopInside, ref isInBracket,ref stage1,ref delta,ref steps,ref diagonal,ref gradientStore,ref gradient,ref rho,ref alpha, ref currentSolution);
             if (!isLoopOutside) break;
-
+            int temp = L_BFGSStatic.MAXLOOPCOUNT;
             //inner loop
             while (isLoopInside)
             {
-                int temp = L_BFGSStatic.MAXLOOPCOUNT;
+
                 InsideLoopHead(ref stepBoundMin, ref stepBoundMax,ref stepBoundX,ref stepBoundY,ref innerLoopStep,ref loopCount,ref numberOfVariables,ref funcState,ref matrixPoint,ref temp, ref isInBracket,ref currentSolution,ref diagonal, ref steps);
 
                 // Reevaluate function and gradient
@@ -438,7 +438,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
             }
             if (!isLoopOutside) break;
             OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
-                ref loopCount,ref matrixPoint,ref point, ref  numberOfVariables,
+                ref loopCount,ref matrixPoint,ref point, ref  numberOfVariables,ref temp,
                 ref isLoopOutside,
               ref diagonal, ref gradient,ref steps,ref delta,ref gradientStore,ref currentSolution);
         }
