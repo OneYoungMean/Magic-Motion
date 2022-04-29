@@ -648,9 +648,8 @@ namespace MagicMotion
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
-
-                    float gradientTemp = losses[i].lossSum-losses[relationData.jointIndex].lossSum;
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp/ relativeCounts[relationData.jointIndex];
+                    float gradientTemp = losses[i].lossSum - losses[relationData.jointIndex].lossSum;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp / relativeCounts[relationData.jointIndex];
                 }
             }
         }
