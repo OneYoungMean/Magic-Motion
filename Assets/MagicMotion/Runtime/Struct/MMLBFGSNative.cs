@@ -210,7 +210,7 @@ namespace MagicMotion
         public float loss;
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
-            lossTolerance =0.9f,
+            lossTolerance =1f,
             gradientTolerance =0f,
             state = LBFGSState.Initialize
         };

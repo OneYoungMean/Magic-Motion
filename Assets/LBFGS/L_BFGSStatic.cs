@@ -21,7 +21,7 @@ public unsafe static class L_BFGSStatic
     /// </summary>
     public const float EPSILION = STEP_MIN;
 
-    private const float loss_TOLERENCE = 1e-3f;
+    private const float loss_TOLERENCE = 0f;
     private const float xTolerance = 1e-20f; // machine precision
     private const float STEP_MIN = 1e-3f;
     private const float STEP_MAX =1f;
