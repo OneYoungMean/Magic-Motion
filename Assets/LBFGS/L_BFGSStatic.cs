@@ -1,4 +1,5 @@
-﻿using Unity.Collections;
+﻿using System.Runtime.CompilerServices;
+using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Mathematics;
 
@@ -30,6 +31,7 @@ public unsafe static class L_BFGSStatic
     #endregion
 
     #region  PublicFunc
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void InitializeLoop(
 ref float innerLoopStep,
 ref int iterations, ref int evaluations, ref int loopCount, ref int point, ref int matrixPoint,
@@ -57,7 +59,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArra
         innerLoopStep = 1.0f / gnormInit;
     }
 
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void OutsideLoopHead(
 ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preloss, ref float loss, ref float lossX, ref float lossY, ref float gradientInitialX, ref float gradientInitialY,
 ref int funcState,  ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
@@ -132,7 +134,7 @@ ref NativeArray<float> currentSolution)
         gradientInitialX = gradientInitialY = preGradientSum;
 
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool InsideLoopHead(
     ref float stepBoundMin, ref float stepBoundMax, ref float stepBoundX, ref float stepBoundY, ref float innerLoopStep,
     ref int loopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint, ref int leastLoopCount,
@@ -179,7 +181,7 @@ ref NativeArray<float> currentSolution)
         }
         return true;
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void InisdeLoopTail(
         ref float preGradientSum, ref float preloss, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float loss, ref float lossTolerance, ref float lossX, ref float lossY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
         ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,ref int leastLoopCount,
@@ -315,7 +317,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
         isLoopInside = true;
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void OutsideLoopTail(
          ref float innerLoopStep, ref float gradientTolerance,
            ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,ref int leastLoopCount,
@@ -356,6 +358,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
     }
+
     public static void CreateWorkVector(int numberOfVariables,
     out NativeArray<float> diagonal, out NativeArray<float> gradientStore, out NativeArray<float> rho, out NativeArray<float> alpha, out NativeArray<float> steps, out NativeArray<float> delta
     )
@@ -377,7 +380,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         steps.Dispose();
         delta.Dispose();
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void ClearData(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
     {
         ClearData(diagonal);
@@ -391,7 +394,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
 
     #region Line Search (mcsrch)
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void UpdatingQuasi_Newton(
  NativeArray<float> diagonal, NativeArray<float> rho, NativeArray<float> gradientStore, NativeArray<float> steps, NativeArray<float> alpha, NativeArray<float> delta,
     int numberOfVariables, int corrections, int point, int bound, float sumY)
@@ -447,7 +450,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             if (prePointLoop == corrections) prePointLoop = 0;
         }
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     // TODO: Move to separate classes
     internal static void SearchStep(ref float stx, ref float fx, ref float dx,
                             ref float sty, ref float fy, ref float dy,
@@ -635,11 +638,12 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
 
     #region PrivateFunc
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ClearData<T>(NativeArray<T> data) where T : struct
     {
         UnsafeUtility.MemClear(data.GetUnsafePtr(), data.Length * UnsafeUtility.SizeOf<T>());
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
     {
         width = STEP_MAX - STEP_MIN;
@@ -655,7 +659,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         isInBracket = false;
         stage1 = true;
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void InitializeBeforeLoop(ref float innerLoopStep, ref int iterations, ref int loopCount, ref int point, ref int matrixPoint, ref bool isLoopOutside)
     {
         innerLoopStep = 0;
@@ -665,10 +669,12 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         matrixPoint = 0;
         isLoopOutside = true;
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float Euclidean(NativeArray<float> a)
     {
         return math.sqrt(SquareEuclidean(a));
     }
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float SquareEuclidean(NativeArray<float> a)
     {
         float sum = 0;
@@ -677,7 +683,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         return sum;
 
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float GetGreadientSum(NativeArray<float> gradient, NativeArray<float> steps, int matrixPoint, int numberOfVariables)
     {
         float gradientTemp = 0;
@@ -687,7 +693,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
         return gradientTemp;
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void ComputeDiagonal(NativeArray<float> diagonal, NativeArray<float> delta, int nowPoint, int numberOfVariables, float sumY)
     {
         float sqrY = 0;
@@ -703,7 +709,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             diagonal[i] = diagonalValue;
         }
     }
-
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static float GetSumY(NativeArray<float> delta, NativeArray<float> steps, int nowPoint, int numberOfVariables)
     {
         float sumY = 0;

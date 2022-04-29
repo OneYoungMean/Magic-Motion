@@ -34,6 +34,15 @@ namespace MagicMotion
         public PositionChangeConstraint positionChangeConstraint;
         public DofChangeConstraint  DofChangeConstraint ;
 
+        public int GetVaildCount()
+        {
+            return (positionConstraint.isVaild ? 1 : 0) +
+                (DofConstraint.isVaild ? 1 : 0) +
+                (lookAtConstraint.isVaild ? 1 : 0) +
+                (colliderConstraint.isVaild ? 1 : 0) +
+                (positionChangeConstraint.isVaild ? 1 : 0) +
+                (DofChangeConstraint.isVaild ? 1 : 0);
+        }
     }
     public struct MMJoinloss
     {

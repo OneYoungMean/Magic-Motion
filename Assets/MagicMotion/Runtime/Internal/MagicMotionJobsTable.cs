@@ -6,6 +6,7 @@ using Unity.Collections;
 using System;
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
+using System.Runtime.CompilerServices;
 
 namespace MagicMotion
 {
@@ -305,9 +306,19 @@ namespace MagicMotion
                 quaternion before = Dof3Quaternions[muscleData.jointIndex];
                 quaternion after = quaternion.identity;
                 float3 Dof3toRadian = math.radians(math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0)) + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1 + L_BFGSStatic.EPSILION)));
-                after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after);
-                after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after);
-                after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);
+                if (Dof3[0]!=0)
+                {
+                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after);
+                }
+                if (Dof3[1] != 0)
+                {
+                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after);
+                }
+                if (Dof3[2] != 0)
+                {
+                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);
+                }
+
 
                 quaternion worldRot = jointTransformNatives[muscleData.jointIndex].rot;
                 quaternion change = math.mul(worldRot, math.mul(math.mul(after, math.inverse(before)), math.inverse(worldRot)));
@@ -375,47 +386,47 @@ namespace MagicMotion
                 {
                     RigidTransform relatedTransform = jointTransformNatives[jointRelationData.relatedJointIndex];
                     quaternion muscleGradientRotation = muscleGradientRotations[jointRelationData.relatedMuscleIndex];
-                    RebuildJointTransform(ref jointTransform, relatedTransform, muscleGradientRotation);
+                    RebuildJointTransform(ref jointTransform, ref relatedTransform, ref muscleGradientRotation);
                 }
 
                 float3 Dof3 = Dof3s[jointRelationData.jointIndex];
 
                 if (constraintNative.positionConstraint.isVaild)
                 {
-                    UpdatePositionloss(ref jointloss, jointTransform, constraintNative);
+                    UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
                 if (constraintNative.DofConstraint.isVaild)
                 {
-                    UpdateMuscleloss(ref jointloss, Dof3, constraintNative);
+                    UpdateMuscleloss(ref jointloss, ref Dof3, ref constraintNative);
                 }
                 if (constraintNative.lookAtConstraint.isVaild)
                 {
-                    UpdateLookAtloss(ref jointloss, jointTransform, constraintNative);
+                    UpdateLookAtloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
                 if (constraintNative.colliderConstraint.isVaild)
                 {
-                    UpdateColliderConstraint(ref jointloss, jointTransform, constraintNative);
+                    UpdateColliderConstraint(ref jointloss, ref jointTransform, ref constraintNative);
                 }
                 if (constraintNative.positionChangeConstraint.isVaild)
                 {
-                    UpdatePositionChangeloss(ref jointloss, jointTransform, constraintNative);
+                    UpdatePositionChangeloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
                 if (constraintNative.DofChangeConstraint .isVaild)
                 {
-                    UpdateMuscleChangeloss(ref jointloss, Dof3, constraintNative);
+                    UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
                 }
                 jointloss.Clacloss();
                jointlossNatives[index] = jointloss;
             }
-
-            private void RebuildJointTransform(ref RigidTransform jointTransform,  RigidTransform relatedTransform, quaternion muscleGradientRotation)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void RebuildJointTransform(ref RigidTransform jointTransform, ref RigidTransform relatedTransform, ref quaternion muscleGradientRotation)
             {
                 float3 direction = jointTransform.pos - relatedTransform.pos;
                 jointTransform.pos = math.mul(muscleGradientRotation,direction)+ relatedTransform.pos;
                 jointTransform.rot = math.mul( muscleGradientRotation, jointTransform.rot);
             }
-
-            private static void UpdatePositionloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdatePositionloss(ref MMJoinloss jointloss, ref RigidTransform jointTransform, ref MMConstraintNative constraintNative)
             {
                 PositionConstraint positionConstraint = constraintNative.positionConstraint;
                 float3 jointPosition = jointTransform.pos;
@@ -447,7 +458,8 @@ namespace MagicMotion
 
                 jointloss.positionloss = loss;
             }
-            private static void UpdateMuscleloss(ref MMJoinloss jointloss, float3 Dof3, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdateMuscleloss(ref MMJoinloss jointloss, ref float3 Dof3, ref MMConstraintNative constraintNative)
             {
                 float3 tolerance3 = constraintNative.DofConstraint.tolerance3;
                 float3 weight3 = constraintNative.DofConstraint.weight3;
@@ -455,7 +467,8 @@ namespace MagicMotion
                 float loss =math.csum(Dof3Outside * weight3);
                 jointloss.muscleloss = loss;
             }
-            private static void UpdateLookAtloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdateLookAtloss(ref MMJoinloss jointloss, ref RigidTransform jointTransform, ref MMConstraintNative constraintNative)
             { 
             LookAtConstraint lookAtConstraint = constraintNative.lookAtConstraint;
             float3 jointPosition = jointTransform.pos;
@@ -475,13 +488,15 @@ namespace MagicMotion
                 loss = math.max(0, math.abs(loss) - tolerance * math.PI);
             jointloss.lookAtloss= loss* loss*weight;
             }
-            private static void UpdateColliderConstraint(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdateColliderConstraint(ref MMJoinloss jointloss, ref RigidTransform jointTransform, ref MMConstraintNative constraintNative)
             {
                 //OYM：啊这个超级难写 
                 //OYM：还要去构造AABB
                 //OYM：不想写（摆烂
             }
-            private static void UpdatePositionChangeloss(ref MMJoinloss jointloss, RigidTransform jointTransform, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdatePositionChangeloss(ref MMJoinloss jointloss, ref RigidTransform jointTransform, ref MMConstraintNative constraintNative)
             {
                 PositionChangeConstraint positionConstraint = constraintNative.positionChangeConstraint;
                 float3 jointPosition = jointTransform.pos;
@@ -510,8 +525,8 @@ namespace MagicMotion
 
                // jointloss.positionChangeloss = -loss;
             }
-
-            private static void UpdateMuscleChangeloss(ref MMJoinloss jointloss, float3 Dof3, MMConstraintNative constraintNative)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            private static void UpdateMuscleChangeloss(ref MMJoinloss jointloss, ref float3 Dof3, ref MMConstraintNative constraintNative)
             {
                 float3 oldDof3 = constraintNative.DofChangeConstraint .oldDof3;
                 float3 torlerence3 = constraintNative.DofChangeConstraint .torlerence3;
@@ -523,7 +538,7 @@ namespace MagicMotion
                 jointloss.muscleChangeloss = loss* loss;
             }
         }
-       // [BurstCompile]
+      //  [BurstCompile]
         public struct MainControllerJob : IJob
         {
             //OYM：感觉计算量超级的大啊
@@ -614,18 +629,13 @@ namespace MagicMotion
                 globalDataNative[index] = globalData;
             }
 
-
-
-
             private void PreOptimizeProcess()
             {
             
                 loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
                 CollectGradient(jointlossNatives, relationDatas, muscleRelativeCounts, jointLength, parallelLength, constraintLength, gradients);
             }
-
-
-
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static float Collectloss(NativeArray<MMJoinloss> losses, int offset, int constraintlength,int jointLength)
             {
                 float loss = 0;
@@ -633,14 +643,13 @@ namespace MagicMotion
                 {
                     for (int i = 0; i < jointLength; i++)
                     {
-                        loss += losses[i + offset].lossSum;
+                        loss +=losses[i + offset].lossSum/ constraintlength;
                     }
-
-                    loss = math.sqrt(loss / constraintlength);
                 }
 
                 return loss;
             }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void CollectGradient(NativeArray<MMJoinloss> losses,NativeArray<JointRelationData> relationDatas , NativeArray<int>relativeCounts, int jointLength, int parallelLength, int constraintLength, NativeArray<float>gradients)
             {
                 UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
@@ -648,8 +657,9 @@ namespace MagicMotion
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
-                    float gradientTemp = losses[i].lossSum - losses[relationData.jointIndex].lossSum;
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp / relativeCounts[relationData.jointIndex];
+                    float gradientTemp =losses[i].lossSum - losses[relationData.jointIndex].lossSum;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp / (relativeCounts[relationData.jointIndex])* constraintLength;
+                    //gradients[relationData.relatedMuscleIndex] += gradientTemp;
                 }
             }
         }

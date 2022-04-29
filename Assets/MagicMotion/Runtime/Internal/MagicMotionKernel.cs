@@ -336,7 +336,7 @@ namespace MagicMotion
                     relatedMuscleIndex = -1,
                 });
             }
-            muscleRelativedCounts=new int[muscleCount];
+            muscleRelativedCounts=new int[jointCount];
             for (int i = 0; i < muscles.Length; i++)
             {
                 int relativeCount = 0;
@@ -351,11 +351,11 @@ namespace MagicMotion
                             relatedJointIndex = jointIndex,
                             relatedMuscleIndex = i,
                         });
-                        relativeCount++;
+                        relativeCount+= constraints[j].GetVaildCount();
                     }
       
                 }
-                muscleRelativedCounts[i]=relativeCount;
+                muscleRelativedCounts[jointIndex] =relativeCount;
             }
 
             jointMapDatas = jointMapDataTemp.ToArray();
