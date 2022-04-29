@@ -19,7 +19,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public unsafe class MagicMotionKernel
     {
-        public const int iteration =2;
+        public const int iteration =5;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -221,9 +221,8 @@ namespace MagicMotion
                 solver.numberOfVariables = muscleCount;
                 LBFGSNatives[0]=solver;
             }
-            float start = losses[iteration];
-            float end = losses[0];
-            Debug.Log(start + " ~ " + end);
+
+
             if (true)
             {
                 /*                ;*/
@@ -242,11 +241,14 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
+                    float start = losses[iteration];
+                    float end = losses[0];
+                    Debug.Log(start + " ~ " + end);
                 });
             }
             else
             {
-                this.MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32, this.MainHandle);
+   /*             this.MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32, this.MainHandle);
                 this.MainHandle= scheduleConstraintDataJob.Schedule(parallelDataCount, 1, this.MainHandle);
                 for (int i = 0; i < iteration; i++)
                 {
@@ -257,7 +259,7 @@ namespace MagicMotion
                     MainHandle = caclulatelossJob.Schedule(parallelDataCount, parallelDataCount / threadCount, MainHandle);
                     MainHandle = mainControllerJob.Schedule(MainHandle);
                 }
-                this.MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);
+                this.MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
             }
 
 

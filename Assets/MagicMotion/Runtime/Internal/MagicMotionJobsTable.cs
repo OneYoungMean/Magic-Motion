@@ -26,7 +26,7 @@ namespace MagicMotion
 
             public void Execute(int index)
             {
-                musclesValues[index] = math.clamp(musclesValues[index],-1,1);
+                musclesValues[index] = math.clamp(musclesValues[index],0,0);
             }
         }
         public struct InitializeJointJob : IJobParallelForTransform

@@ -210,7 +210,7 @@ namespace MagicMotion
         public float loss;
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
-            lossTolerance =1f,
+            lossTolerance =0.9f,
             gradientTolerance =0f,
             state = LBFGSState.Initialize
         };
@@ -287,12 +287,12 @@ NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float
                         }
                         break;
                     case LBFGSState.OutsideLoopTail:
+                        OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
+    ref loopCount, ref matrixPoint, ref point, ref numberOfVariables,
+    ref isLoopOutside,
+    ref gradient, ref steps, ref delta, ref gradientStore, ref diagonal, ref currentSolution);
                         if (isLoopOutside)
                         {
-                            OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
-                                ref loopCount, ref matrixPoint, ref point,  ref numberOfVariables,
-                                ref isLoopOutside,
-                                ref gradient, ref steps, ref delta, ref gradientStore, ref currentSolution);
                             state = LBFGSState.OutsideLoopHead;
                         }
                         else
