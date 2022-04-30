@@ -145,7 +145,7 @@ namespace MagicMotion
         ///   advantageous to set this to a small value. A typical small value
         ///   is 0.1. This value should be greater than 1e-4. Default is 0.9.
         /// </summary>
-        public  float lossTolerance;
+        public  double lossTolerance;
         /// <summary>
         ///   Gets or sets the accuracy with which the solution
         ///   is to be found. Default value is 1e-10.
@@ -156,7 +156,7 @@ namespace MagicMotion
         ///   where ||.|| denotes the Euclidean norm and EPS is the value for this
         ///   property.
         /// </remarks>
-        public  float gradientTolerance;
+        public  double gradientTolerance;
 
         /// <summary>
         ///   Gets the number of variables (free parameters)
@@ -177,23 +177,23 @@ namespace MagicMotion
         /// </summary>
         public LBFGSState state;
 
-        private float preloss;
-        private float lossX;
-        private float lossY;
+        private double preloss;
+        private double lossX;
+        private double lossY;
 
-        private float preGradientSum;
-        private float gradientInitialX;
-        private float gradientInitialY;
+        private double preGradientSum;
+        private double gradientInitialX;
+        private double gradientInitialY;
 
-        private float stepBoundX;
-        private float stepBoundY;
-        private float stepBoundMin;
-        private float stepBoundMax;
+        private double stepBoundX;
+        private double stepBoundY;
+        private double stepBoundMin;
+        private double stepBoundMax;
 
-        private float width;
-        private float width1;
+        private double width;
+        private double width1;
 
-        private float innerLoopStep;
+        private double innerLoopStep;
 
         private int point;
         private int matrixPoint;
@@ -207,7 +207,7 @@ namespace MagicMotion
 
         private bool isInBracket;
         private bool stage1;
-        public float loss;
+        public double loss;
         public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
         {
             lossTolerance =1f,
@@ -220,8 +220,8 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
 
-        public void Optimize(float loss, ref int leastLoopCount,ref float gradientSum, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
-NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta, NativeArray<float> currentSolution, NativeArray<float> gradient
+        public void Optimize(double loss, ref int leastLoopCount,ref double gradientSum, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
+NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta, NativeArray<float> currentSolution, NativeArray<double> gradient
             )
         {
             this.loss = loss;

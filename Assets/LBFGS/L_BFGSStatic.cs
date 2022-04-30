@@ -10,22 +10,22 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION=3;
+    public const int CORRECTION = 3;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT = 128;
+    public const int MAXLOOPCOUNT = 16;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
     public const float EPSILION = STEP_MIN;
 
-    private const float loss_TOLERENCE =0f;
+    private const float loss_TOLERENCE = 0f;
     private const float xTolerance = 1e-20f; // machine precision
-    private const float STEP_MIN =1e-5f;
-    private const float STEP_MAX =2f;
+    private const float STEP_MIN = math.EPSILON*5f;
+    private const float STEP_MAX = 2f;
     private const float RANGLE_MIN = -1f;
     private const float RANGE_MAX = 1f;
     #endregion
@@ -33,10 +33,10 @@ public unsafe static class L_BFGSStatic
     #region  PublicFunc
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void InitializeLoop(
-ref float innerLoopStep,
+ref double innerLoopStep,
 ref int iterations, ref int evaluations, ref int loopCount, ref int point, ref int matrixPoint,
 ref bool isLoopOutside,
-ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArray<float> steps
+ref NativeArray<double> gradient, ref NativeArray<double> diagonal, ref NativeArray<double> steps
 )
     {
         // Initialization
@@ -55,26 +55,26 @@ ref NativeArray<float> gradient, ref NativeArray<float> diagonal, ref NativeArra
         }
 
         // Initialize statistics
-        float gnormInit = Euclidean(gradient);
+        double gnormInit = Euclidean(gradient);
         innerLoopStep = 1.0f / gnormInit;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void OutsideLoopHead(
-ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref float innerLoopStep, ref float preloss, ref float loss, ref float lossX, ref float lossY, ref float gradientInitialX, ref float gradientInitialY,
-ref int funcState,  ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
+ref double width, ref double width1, ref double stepBoundX, ref double stepBoundY, ref double preGradientSum, ref double innerLoopStep, ref double preloss, ref double loss, ref double lossX, ref double lossY, ref double gradientInitialX, ref double gradientInitialY,
+ref int funcState, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
 ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
-ref NativeArray<float> delta, ref NativeArray<float> steps, ref NativeArray<float> diagonal, ref NativeArray<float> gradientStore, ref NativeArray<float> gradient, ref NativeArray<float> rho, ref NativeArray<float> alpha,
+ref NativeArray<double> delta, ref NativeArray<double> steps, ref NativeArray<double> diagonal, ref NativeArray<double> gradientStore, ref NativeArray<double> gradient, ref NativeArray<double> rho, ref NativeArray<double> alpha,
 ref NativeArray<float> currentSolution)
     {
-        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState,  ref isLoopInside, ref isInBracket, ref stage1);
+        InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState, ref isLoopInside, ref isInBracket, ref stage1);
         iterations++;
         if (iterations != 1)
         {
-            float sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);
+            double sumY = GetSumY(delta, steps, matrixPoint, numberOfVariables);
             if (sumY == 0)//OYM：巧妙的小设计，用来重新选择收敛方向
             {
-                isLoopOutside=false;
+                isLoopOutside = false;
                 return;
             }
             // Compute the diagonal of the Hessian
@@ -101,7 +101,7 @@ ref NativeArray<float> currentSolution)
         }
 
         // Save original gradient
-        UnsafeUtility.MemCpy(gradientStore.GetUnsafePtr(), gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<float>());
+        UnsafeUtility.MemCpy(gradientStore.GetUnsafePtr(), gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<double>());
 
         if (innerLoopStep <= 0)
         {
@@ -122,7 +122,10 @@ ref NativeArray<float> currentSolution)
         }
         // safe loss and gradient
         preloss = loss;
-        UnsafeUtility.MemCpy(diagonal.GetUnsafePtr(), currentSolution.GetUnsafePtr(), numberOfVariables * UnsafeUtility.SizeOf<float>());
+        for (int i = 0; i < numberOfVariables; i++)
+        {
+            diagonal[i] = currentSolution[i];
+        }
 
         // The variables stx, fx, dgx contain the values of the
         // step, function, and directional derivative at the best
@@ -136,10 +139,10 @@ ref NativeArray<float> currentSolution)
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static bool InsideLoopHead(
-    ref float stepBoundMin, ref float stepBoundMax, ref float stepBoundX, ref float stepBoundY, ref float innerLoopStep,
-    ref int loopCount,  ref int numberOfVariables, ref int funcState,ref int matrixPoint, ref int leastLoopCount,
+    ref double stepBoundMin, ref double stepBoundMax, ref double stepBoundX, ref double stepBoundY, ref double innerLoopStep,
+    ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint, ref int leastLoopCount,
     ref bool isInBracket,
-    ref NativeArray<float> currentSolution, ref NativeArray<float> diagonal, ref NativeArray<float> steps
+    ref NativeArray<float> currentSolution, ref NativeArray<double> diagonal, ref NativeArray<double> steps
     )
     {
         // Set the minimum and maximum steps to correspond
@@ -165,7 +168,7 @@ ref NativeArray<float> currentSolution)
         if (
             (isInBracket && (innerLoopStep <= stepBoundMin || innerLoopStep >= stepBoundMax)) ||//OYM：step在bound外
             (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax) || //OYM：stepBound区间过小
-            (loopCount >= MAXLOOPCOUNT - 1) ||(leastLoopCount<=1)|| (funcState == 0))
+            (loopCount >= MAXLOOPCOUNT - 1) || (leastLoopCount <= 1) || (funcState == 0))
         {
             innerLoopStep = stepBoundX;
         }
@@ -176,31 +179,31 @@ ref NativeArray<float> currentSolution)
         // We return to main program to obtain F and G.
         for (int j = 0; j < numberOfVariables; j++)
         {
-            currentSolution[j] = diagonal[j] + innerLoopStep * steps[matrixPoint+ j];
+            currentSolution[j] = (float)(diagonal[j] + innerLoopStep * steps[matrixPoint + j]);
             currentSolution[j] = math.clamp(currentSolution[j], RANGLE_MIN, RANGE_MAX);
         }
         return true;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void InisdeLoopTail(
-        ref float preGradientSum, ref float preloss, ref float innerLoopStep, ref float stepBoundMin, ref float stepBoundMax, ref float loss, ref float lossTolerance, ref float lossX, ref float lossY, ref float stepBoundX, ref float stepBoundY, ref float gradientInitialX, ref float gradientInitialY, ref float width, ref float width1,
-        ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint,ref int leastLoopCount,
+        ref double preGradientSum, ref double preloss, ref double innerLoopStep, ref double stepBoundMin, ref double stepBoundMax, ref double loss, ref double lossTolerance, ref double lossX, ref double lossY, ref double stepBoundX, ref double stepBoundY, ref double gradientInitialX, ref double gradientInitialY, ref double width, ref double width1,
+        ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint, ref int leastLoopCount,
         ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
-ref NativeArray<float> gradient, ref NativeArray<float> steps
+ref NativeArray<double> gradient, ref NativeArray<double> steps
         )
     {
         loopCount++;
-        float gradientTemp = GetGreadientSum(gradient
+        double gradientTemp = GetGreadientSum(gradient
             , steps, matrixPoint, numberOfVariables);
 
-        float gradientTest = loss_TOLERENCE * preGradientSum;
-        float losstest1 = preloss + innerLoopStep * gradientTest;
+        double gradientTest = loss_TOLERENCE * preGradientSum;
+        double losstest1 = preloss + innerLoopStep * gradientTest;
 
 
 
         // successful
-        if (loss <= losstest1 &&(
-            math.abs(gradientTemp) <= lossTolerance * (-preGradientSum)|| 
+        if (loss <= losstest1 && (
+            math.abs(gradientTemp) <= lossTolerance * (-preGradientSum) ||
             (loopCount >= L_BFGSStatic.MAXLOOPCOUNT || leastLoopCount <= 0)))
         {
             isLoopOutside = true;
@@ -209,7 +212,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
         }
 
-        if(loopCount >= L_BFGSStatic.MAXLOOPCOUNT || leastLoopCount <= 0)
+        if (loopCount >= L_BFGSStatic.MAXLOOPCOUNT || leastLoopCount <= 0)
         {
 
             isLoopOutside = false;
@@ -242,7 +245,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             isLoopOutside = false;
             isLoopInside = false;
             return;
-        } 
+        }
 
         //Relative width of the interval of uncertainty is at machine precision
         if (isInBracket && stepBoundMax - stepBoundMin <= xTolerance * stepBoundMax)
@@ -272,13 +275,13 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         {
             // Define the modified function and derivative values.
 
-            float fm = loss - innerLoopStep * gradientTest;
-            float fxm = lossX - stepBoundX * gradientTest;
-            float fym = lossY - stepBoundY * gradientTest;
+            double fm = loss - innerLoopStep * gradientTest;
+            double fxm = lossX - stepBoundX * gradientTest;
+            double fym = lossY - stepBoundY * gradientTest;
 
-            float dgm = gradientTemp - gradientTest;
-            float dgxm = gradientInitialX - gradientTest;
-            float dgym = gradientInitialY - gradientTest;
+            double dgm = gradientTemp - gradientTest;
+            double dgxm = gradientInitialX - gradientTest;
+            double dgym = gradientInitialY - gradientTest;
 
             // Call cstep to update the interval of uncertainty
             // and to compute the new step.
@@ -319,20 +322,23 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static void OutsideLoopTail(
-         ref float innerLoopStep, ref float gradientTolerance,
-           ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables,ref int leastLoopCount,
+         ref double innerLoopStep, ref double gradientTolerance,
+           ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables, ref int leastLoopCount,
            ref bool isLoopOutside,
-           ref NativeArray<float> gradient, ref NativeArray<float> steps, ref NativeArray<float> delta, ref NativeArray<float> gradientStore, ref NativeArray<float> diagonal, ref NativeArray<float> currentSolution
+           ref NativeArray<double> gradient, ref NativeArray<double> steps, ref NativeArray<double> delta, ref NativeArray<double> gradientStore, ref NativeArray<double> diagonal, ref NativeArray<float> currentSolution
         )
     {
-             if (!isLoopOutside)
-                {
-                    UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), diagonal.GetUnsafePtr(), numberOfVariables * UnsafeUtility.SizeOf<float>());
-                    return;
-                }
+        if (!isLoopOutside)
+        {
+            for (int i = 0; i < numberOfVariables; i++)
+            {
+                currentSolution[i] = (float)diagonal[i];
+            }
+            return;
+        }
 
-                        // Compute the new step and
-                        // new gradient differences
+        // Compute the new step and
+        // new gradient differences
         for (int i = 0; i < numberOfVariables; i++)
         {
             steps[matrixPoint + i] *= innerLoopStep;
@@ -347,12 +353,11 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
 
         // Check for termination
-        float gnorm = Euclidean(gradient);
-        float xnorm = Euclidean(currentSolution);
-        xnorm = math.max(1f, xnorm);
+        double gnorm = Euclidean(gradient);
+
 
         // isSuccessful
-        if (gnorm/ numberOfVariables <= gradientTolerance||leastLoopCount <= 0)
+        if (gnorm / numberOfVariables <= gradientTolerance || leastLoopCount <= 0)
         {
             isLoopOutside = false;
         }
@@ -360,18 +365,18 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     }
 
     public static void CreateWorkVector(int numberOfVariables,
-    out NativeArray<float> diagonal, out NativeArray<float> gradientStore, out NativeArray<float> rho, out NativeArray<float> alpha, out NativeArray<float> steps, out NativeArray<float> delta
+    out NativeArray<double> diagonal, out NativeArray<double> gradientStore, out NativeArray<double> rho, out NativeArray<double> alpha, out NativeArray<double> steps, out NativeArray<double> delta
     )
     {
-        diagonal = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
-        gradientStore = new NativeArray<float>(numberOfVariables, Allocator.Persistent);
-        rho = new NativeArray<float>(CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
-        alpha = new NativeArray<float>(CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
-        steps = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
-        delta = new NativeArray<float>(numberOfVariables * CORRECTION, Allocator.Persistent);
+        diagonal = new NativeArray<double>(numberOfVariables, Allocator.Persistent);
+        gradientStore = new NativeArray<double>(numberOfVariables, Allocator.Persistent);
+        rho = new NativeArray<double>(CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
+        alpha = new NativeArray<double>(CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
+        steps = new NativeArray<double>(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
+        delta = new NativeArray<double>(numberOfVariables * CORRECTION, Allocator.Persistent);
     }
 
-    public static void Disposed(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
+    public static void Disposed(NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta)
     {
         diagonal.Dispose();
         gradientStore.Dispose();
@@ -381,7 +386,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         delta.Dispose();
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void ClearData(NativeArray<float> diagonal, NativeArray<float> gradientStore, NativeArray<float> rho, NativeArray<float> alpha, NativeArray<float> steps, NativeArray<float> delta)
+    public static void ClearData(NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta)
     {
         ClearData(diagonal);
         ClearData(gradientStore);
@@ -396,8 +401,8 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     #region Line Search (mcsrch)
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static void UpdatingQuasi_Newton(
- NativeArray<float> diagonal, NativeArray<float> rho, NativeArray<float> gradientStore, NativeArray<float> steps, NativeArray<float> alpha, NativeArray<float> delta,
-    int numberOfVariables, int corrections, int point, int bound, float sumY)
+ NativeArray<double> diagonal, NativeArray<double> rho, NativeArray<double> gradientStore, NativeArray<double> steps, NativeArray<double> alpha, NativeArray<double> delta,
+    int numberOfVariables, int corrections, int point, int bound, double sumY)
     {
         int prePointLoop = ((point == 0) ? corrections : point) - 1;
         rho[prePointLoop] = 1.0f / sumY;
@@ -410,7 +415,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
             prePointLoop--;
             if (prePointLoop == -1) prePointLoop = corrections - 1;
 
-            float lastSum = 0;
+            double lastSum = 0;
             for (int j = 0; j < numberOfVariables; j++)
             {
                 lastSum += steps[prePointLoop * numberOfVariables + j] * gradientStore[j];
@@ -432,14 +437,14 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
         for (int i = 0; i < bound; i++)
         {
-            float yr = 0;
+            double yr = 0;
             for (int j = 0; j < numberOfVariables; j++)
             {
                 yr += delta[prePointLoop * numberOfVariables + j] * gradientStore[j];
             }
 
 
-            float beta = alpha[prePointLoop] - rho[prePointLoop] * yr;
+            double beta = alpha[prePointLoop] - rho[prePointLoop] * yr;
             for (int j = 0; j < numberOfVariables; j++)
             {
                 gradientStore[j] += beta * steps[prePointLoop * numberOfVariables + j];
@@ -452,22 +457,22 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     // TODO: Move to separate classes
-    internal static void SearchStep(ref float stx, ref float fx, ref float dx,
-                            ref float sty, ref float fy, ref float dy,
-                            ref float stp, float fp, float dp,
+    internal static void SearchStep(ref double stx, ref double fx, ref double dx,
+                            ref double sty, ref double fy, ref double dy,
+                            ref double stp, double fp, double dp,
                             ref bool brackt, out int info)
     {
         bool bound;
-        float stpc, stpf, stpq;
-        float stpmax = STEP_MAX;
-        float stpmin = STEP_MIN;
+        double stpc, stpf, stpq;
+        double stpmax = STEP_MAX;
+        double stpmin = STEP_MIN;
         info = 0;
 
         if ((brackt && (stp <= math.min(stx, sty) || stp >= math.max(stx, sty))) ||
             (dx * (stp - stx) >= 0.0) || (stpmax < stpmin)) return;
 
         // Determine if the derivatives have opposite sign.
-        float sgnd = dp * (dx / math.abs(dx));
+        double sgnd = dp * (dx / math.abs(dx));
 
         if (fp > fx)
         {
@@ -478,15 +483,15 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             info = 1;
             bound = true;
-            float theta = 3.0f * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            double theta = 3.0f * (fx - fp) / (stp - stx) + dx + dp;
+            double s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            double gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
             if (stp < stx) gamma = -gamma;
 
-            float p = gamma - dx + theta;
-            float q = gamma - dx + gamma + dp;
-            float r = p / q;
+            double p = gamma - dx + theta;
+            double q = gamma - dx + gamma + dp;
+            double r = p / q;
             stpc = stx + r * (stp - stx);
             stpq = stx + ((dx / ((fx - fp) / (stp - stx) + dx)) / 2) * (stp - stx);
 
@@ -506,15 +511,15 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             info = 2;
             bound = false;
-            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
+            double theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            double s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            double gamma = s * math.sqrt((theta / s) * (theta / s) - (dx / s) * (dp / s));
 
             if (stp > stx) gamma = -gamma;
 
-            float p = (gamma - dp) + theta;
-            float q = ((gamma - dp) + gamma) + dx;
-            float r = p / q;
+            double p = (gamma - dp) + theta;
+            double q = ((gamma - dp) + gamma) + dx;
+            double r = p / q;
             stpc = stp + r * (stx - stp);
             stpq = stp + (dp / (dp - dx)) * (stx - stp);
 
@@ -537,15 +542,15 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             info = 3;
             bound = true;
-            float theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
-            float s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
-            float gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
+            double theta = 3 * (fx - fp) / (stp - stx) + dx + dp;
+            double s = math.max(math.abs(theta), math.max(math.abs(dx), math.abs(dp)));
+            double gamma = s * math.sqrt(math.max(0, (theta / s) * (theta / s) - (dx / s) * (dp / s)));
 
             if (stp > stx) gamma = -gamma;
 
-            float p = (gamma - dp) + theta;
-            float q = (gamma + (dx - dp)) + gamma;
-            float r = p / q;
+            double p = (gamma - dp) + theta;
+            double q = (gamma + (dx - dp)) + gamma;
+            double r = p / q;
 
             if (r < 0.0 && gamma != 0.0)
                 stpc = stp + r * (stx - stp);
@@ -580,15 +585,15 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
 
             if (brackt)
             {
-                float theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
-                float s = math.max(math.abs(theta), math.max(math.abs(dy), math.abs(dp)));
-                float gamma = s * math.sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
+                double theta = 3 * (fp - fy) / (sty - stp) + dy + dp;
+                double s = math.max(math.abs(theta), math.max(math.abs(dy), math.abs(dp)));
+                double gamma = s * math.sqrt((theta / s) * (theta / s) - (dy / s) * (dp / s));
 
                 if (stp > sty) gamma = -gamma;
 
-                float p = (gamma - dp) + theta;
-                float q = ((gamma - dp) + gamma) + dy;
-                float r = p / q;
+                double p = (gamma - dp) + theta;
+                double q = ((gamma - dp) + gamma) + dy;
+                double r = p / q;
                 stpc = stp + r * (sty - stp);
                 stpf = stpc;
             }
@@ -644,7 +649,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         UnsafeUtility.MemClear(data.GetUnsafePtr(), data.Length * UnsafeUtility.SizeOf<T>());
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void InitializeOutsideLoop(ref float width, ref float width1, ref float stepBoundX, ref float stepBoundY, ref float preGradientSum, ref int funcState, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
+    private static void InitializeOutsideLoop(ref double width, ref double width1, ref double stepBoundX, ref double stepBoundY, ref double preGradientSum, ref int funcState, ref bool isLoopInside, ref bool isInBracket, ref bool stage1)
     {
         width = STEP_MAX - STEP_MIN;
         width1 = width / 0.5f;
@@ -660,7 +665,7 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         stage1 = true;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void InitializeBeforeLoop(ref float innerLoopStep, ref int iterations, ref int loopCount, ref int point, ref int matrixPoint, ref bool isLoopOutside)
+    private static void InitializeBeforeLoop(ref double innerLoopStep, ref int iterations, ref int loopCount, ref int point, ref int matrixPoint, ref bool isLoopOutside)
     {
         innerLoopStep = 0;
         iterations = 0;
@@ -670,23 +675,23 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         isLoopOutside = true;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float Euclidean(NativeArray<float> a)
+    private static double Euclidean(NativeArray<double> a)
     {
         return math.sqrt(SquareEuclidean(a));
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float SquareEuclidean(NativeArray<float> a)
+    private static double SquareEuclidean(NativeArray<double> a)
     {
-        float sum = 0;
+        double sum = 0;
         for (int i = 0; i < a.Length; i++)
             sum += a[i] * a[i];
         return sum;
 
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float GetGreadientSum(NativeArray<float> gradient, NativeArray<float> steps, int matrixPoint, int numberOfVariables)
+    private static double GetGreadientSum(NativeArray<double> gradient, NativeArray<double> steps, int matrixPoint, int numberOfVariables)
     {
-        float gradientTemp = 0;
+        double gradientTemp = 0;
         for (int j = 0; j < numberOfVariables; j++)
         {
             gradientTemp = gradientTemp + gradient[j] * steps[matrixPoint + j];
@@ -694,15 +699,15 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         return gradientTemp;
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void ComputeDiagonal(NativeArray<float> diagonal, NativeArray<float> delta, int nowPoint, int numberOfVariables, float sumY)
+    private static void ComputeDiagonal(NativeArray<double> diagonal, NativeArray<double> delta, int nowPoint, int numberOfVariables, double sumY)
     {
-        float sqrY = 0;
+        double sqrY = 0;
         for (int i = 0; i < numberOfVariables; i++)
         {
             sqrY += delta[nowPoint + i] * delta[nowPoint + i];
         }
 
-        float diagonalValue = (float)(sumY / sqrY);
+        double diagonalValue = (double)(sumY / sqrY);
 
         for (int i = 0; i < numberOfVariables; i++)
         {
@@ -710,9 +715,9 @@ ref NativeArray<float> gradient, ref NativeArray<float> steps
         }
     }
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static float GetSumY(NativeArray<float> delta, NativeArray<float> steps, int nowPoint, int numberOfVariables)
+    private static double GetSumY(NativeArray<double> delta, NativeArray<double> steps, int nowPoint, int numberOfVariables)
     {
-        float sumY = 0;
+        double sumY = 0;
         for (int i = 0; i < numberOfVariables; i++)
         {
             sumY += delta[nowPoint + i] * steps[nowPoint + i];

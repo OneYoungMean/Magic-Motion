@@ -202,7 +202,7 @@ namespace BioIK2
                     float3 target = new float3(newSolution[i * 3], newSolution[i * 3 + 1], newSolution[i * 3 + 2]);
                     survivor.genes[i] = target;
                 }
-                survivor.fitness = optimisers2[index].Value;
+                survivor.fitness = (float)optimisers2[index].Value;
                 improved[index] = true;
             }
             else

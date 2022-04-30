@@ -23,7 +23,7 @@ namespace BioIK2
         public List<MotionPtr> motionPtrs = new List<MotionPtr>();
 
         public NativeArray<float> Configuration;
-        public NativeArray<float> Gradient;
+        public NativeArray<double> Gradient;
         public NativeArray<float> Losses;
         public NativeArray<float> SimulatedLosses;
 
@@ -66,7 +66,7 @@ namespace BioIK2
             SimulatedLosses = new NativeArray<float>(objectivePtrs.Count * 3, Allocator.Persistent);
 
             Configuration = new NativeArray<float>(motionPtrs.Count*3,Allocator.Persistent);
-            Gradient = new NativeArray<float>(motionPtrs.Count*3, Allocator.Persistent);
+            Gradient = new NativeArray<double>(motionPtrs.Count*3, Allocator.Persistent);
             tempConfiguration = new NativeArray<float3>(motionPtrs.Count, Allocator.Persistent);
 
 
@@ -131,7 +131,7 @@ namespace BioIK2
             }
         }
 
-        internal NativeArray<float> ComputeGradient(NativeArray<float> configuration)
+        internal NativeArray<double> ComputeGradient(NativeArray<float> configuration)
         {
             float resolution = L_BFGSStatic.EPSILION;
             float oldLoss = ComputeLoss(configuration);

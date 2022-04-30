@@ -117,24 +117,24 @@ using static L_BFGSStatic;
 /// </code>
 /// </example>
 /// 
-public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod, IDisposable
+public unsafe class BroydenFletcherGoldfarbShanno 
 {
     // those values need not be modified
 
     // Line search parameters
-    public float lossTolerance = 1f;
+    public double lossTolerance = 1f;
 
-    public float gradientTolerance = 1e-5f;
+    public double gradientTolerance = 1e-5f;
     private int iterations;
     private int evaluations;
 
     public int numberOfVariables;
 
 
-    private float loss;   // value at current solution f(x)
+    private double loss;   // value at current solution f(x)
 
     private bool isLoopInside;
-    private float innerLoopStep;
+    private double innerLoopStep;
 
     private int loopCount;
     private int point;
@@ -143,28 +143,28 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     private int funcState;
     private bool isInBracket;
     private bool stage1;
-    private float preloss;
-    private float width;
-    private float width1;
+    private double preloss;
+    private double width;
+    private double width1;
 
-    private NativeArray<float> diagonal;
-    private NativeArray<float> gradientStore;
-    private NativeArray<float> rho;
-    private NativeArray<float> alpha;
-    private NativeArray<float> steps;
-    private NativeArray<float> delta;
+    private NativeArray<double> diagonal;
+    private NativeArray<double> gradientStore;
+    private NativeArray<double> rho;
+    private NativeArray<double> alpha;
+    private NativeArray<double> steps;
+    private NativeArray<double> delta;
     private NativeArray<float> currentSolution; // current solution x
-    private NativeArray<float> gradient;         // gradient at current solution
+    private NativeArray<double> gradient;         // gradient at current solution
 
-    private float stepBoundX;
-    private float lossX;
-    private float gradientInitialX;
-    private float stepBoundY;
-    private float lossY;
-    private float gradientInitialY;
-    private float preGradientSum;
-    private float stepBoundMin;
-    private float stepBoundMax;
+    private double stepBoundX;
+    private double lossX;
+    private double gradientInitialX;
+    private double stepBoundY;
+    private double lossY;
+    private double gradientInitialY;
+    private double preGradientSum;
+    private double stepBoundMin;
+    private double stepBoundMax;
 
 
 
@@ -182,7 +182,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     /// <value>The function to be optimized.</value>
     /// 
-    public Func<NativeArray<float>, float> Function { get; set; }
+    public Func<NativeArray<float>, double> Function { get; set; }
 
     /// <summary>
     ///   Gets or sets a function returning the gradient
@@ -192,7 +192,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     /// <value>The gradient function.</value>
     /// 
-    public Func<NativeArray<float>, NativeArray<float>> Gradient { get; set; }
+    public Func<NativeArray<float>, NativeArray<double>> Gradient { get; set; }
 
     /*    /// <summary>
         ///   Gets or sets a function returning the Hessian
@@ -254,45 +254,6 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     {
         get { return evaluations; }
     }
-
-    /// <summary>
-    ///   Gets or sets the accuracy with which the solution
-    ///   is to be found. Default value is 1e-10.
-    /// </summary>
-    /// 
-    /// <remarks>
-    ///   The optimization routine terminates when ||G|| &lt; EPS max(1,||X||),
-    ///   where ||.|| denotes the Euclidean norm and EPS is the value for this
-    ///   property.
-    /// </remarks>
-    /// 
-    public float Tolerance
-    {
-        get { return gradientTolerance; }
-        set { gradientTolerance = value; }
-    }
-
-    /// <summary>
-    ///   Gets or sets a tolerance value controlling the accuracy of the
-    ///   line search routine. If the function and gradient evaluations are
-    ///   inexpensive with respect to the cost of the iteration (which is
-    ///   sometimes the case when solving very large problems) it may be
-    ///   advantageous to set this to a small value. A typical small value
-    ///   is 0.1. This value should be greater than 1e-4. Default is 0.9.
-    /// </summary>
-    /// 
-    public float Precision
-    {
-        get { return lossTolerance; }
-        set
-        {
-            if (value <= 1e-4)
-                throw new ArgumentOutOfRangeException("value");
-
-            lossTolerance = value;
-        }
-    }
-
     /// <summary>
     ///   Gets the solution found, the values of the
     ///   parameters which optimizes the function.
@@ -307,7 +268,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     ///   Gets the output of the function at the current solution.
     /// </summary>
     /// 
-    public float Value
+    public double Value
     {
         get { return loss; }
     }
@@ -344,7 +305,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// <param name="function">The function to be optimized.</param>
     /// <param name="gradient">The gradient of the function.</param>
     /// 
-    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, float> function, Func<NativeArray<float>, NativeArray<float>> gradient)
+    public BroydenFletcherGoldfarbShanno(int numberOfVariables, Func<NativeArray<float>, double> function, Func<NativeArray<float>, NativeArray<double>> gradient)
         : this(numberOfVariables)
     {
         if (function == null)
@@ -366,7 +327,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     /// <returns>The minimum value found at the <see cref="Solution"/>.</returns>
     /// 
-    public float Minimize()
+    public double Minimize()
     {
         return minimize();
     }
@@ -379,7 +340,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
     /// 
     /// <returns>The minimum value found at the <see cref="Solution"/>.</returns>
     /// 
-    public float Minimize(NativeArray<float3> values)
+    public double Minimize(NativeArray<float3> values)
     {
         if (values == null)
             throw new ArgumentNullException("values");
@@ -390,7 +351,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         UnsafeUtility.MemCpy(currentSolution.GetUnsafePtr(), values.GetUnsafePtr(), currentSolution.Length * UnsafeUtility.SizeOf<float>());
         return minimize();
     }
-    public float Minimize(NativeArray<float> values)
+    public double Minimize(NativeArray<float> values)
     {
         if (values == null)
             throw new ArgumentNullException("values");
@@ -408,7 +369,7 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return loss;
     }
 
-    private float minimize()
+    private double minimize()
     {
         ClearData(diagonal, gradientStore, rho, alpha, steps, delta);
         // Make initial evaluation
@@ -446,19 +407,19 @@ public unsafe class BroydenFletcherGoldfarbShanno : IGradientOptimizationMethod,
         return loss; // return the minimum value found (at solution x)
     }
 
-    private NativeArray<float> GetGradient(NativeArray<float> args)
+    private NativeArray<double> GetGradient(NativeArray<float> args)
     {
-        NativeArray<float> grad = Gradient(args);
+        NativeArray<double> grad = Gradient(args);
         if (grad.Length != numberOfVariables) throw new ArgumentException(
             "The length of the gradient vector does not match the" +
             " number of free parameters in the optimization problem.");
         return grad;
     }
 
-    private float GetFunction(NativeArray<float> args)
+    private double GetFunction(NativeArray<float> args)
     {
-        float func = Function(args);
-        if (float.IsNaN(func) || float.IsInfinity(func))
+        double func = Function(args);
+        if (double.IsNaN(func) || double.IsInfinity(func))
             throw new NotFiniteNumberException(
                 "The function evaluation did not return a finite number.", func);
         return func;

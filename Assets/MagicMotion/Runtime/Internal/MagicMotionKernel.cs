@@ -46,17 +46,17 @@ namespace MagicMotion
         private NativeArray<MMLBFGSSolver> LBFGSNatives;
         private NativeArray<MMGlobalData> globalDataNativeArray;
 
-        private NativeArray<float> gradientStore;
-        private NativeArray<float> gradients;
-        private NativeArray<float> diagonal;
+        private NativeArray<double> gradientStore;
+        private NativeArray<double> gradients;
+        private NativeArray<double> diagonal;
 
-        private NativeArray<float> alpha;
-        private NativeArray<float> steps;
-        private NativeArray<float> delta;
-        private NativeArray<float> rho;
+        private NativeArray<double> alpha;
+        private NativeArray<double> steps;
+        private NativeArray<double> delta;
+        private NativeArray<double> rho;
 
-        private NativeArray<float> lossNativeArray;
-        private NativeArray<float> gradientSumNativeArray;
+        private NativeArray<double> lossNativeArray;
+        private NativeArray<double> gradientSumNativeArray;
         #endregion
 
         #region JobsData
@@ -161,7 +161,7 @@ namespace MagicMotion
             LBFGSSolver = new BroydenFletcherGoldfarbShanno(muscleCount, x => GetLoss(x), y => GetGradient(y));
         }
 
-        private float GetLoss(NativeArray<float> solution)
+        private double GetLoss(NativeArray<float> solution)
         {
             UnsafeUtility.MemCpy(muscleValueNativeArray.GetUnsafePtr(), solution.GetUnsafePtr(), solution.Length * UnsafeUtility.SizeOf<float>());
             mainControllerJob.Run();
@@ -169,7 +169,7 @@ namespace MagicMotion
             Debug.Log(lossNativeArray[0]);
             return lossNativeArray[0];
         }
-        private NativeArray<float> GetGradient(NativeArray<float> solution) 
+        private NativeArray<double> GetGradient(NativeArray<float> solution) 
         {
             return gradients;
         }
@@ -243,8 +243,8 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
-                    float start = lossNativeArray[iteration];
-                    float end = lossNativeArray[0];
+                    double start = lossNativeArray[iteration];
+                    double end = lossNativeArray[0];
                     Debug.Log(start + " ~ " + end);
                 });
             }
@@ -413,7 +413,7 @@ namespace MagicMotion
 
             Dof3QuaternionNativeArray = new NativeArray<quaternion>(jointCount, Allocator.Persistent);
 
-            gradients = new NativeArray<float>(muscleCount, Allocator.Persistent);
+            gradients = new NativeArray<double>(muscleCount, Allocator.Persistent);
 
             LBFGSNatives = new NativeArray<MMLBFGSSolver>(1, Allocator.Persistent);
 
@@ -423,8 +423,8 @@ namespace MagicMotion
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
-            lossNativeArray=new NativeArray<float>(iteration+1, Allocator.Persistent);
-            gradientSumNativeArray = new NativeArray<float>(iteration + 1, Allocator.Persistent);
+            lossNativeArray=new NativeArray<double>(iteration+1, Allocator.Persistent);
+            gradientSumNativeArray = new NativeArray<double>(iteration + 1, Allocator.Persistent);
         }
         private void BuildJobDataInternal()
         {
