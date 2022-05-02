@@ -32,9 +32,9 @@ namespace MagicMotion.Mono
         [Range(-1,1)]
         public float value;
 
-        public MMMuscleData GetNativeData()
+        internal MuscleData GetNativeData()
         {
-            return new MMMuscleData()
+            return new MuscleData()
             {
                 muscleIndex = muscleIndex,
                 jointIndex = joint.jointIndex,

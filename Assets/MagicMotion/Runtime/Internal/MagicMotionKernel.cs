@@ -23,38 +23,35 @@ namespace MagicMotion
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
-
-        //OYM£ºbase data
+        //OYM£º Base data (read only)
         private NativeArray<JointData> jointDataNativeArray;
-        private NativeArray<MMMuscleData> muscleDataNativeArray;
-        private NativeArray<quaternion> muscleGradientRotationArray;
-        private NativeArray<int> muscleRelativeCountArray;
-        private NativeArray<TransformToConstraintNative> transformToConstrainNativeArray;
-        private NativeArray<MMJoinloss> jointlossNativeArray;
+        private NativeArray<MuscleData> muscleDataNativeArray;
+        private NativeArray<ConstraintData> constraintNativeArray;
+        private NativeArray<LBFGSSolver> LBFGSNatives;
+        private NativeArray<GlobalData> globalDataNativeArray;
+        //OYM£ºRelative data(readonly)
+        private NativeArray<TransformToConstraintData> transformToConstrainNativeArray;
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
-        private NativeArray<MMConstraintNative> constraintNativeArray;
-
-
+        private NativeArray<int> muscleRelativeCountArray;
+        //OYM£ºbase data (readwrite)
+        private NativeArray<float> muscleValueNativeArray;
         private NativeArray<float3> Dof3NativeArray;
         private NativeArray<quaternion> Dof3QuaternionNativeArray;
-        private NativeArray<float> muscleValueNativeArray;
+        private NativeArray<quaternion> muscleGradientRotationArray;
         private NativeArray<RigidTransform> jointTransformNativeArray;
-
-        private TransformAccessArray jointTransformArray;
-        private TransformAccessArray constraintTransformArray;
-
-        private NativeArray<MMLBFGSSolver> LBFGSNatives;
-        private NativeArray<MMGlobalData> globalDataNativeArray;
-
+        private NativeArray<JoinLoss> jointlossNativeArray;
+        //OYM£ºLBFGS data(readwrite)
         private NativeArray<double> gradientStore;
         private NativeArray<double> gradients;
         private NativeArray<double> diagonal;
-
         private NativeArray<double> alpha;
         private NativeArray<double> steps;
         private NativeArray<double> delta;
         private NativeArray<double> rho;
-
+        //OYM£ºtransform data
+        private TransformAccessArray jointTransformArray;
+        private TransformAccessArray constraintTransformArray;
+        //OYM£ºtest data
         private NativeArray<double> lossNativeArray;
         private NativeArray<double> gradientSumNativeArray;
         #endregion
@@ -63,7 +60,6 @@ namespace MagicMotion
 
         private TransformToConstraintJob getConstraintTransformJob;
         private RigHipPositionJob rigHipPositionJob;
-        /*        private MuscleToJointJob muscleToJointJob;*/
         private BuildTransformJob buildTransformJob;
         private MuscleToDof3Job muscleToDof3Job;
         private Dof3ToRotationJob dof3ToRotationJob;
@@ -76,42 +72,45 @@ namespace MagicMotion
         #endregion
 
         #region DefaultData
+        private InitializeMuscleJob initializeMuscleJob;
         private JointData[] joints;
-        private MMMuscleData[] muscles;
-        private TransformToConstraintNative[] transformToConstraints;
-        private MMConstraintNative[] constraints;
+        private MuscleData[] muscles;
+        private TransformToConstraintData[] transformToConstraints;
+        private ConstraintData[] constraints;
         private JointRelationData[] jointMapDatas;
 
         private Transform[] constraintTransforms;
         private Transform[] jointsTransforms;
+        private Task loopTask;
+        private List<IDisposable> disposeList;
 
-        private int jointCount;
+        private int[] muscleRelativedCounts;
+        private float[] muscleValues;
         private bool[][] jointRelationMap;
+
+        private int parallelDataCount;
+        private int jointCount;
         private int muscleCount;
+
+        private bool isFinish;
         private bool isCreated;
-        private BroydenFletcherGoldfarbShanno LBFGSSolver;
 
         #endregion
 
         #region Accessor
         public bool IsCreated { get { return isCreated; } }
 
-        private int parallelDataCount;
-        private int[] muscleRelativedCounts;
-        private float[] muscleValues;
-        private Task loopTask;
-        private InitializeMuscleJob initializeMuscleJob;
-        private bool isFinish;
+
         #endregion
 
         #region PublicFunc
-        public void SetConstraintData(MMConstraintNative[] constraints, TransformToConstraintNative[] transformToConstraints, Transform[] constraintTransforms)
+        internal void SetConstraintData(ConstraintData[] constraints, TransformToConstraintData[] transformToConstraints, Transform[] constraintTransforms)
         {
             this.constraints = constraints;
             this.constraintTransforms = constraintTransforms;
             this.transformToConstraints = transformToConstraints;
         }
-        public void SetJointData(JointData[] joints, Transform[] jointsTransforms)
+        internal void SetJointData(JointData[] joints, Transform[] jointsTransforms)
         {
             this.joints = joints;
             this.jointsTransforms = jointsTransforms;
@@ -122,7 +121,7 @@ namespace MagicMotion
 
 
         }
-        public void SetMuscleSata(MMMuscleData[] muscles,float[] muscleValues = null)
+        internal void SetMuscleSata(MuscleData[] muscles,float[] muscleValues = null)
         {
             this.muscles = muscles;
             muscleCount = muscles.Length;
@@ -139,42 +138,14 @@ namespace MagicMotion
         }
         public void Initialize()
         {
-            JobsUtility.JobWorkerCount = 23;//OYM£ºtest
-            Application.targetFrameRate = 60;
-            if (constraints.Length!= joints.Length)
-            {
-                throw new System.Exception("constraint length, is not equal joint length");
-            }
-            if (isCreated)
-            {
-                Dispose();
-                isCreated = false;
-            }
+            ValueCheck();
             BuildRelationData();
             BuildNativeDataInternal();
             BuildJobDataInternal();
-            BuildMainThreadTest();
             Reset();
             isCreated =true;
         }
 
-        private void BuildMainThreadTest()
-        {
-            LBFGSSolver = new BroydenFletcherGoldfarbShanno(muscleCount, x => GetLoss(x), y => GetGradient(y));
-        }
-
-        private unsafe double GetLoss(NativeArray<float> solution)
-        {
-            UnsafeUtility.MemCpy(muscleValueNativeArray.GetUnsafePtr(), solution.GetUnsafePtr(), solution.Length * UnsafeUtility.SizeOf<float>());
-            mainControllerJob.Run();
-            caclulatelossJob.Run(parallelDataCount);
-            Debug.Log(lossNativeArray[0]);
-            return lossNativeArray[0];
-        }
-        private NativeArray<double> GetGradient(NativeArray<float> solution) 
-        {
-            return gradients;
-        }
         public void Reset()
         {
             if (!MainHandle.IsCompleted)
@@ -188,7 +159,7 @@ namespace MagicMotion
             };
             InitializeJointJob initializeJointJob = new InitializeJointJob()
             {
-                jointTransformNatives = jointTransformNativeArray,
+                jointTransformDatas = jointTransformNativeArray,
                 muscleLength = muscleCount,
                 jointLength = jointCount
             };
@@ -277,42 +248,44 @@ namespace MagicMotion
             {
                 MainHandle.Complete();
             }
-
-            jointDataNativeArray.Dispose();
-            muscleDataNativeArray.Dispose();
-            jointlossNativeArray.Dispose();
-            constraintNativeArray.Dispose();
-
-            Dof3NativeArray.Dispose();
-            Dof3QuaternionNativeArray.Dispose();
-
-            muscleValueNativeArray.Dispose();
-            jointTransformNativeArray.Dispose();
-
-            jointTransformArray.Dispose();
-            constraintTransformArray.Dispose();
-            transformToConstrainNativeArray.Dispose();
-
-            LBFGSNatives.Dispose();
-            globalDataNativeArray.Dispose();
-            gradients.Dispose();
-            lossNativeArray.Dispose();
-            gradientSumNativeArray.Dispose();
-            muscleGradientRotationArray.Dispose();
-            jointRelationDataNativeArray.Dispose();
-            muscleRelativeCountArray.Dispose();
-
-            if (LBFGSSolver!=null)
+            for (int i = 0; i < disposeList.Count; i++)
             {
-                LBFGSSolver.Dispose();
+                disposeList[i].Dispose();
             }
+            disposeList = null;
 
             L_BFGSStatic.Disposed(diagonal, gradientStore, rho, alpha, steps, delta);
         }
         #endregion
 
         #region PrivateFunc
+        /// <summary>
+        /// check value is vaild
+        /// </summary>
+        /// <exception cref="Exception"></exception>
+        /// <exception cref="System.Exception"></exception>
+        private void ValueCheck()
+        {
+            if (isCreated)
+            {
+                Dispose();
+                isCreated = false;
+            }
+            if (disposeList!=null)
+            {
+                throw new Exception("You cannot Initialize it before call Dispose");
+            }
+            disposeList = new List<IDisposable>();
 
+            if (constraints.Length != joints.Length)
+            {
+                throw new System.Exception("constraint length, is not equal joint length");
+            }
+
+        }
+        /// <summary>
+        /// Build relation data ,for the gradient claculate
+        /// </summary>
         private void BuildRelationData()
         {
             List<JointRelationData> jointMapDataTemp = new List<JointRelationData>();
@@ -366,26 +339,30 @@ namespace MagicMotion
             jointMapDatas = jointMapDataTemp.ToArray();
             parallelDataCount = jointMapDatas.Length;
         }
+        /// <summary>
+        /// build all native data
+        /// </summary>
+        /// <exception cref="System.Exception"></exception>
         private void BuildNativeDataInternal()
         {
             if (isCreated)
             {
                 throw new System.Exception("Disposed NativeArray before you create it");
             }
-            jointRelationDataNativeArray = new NativeArray<JointRelationData>(jointMapDatas, Allocator.Persistent);
-            constraintNativeArray = new NativeArray<MMConstraintNative>(parallelDataCount, Allocator.Persistent);
+            jointRelationDataNativeArray = CreateNativeData(jointMapDatas, Allocator.Persistent);
+            constraintNativeArray = CreateNativeData<ConstraintData>(parallelDataCount, Allocator.Persistent);
             for (int i = 0; i < parallelDataCount; i++)
             {
                 constraintNativeArray[i]=constraints[jointMapDatas[i].jointIndex];
             }
 
-            jointDataNativeArray = new NativeArray<JointData>(parallelDataCount, Allocator.Persistent);
+            jointDataNativeArray = CreateNativeData<JointData>(parallelDataCount, Allocator.Persistent);
             for (int i = 0; i < parallelDataCount; i++)
             {
                 jointDataNativeArray[i] = joints[jointMapDatas[i].jointIndex];
             }
 
-            jointTransformNativeArray = new NativeArray<RigidTransform>(jointCount, Allocator.Persistent);
+            jointTransformNativeArray = CreateNativeData<RigidTransform>(jointCount, Allocator.Persistent);
             for (int i = 0; i < jointCount; i++)
             {
                 RigidTransform rigid;
@@ -401,42 +378,45 @@ namespace MagicMotion
                 jointTransformNativeArray[i] = rigid;
             }
 
-            muscleDataNativeArray = new NativeArray<MMMuscleData>(muscles, Allocator.Persistent);
-            muscleValueNativeArray = new NativeArray<float>(muscleValues, Allocator.Persistent);
-            muscleGradientRotationArray =new NativeArray<quaternion>(muscles.Length, Allocator.Persistent);
-            muscleRelativeCountArray =new NativeArray<int>(muscleRelativedCounts, Allocator.Persistent);
+            muscleDataNativeArray = CreateNativeData(muscles, Allocator.Persistent);
+            muscleValueNativeArray = CreateNativeData(muscleValues, Allocator.Persistent);
+            muscleGradientRotationArray = CreateNativeData<quaternion>(muscles.Length, Allocator.Persistent);
+            muscleRelativeCountArray = CreateNativeData<int>(muscleRelativedCounts, Allocator.Persistent);
 
-            transformToConstrainNativeArray = new NativeArray<TransformToConstraintNative>(transformToConstraints, Allocator.Persistent);
+            transformToConstrainNativeArray = CreateNativeData(transformToConstraints, Allocator.Persistent);
 
-            constraintTransformArray = new TransformAccessArray(constraintTransforms);
+            constraintTransformArray = CreateNativeData(constraintTransforms);
 
-            jointTransformArray = new TransformAccessArray(jointsTransforms);
+            jointTransformArray = CreateNativeData(jointsTransforms);
 
-            jointlossNativeArray = new NativeArray<MMJoinloss>(parallelDataCount, Allocator.Persistent);
+            jointlossNativeArray = CreateNativeData<JoinLoss>(parallelDataCount, Allocator.Persistent);
 
-            Dof3NativeArray = new NativeArray<float3>(jointCount, Allocator.Persistent);
+            Dof3NativeArray = CreateNativeData<float3>(jointCount, Allocator.Persistent);
 
-            Dof3QuaternionNativeArray = new NativeArray<quaternion>(jointCount, Allocator.Persistent);
+            Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount, Allocator.Persistent);
 
-            gradients = new NativeArray<double>(muscleCount, Allocator.Persistent);
+            gradients = CreateNativeData<double>(muscleCount, Allocator.Persistent);
 
-            LBFGSNatives = new NativeArray<MMLBFGSSolver>(1, Allocator.Persistent);
+            LBFGSNatives = CreateNativeData<LBFGSSolver>(1, Allocator.Persistent);
 
-            globalDataNativeArray = new NativeArray<MMGlobalData>(1, Allocator.Persistent);
+            globalDataNativeArray = CreateNativeData<GlobalData>(1, Allocator.Persistent);
 
-            LBFGSNatives[0] = MMLBFGSSolver.identity;
+            LBFGSNatives[0] = MagicMotion.LBFGSSolver.identity;
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
-            lossNativeArray=new NativeArray<double>(iteration+1, Allocator.Persistent);
-            gradientSumNativeArray = new NativeArray<double>(iteration + 1, Allocator.Persistent);
+            lossNativeArray= CreateNativeData<double>(iteration+1, Allocator.Persistent);
+            gradientSumNativeArray = CreateNativeData<double>(iteration + 1, Allocator.Persistent);
         }
+        /// <summary>
+        /// Build all job data 
+        /// </summary>
         private void BuildJobDataInternal()
         {
             getConstraintTransformJob = new TransformToConstraintJob()
             {
-                transformToConstrainNatives= transformToConstrainNativeArray,
-                constraintNatives = constraintNativeArray,
+                transformToConstrainDatas= transformToConstrainNativeArray,
+                constraintDatas = constraintNativeArray,
                 muscleLength = muscleCount,
                 jointLength = jointCount
             };
@@ -445,7 +425,7 @@ namespace MagicMotion
                 jointTransforms = jointTransformNativeArray,
                 jointRelationDatas = jointRelationDataNativeArray,
                 Dof3s = Dof3NativeArray,
-                constraints = constraintNativeArray
+                constraintDatas = constraintNativeArray
             };
             /*
            rigHipPositionJob = new RigHipPositionJob()
@@ -537,6 +517,24 @@ namespace MagicMotion
             };
         }
 
+        private NativeArray<T> CreateNativeData<T>(T[] arr, Allocator allocator =Allocator.Persistent) where  T: struct
+        {
+            var nativeArr = new NativeArray<T>(arr, allocator);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
+        private NativeArray<T> CreateNativeData<T>(int length, Allocator allocator = Allocator.Persistent) where T : struct
+        {
+            var nativeArr = new NativeArray<T>(length, allocator);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
+        private TransformAccessArray CreateNativeData(Transform[] transforms)
+        {
+            var nativeArr = new TransformAccessArray(transforms);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
         #endregion
     }
 }

@@ -25,7 +25,7 @@ namespace MagicMotion.Mono
             
         }
 
-        public DofChangeConstraint GetNativeData()
+        internal DofChangeConstraint GetNativeData()
         {
             return new DofChangeConstraint()
             {

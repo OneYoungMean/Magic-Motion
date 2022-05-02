@@ -1,6 +1,6 @@
 ﻿namespace MagicMotion
 {
-    public struct MMGlobalData
+    public struct GlobalData
     {
         public bool isContinue=>leastLoopCount!=0;
         public int leastLoopCount;

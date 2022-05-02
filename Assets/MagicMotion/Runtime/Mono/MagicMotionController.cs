@@ -67,6 +67,11 @@ namespace MagicMotion.Mono
             }
             kernel.Update(Time.deltaTime);
         }
+
+        private void OnDestroy()
+        {
+            kernel.Dispose();
+        }
         #endregion
 
         #region LocalFunc

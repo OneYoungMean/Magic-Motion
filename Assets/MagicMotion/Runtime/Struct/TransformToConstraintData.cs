@@ -6,7 +6,7 @@ namespace MagicMotion
     /// Transform to ConstraintData
     /// </summary>
 
-    public struct TransformToConstraintNative
+    public struct TransformToConstraintData
     {
         public int jointIndex;
         public  MMConstraintType constraintType;

@@ -25,7 +25,7 @@ namespace MagicMotion.Mono
             
         }
 
-        public PositionChangeConstraint GetNativeData()
+        internal PositionChangeConstraint GetNativeData()
         {
             return new PositionChangeConstraint()
             {

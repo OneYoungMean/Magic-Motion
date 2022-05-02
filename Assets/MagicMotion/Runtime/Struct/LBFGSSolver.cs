@@ -135,7 +135,7 @@ namespace MagicMotion
     /// </example>
     /// 
     #endregion
-    public unsafe struct MMLBFGSSolver
+    public unsafe struct LBFGSSolver
     {
         /// <summary>
         ///   Gets or sets a tolerance value controlling the accuracy of the
@@ -208,7 +208,7 @@ namespace MagicMotion
         private bool isInBracket;
         private bool stage1;
         public double loss;
-        public static readonly MMLBFGSSolver identity = new MMLBFGSSolver()
+        public static readonly LBFGSSolver identity = new LBFGSSolver()
         {
             lossTolerance =1f,
             gradientTolerance =0f,

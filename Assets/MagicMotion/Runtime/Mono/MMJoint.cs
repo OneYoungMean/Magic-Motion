@@ -76,7 +76,7 @@ namespace MagicMotion.Mono
         public HumanBodyBones humanBodyBone;
 
 
-        public JointData GetNativeJointData()
+        internal JointData GetNativeJointData()
         {
             return new JointData()
             {
@@ -92,11 +92,11 @@ namespace MagicMotion.Mono
             };
     }
 
-        public void GetNativeConstraintData(out MMConstraintNative constraint,out List<TransformToConstraintNative>transformToConstraints,out List<Transform> transforms )
+        internal void GetNativeConstraintData(out ConstraintData constraint,out List<TransformToConstraintData>transformToConstraints,out List<Transform> transforms )
         {
-             constraint=default(MMConstraintNative);
+             constraint=default(ConstraintData);
             constraint.lengthSum = cumulativeLength;
-            transformToConstraints =new List<TransformToConstraintNative>();
+            transformToConstraints =new List<TransformToConstraintData>();
             transforms=new List<Transform>();
 
             for (int i = 0; i < constraints.Length; i++)
@@ -113,7 +113,7 @@ namespace MagicMotion.Mono
                     case MMConstraintType.Position:
                         var positionConstraint = constraintData as MMPositionConstraint;
                         constraint.positionConstraint= positionConstraint.GetNativeData();
-                        transformToConstraints.Add(new TransformToConstraintNative()
+                        transformToConstraints.Add(new TransformToConstraintData()
                         {
                             jointIndex = jointIndex,
                             constraintType = type
@@ -126,7 +126,7 @@ namespace MagicMotion.Mono
                         var lookAtConstraint = constraintData as MMLookConstraint;
                         constraint.lookAtConstraint = lookAtConstraint.GetNativeData();
 
-                        transformToConstraints.Add(new TransformToConstraintNative()
+                        transformToConstraints.Add(new TransformToConstraintData()
                         {
                             jointIndex = jointIndex,
                             constraintType = type

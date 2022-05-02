@@ -65,7 +65,7 @@ namespace MagicMotion.Mono
            return MMConstraintType.LookAt;
         }
 
-        public LookAtConstraint GetNativeData()
+        internal LookAtConstraint GetNativeData()
         {
             return new LookAtConstraint()
             {

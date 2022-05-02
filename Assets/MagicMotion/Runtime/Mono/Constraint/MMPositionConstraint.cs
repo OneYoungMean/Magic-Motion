@@ -69,7 +69,7 @@ namespace MagicMotion.Mono
             return MMConstraintType.Position;
         }
 
-        public PositionConstraint GetNativeData()
+        internal PositionConstraint GetNativeData()
         {
             return new PositionConstraint()
             {

@@ -17,6 +17,9 @@ namespace MagicMotion.Mono
     {
         public const float LOOKAT_LENGTH = 0.1f;
         #region  Field&Property
+        /// <summary>
+        /// Constraint root
+        /// </summary>
         public GameObject ConstraintAimRoot;
         /// <summary>
         /// target animator
@@ -38,6 +41,9 @@ namespace MagicMotion.Mono
         /// is controller initialize?
         /// </summary>
         public bool isInitialize;
+        /// <summary>
+        /// motion joint tree ,to collect relationship on job
+        /// </summary>
         private bool[][] motionJointTree;
 
         #endregion
@@ -53,6 +59,10 @@ namespace MagicMotion.Mono
         #endregion
 
         #region LocalFunc
+        /// <summary>
+        /// Input data to kernel
+        /// </summary>
+        /// <param name="kernel"></param>
         public void RegisterData(MagicMotionKernel kernel)
         {
             if (kernel == null) 
@@ -60,7 +70,7 @@ namespace MagicMotion.Mono
                 return;
             }
 
-            MMMuscleData[] muscleDatas = new MMMuscleData[motionMuscles.Length];
+            MuscleData[] muscleDatas = new MuscleData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {
                 muscleDatas[i] = motionMuscles[i].GetNativeData();
@@ -81,13 +91,13 @@ namespace MagicMotion.Mono
             }
             kernel.SetJointData(jointData, jointTransforms);
 
-            MMConstraintNative[] constraintNatives = new MMConstraintNative[motionJoints.Length];
-            List<TransformToConstraintNative> transformToConstraintCollect =new List<TransformToConstraintNative>();
+            ConstraintData[] constraintNatives = new ConstraintData[motionJoints.Length];
+            List<TransformToConstraintData> transformToConstraintCollect =new List<TransformToConstraintData>();
             List<Transform> aimTransformCollect =new List<Transform>();
 
             for (int i = 0; i < motionJoints.Length; i++)
             {
-               motionJoints[i].GetNativeConstraintData(out MMConstraintNative constraint, out List<TransformToConstraintNative> transformToConstraints, out List<Transform> aimTransforms);
+               motionJoints[i].GetNativeConstraintData(out ConstraintData constraint, out List<TransformToConstraintData> transformToConstraints, out List<Transform> aimTransforms);
                 constraintNatives[i]=constraint;
                 transformToConstraintCollect.AddRange(transformToConstraints);
                 aimTransformCollect.AddRange(aimTransforms);
@@ -96,6 +106,9 @@ namespace MagicMotion.Mono
             kernel.SetConstraintData(constraintNatives,transformToConstraintCollect.ToArray(),aimTransformCollect.ToArray());
         }
 
+        /// <summary>
+        /// Update motion for muscle on editor or mian thread
+        /// </summary>
         public void UpdateMotion()
         {
             //OYM£ºrebuild sklenon
@@ -156,6 +169,12 @@ namespace MagicMotion.Mono
             }
 
         }
+        /// <summary>
+        /// initiailize data
+        /// </summary>
+        /// <param name="animator"></param>
+        /// <param name="isRefresh"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         public void Initialize(Animator animator = null, bool isRefresh = false)
         {
             if (!isRefresh && isInitialize)
@@ -178,7 +197,9 @@ namespace MagicMotion.Mono
 
             isInitialize = true;
         }
-
+        /// <summary>
+        /// step one : build joint and muscle
+        /// </summary>
         private void Initialize1()
         {
 
@@ -311,6 +332,9 @@ namespace MagicMotion.Mono
 
 
         }
+        /// <summary>
+        /// step two: build constraitnt and other thing
+        /// </summary>
         private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
@@ -324,7 +348,10 @@ namespace MagicMotion.Mono
             AddConstraint(MMConstraintType.Position);
             //AddConstraint(MMConstraintType.PositionChange);
         }
-
+        /// <summary>
+        /// add constraint on your joint 
+        /// </summary>
+        /// <param name="constraintType"></param>
         private void AddConstraint(MMConstraintType constraintType)
         {
             for (int i = 1; i < motionJoints.Length; i++)
