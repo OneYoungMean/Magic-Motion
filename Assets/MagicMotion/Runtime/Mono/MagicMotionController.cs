@@ -101,6 +101,11 @@ namespace MagicMotion.Mono
             return ValueCheck(inputMode);
             
         }
+        /// <summary>
+        /// check value from different input mode
+        /// </summary>
+        /// <param name="inputMode"></param>
+        /// <returns></returns>
         private bool ValueCheck(InputMode inputMode)
         {
             
@@ -122,6 +127,9 @@ namespace MagicMotion.Mono
             }
             return true;
         }
+        /// <summary>
+        /// Initialize data
+        /// </summary>
          private void Initialize()
         {
             jointController.Initialize(characterAnimator);

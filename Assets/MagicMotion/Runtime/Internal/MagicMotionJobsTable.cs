@@ -452,11 +452,9 @@ namespace MagicMotion
 
                 direction = (direction / directionLength * newDirectionLength) * torlerace3;*/
 
-                float loss = math.csum(direction * direction * weight3);
+                float lossCos = math.csum(direction * direction * weight3) / (constraintNative.lengthSum * constraintNative.lengthSum)*math.PI*math.PI;
 
-                loss *= math.PI*math.PI/( constraintNative.lengthSum * constraintNative.lengthSum);
-
-                jointloss.positionloss = loss;
+                jointloss.positionloss = lossCos;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateMuscleloss(ref MMJoinloss jointloss, ref float3 Dof3, ref MMConstraintNative constraintNative)
@@ -520,10 +518,9 @@ namespace MagicMotion
 
                 float loss = math.csum(direction * direction * weight3);
 
-                loss *= 0.1f;
                 //loss =;
 
-               // jointloss.positionChangeloss = -loss;
+                jointloss.positionChangeloss = loss*10;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateMuscleChangeloss(ref MMJoinloss jointloss, ref float3 Dof3, ref MMConstraintNative constraintNative)
@@ -538,7 +535,7 @@ namespace MagicMotion
                 jointloss.muscleChangeloss = loss* loss;
             }
         }
-        [BurstCompile(FloatPrecision.High, FloatMode.Strict)]
+       [BurstCompile(FloatPrecision.High, FloatMode.Strict)]
 
         public struct MainControllerJob : IJob
         {
@@ -651,10 +648,9 @@ namespace MagicMotion
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
-                    double gradientTemp =(double)losses[i].lossSum -(double)losses[relationData.jointIndex].lossSum;
+                    double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
                     //gradients[relationData.relatedMuscleIndex] += gradientTemp;
-                    gradientTemp = gradientTemp / (relativeCounts[relationData.jointIndex]) * constraintLength;
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp;
+                    gradients[relationData.relatedMuscleIndex] += gradientTemp/L_BFGSStatic.EPSILION/ constraintLength;
                     //gradients[relationData.relatedMuscleIndex] += gradientTemp;
                 }
             }
@@ -662,14 +658,9 @@ namespace MagicMotion
 
         public struct JointToTransformJob : IJobParallelForTransform
         {
-            [NativeDisableParallelForRestriction]
-            public NativeArray<MMConstraintNative> constraintNatives;
+
             [ReadOnly]
             public NativeSlice<RigidTransform> jointTransformNatives;
-            [ReadOnly]
-            public NativeSlice<float3> Dof3s;
-            public int muscleLength;
-            public int jointLength;
             public void Execute(int index, TransformAccess transform)
             {
                 transform.position = jointTransformNatives[index].pos;

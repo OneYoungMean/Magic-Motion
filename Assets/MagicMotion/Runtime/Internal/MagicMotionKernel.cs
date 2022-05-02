@@ -17,9 +17,9 @@ namespace MagicMotion
     //OYM：第一阶段:安全的代码部分
     //OYM：第二阶段，不安全的代码片段
     //OYM：已经不安全的代码片段除外
-    public unsafe class MagicMotionKernel
+    public  class MagicMotionKernel
     {
-        public const int iteration =32;
+        public const int iteration =16;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -100,6 +100,8 @@ namespace MagicMotion
         private int[] muscleRelativedCounts;
         private float[] muscleValues;
         private Task loopTask;
+        private InitializeMuscleJob initializeMuscleJob;
+        private bool isFinish;
         #endregion
 
         #region PublicFunc
@@ -161,7 +163,7 @@ namespace MagicMotion
             LBFGSSolver = new BroydenFletcherGoldfarbShanno(muscleCount, x => GetLoss(x), y => GetGradient(y));
         }
 
-        private double GetLoss(NativeArray<float> solution)
+        private unsafe double GetLoss(NativeArray<float> solution)
         {
             UnsafeUtility.MemCpy(muscleValueNativeArray.GetUnsafePtr(), solution.GetUnsafePtr(), solution.Length * UnsafeUtility.SizeOf<float>());
             mainControllerJob.Run();
@@ -179,7 +181,7 @@ namespace MagicMotion
             {
                 MainHandle.Complete();
             }
-            InitializeMuscleJob initializeMuscleJob = new InitializeMuscleJob()
+             initializeMuscleJob = new InitializeMuscleJob()
             {
                 muscleDatas = muscleDataNativeArray,
                 musclesValues = muscleValueNativeArray
@@ -192,6 +194,7 @@ namespace MagicMotion
             };
             initializeMuscleJob.Run(muscleCount);
             initializeJointJob.RunReadOnly(jointTransformArray);
+            isFinish = true;
 /*            muscleToJointJob.Run(muscleCount);
             buildTransformJob.Run(muscleCount);*/
 
@@ -202,7 +205,7 @@ namespace MagicMotion
         }
         public void Update(float deltatime)
         {
-            if (!isCreated||!MainHandle.IsCompleted)
+            if (!isCreated)
             {
                 return;
             }
@@ -210,7 +213,7 @@ namespace MagicMotion
             {
                 return;
             }
-
+            isFinish = false;
             for (int i = 0; i < LBFGSNatives.Length; i++)
             {
                 var globalData = globalDataNativeArray[i];
@@ -224,15 +227,14 @@ namespace MagicMotion
                 LBFGSNatives[0]=solver;
             }
 
-
             if (true)
             {
                 /*                ;*/
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 jointToTransformJob.Schedule(jointTransformArray).Complete();
-
                 loopTask = Task.Run(() =>
                 {
+                   // initializeMuscleJob.Run(muscleCount);
                     scheduleConstraintDataJob.Run(parallelDataCount);
                     for (int i = 0; i < iteration+1; i++)
                     {
@@ -247,6 +249,9 @@ namespace MagicMotion
                     double end = lossNativeArray[0];
                     Debug.Log(start + " ~ " + end);
                 });
+                isFinish = true;
+
+
             }
             else
             {
@@ -529,10 +534,6 @@ namespace MagicMotion
             jointToTransformJob = new JointToTransformJob()
             {
                 jointTransformNatives = jointTransformNativeArray.Slice(0, jointCount),
-                Dof3s  =Dof3NativeArray.Slice(0, jointCount),
-                constraintNatives=constraintNativeArray,
-                jointLength=jointCount,
-                muscleLength=muscleCount,
             };
         }
 

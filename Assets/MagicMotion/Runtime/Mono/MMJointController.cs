@@ -10,6 +10,9 @@ using System;
 
 namespace MagicMotion.Mono
 {
+    /// <summary>
+    /// The joint and constraint manager
+    /// </summary>
     public class MMJointController : MonoBehaviour
     {
         public const float LOOKAT_LENGTH = 0.1f;
@@ -319,6 +322,7 @@ namespace MagicMotion.Mono
             ConstraintAimRoot.transform.localRotation = Quaternion.identity;
 
             AddConstraint(MMConstraintType.Position);
+            //AddConstraint(MMConstraintType.PositionChange);
         }
 
         private void AddConstraint(MMConstraintType constraintType)
