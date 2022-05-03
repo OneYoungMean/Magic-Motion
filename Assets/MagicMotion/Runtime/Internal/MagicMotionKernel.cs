@@ -59,7 +59,7 @@ namespace MagicMotion
         #region JobsData
 
         private TransformToConstraintJob getConstraintTransformJob;
-        private RigHipPositionJob rigHipPositionJob;
+        //private RigHipPositionJob rigHipPositionJob;
         private BuildTransformJob buildTransformJob;
         private MuscleToDof3Job muscleToDof3Job;
         private Dof3ToRotationJob dof3ToRotationJob;
@@ -200,7 +200,6 @@ namespace MagicMotion
 
             if (true)
             {
-                /*                ;*/
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 jointToTransformJob.Schedule(jointTransformArray).Complete();
                 loopTask = Task.Run(() =>

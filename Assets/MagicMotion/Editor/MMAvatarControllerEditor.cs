@@ -24,7 +24,7 @@ namespace MagicMotion.UnityEditor
                     var muscles = controller.motionMuscles;
                     for (int i = 0; i < muscles.Length; i++)
                     {
-                        muscles[i].value = EditorGUILayout.Slider(muscles[i].muscleName, muscles[i].value, -1, 1);
+                        muscles[i].value = EditorGUILayout.Slider(i+" "+muscles[i].muscleName, muscles[i].value, -1, 1);
                     }
                     controller.UpdateMotion();
                 }

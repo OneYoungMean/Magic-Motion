@@ -219,7 +219,9 @@ namespace MagicMotion.Mono
 
 
             #region Generate Muscle and joint
-            for (int i = 0; i < muscleValue.Length; i++)
+            for (int i = 0 ;
+                i < muscleValue.Length;
+                i++)
             {
                 int muscleIndex = i;
                 if (GetMuscleData(muscleIndex, out int jointIndex, out int dof, out string muscleName, out string jointName))
