@@ -15,17 +15,17 @@ public unsafe static class L_BFGSStatic
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside
     /// </summary>
-    public const int MAXLOOPCOUNT = 32;
+    public const int MAXLOOPCOUNT = 16;
     /// <summary>
     /// Min gradient step of BFGS
     /// it should less than STEP_MIN.
     /// </summary>
     public const float EPSILION = STEP_MIN;
 
-    private const float loss_TOLERENCE = 0f;
-    private const float xTolerance = 1e-20f; // machine precision
-    private const float STEP_MIN = math.EPSILON*10f;
-    private const float STEP_MAX =1;
+    private const float loss_TOLERENCE =0f;
+    private const float xTolerance = 5e-1f; // machine precision
+    private const float STEP_MIN = 1e-5f;
+    private const float STEP_MAX =2;
     private const float RANGLE_MIN = -1f;
     private const float RANGE_MAX =1f;
     #endregion

@@ -210,7 +210,7 @@ namespace MagicMotion
         public double loss;
         public static readonly LBFGSSolver identity = new LBFGSSolver()
         {
-            lossTolerance =1f,
+            lossTolerance =0.9f,
             gradientTolerance =0f,
             state = LBFGSState.Initialize
         };
@@ -267,6 +267,7 @@ NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<dou
                     case LBFGSState.InsideLoopHead:
                         if (isLoopInside)
                         {
+
                             InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref leastLoopCount, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
                             state = LBFGSState.InsideLoopTail;
                             leastLoopCount--;

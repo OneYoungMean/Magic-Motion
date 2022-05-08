@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 namespace MagicMotion.Mono
@@ -45,6 +46,14 @@ namespace MagicMotion.Mono
         /// is Initialize
         /// </summary>
         private bool isInitial;
+        [SerializeField]
+        private int editorIndex;
+        [SerializeField]
+        private AnimationCurve lossCurve = new AnimationCurve();
+        [SerializeField]
+        private AnimationCurve muscleCurve = new AnimationCurve();
+        [SerializeField]
+        private AnimationCurve gradientCurve = new AnimationCurve();
         #endregion
 
         #region UnityFunc
@@ -66,8 +75,9 @@ namespace MagicMotion.Mono
                 return;
             }
             kernel.Update(Time.deltaTime);
-        }
 
+            UpdateCruve();
+        }
         private void OnDestroy()
         {
             kernel.Dispose();
@@ -144,6 +154,12 @@ namespace MagicMotion.Mono
         }
         #endregion
 
+        public void UpdateCruve()
+        {
+            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
+            muscleCurve.keys = kernel.GetmusclesKey(editorIndex);
+            lossCurve.keys = kernel.GetLossKey();
+        }
         #region StaticFunc
 
         #endregion

@@ -248,6 +248,11 @@ namespace MagicMotion
             [ReadOnly,NativeDisableParallelForRestriction]
             public NativeArray<RigidTransform> jointTransformNatives;
             /// <summary>
+            /// joint transform value 
+            /// </summary>
+            [ReadOnly, NativeDisableParallelForRestriction]
+            public NativeArray<GlobalData> globalDatas;
+            /// <summary>
             ///Epsilion to rotation
             /// </summary>
             public NativeArray<quaternion> muscleGradientRotations;
@@ -258,7 +263,7 @@ namespace MagicMotion
 
                 float3 Dof3 = Dof3s[muscleData.jointIndex];
 
-                Dof3[muscleData.dof] +=L_BFGSStatic.EPSILION;
+                Dof3[muscleData.dof] +=L_BFGSStatic.EPSILION* globalDatas[0].axisDirection;
                 quaternion before = Dof3Quaternions[muscleData.jointIndex];
                 quaternion after = quaternion.identity;
                 float3 Dof3toRadian = math.radians(
@@ -387,7 +392,7 @@ namespace MagicMotion
                 {
                     UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
-                if (constraintNative.DofConstraint.isVaild)
+/*                if (constraintNative.DofConstraint.isVaild)
                 {
                     UpdateMuscleloss(ref jointloss, ref Dof3, ref constraintNative);
                 }
@@ -406,7 +411,7 @@ namespace MagicMotion
                 if (constraintNative.DofChangeConstraint .isVaild)
                 {
                     UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
-                }
+                }*/
                 jointloss.Clacloss();
                jointlossNatives[index] = jointloss;
             }
@@ -422,30 +427,11 @@ namespace MagicMotion
             {
                 PositionConstraint positionConstraint = constraintNative.positionConstraint;
                 float3 jointPosition = jointTransform.pos;
+                float lengthSum = constraintNative.lengthSum;
 
                 float3 constraintPosition = positionConstraint.position;
-
-                float3 torlerace3 =math.max(math.EPSILON, positionConstraint.tolerance3);
-
-                float3 weight3 = positionConstraint.weight3;
-
                 float3 direction = constraintPosition - jointPosition;
-
-                if (math.all(direction == 0))
-                {
-                    return;
-                }
-/*
-                direction = direction / torlerace3;
-
-                float directionLength = math.length(direction);
-
-                float newDirectionLength = math.max(0, directionLength - 1);
-
-                direction = (direction / directionLength * newDirectionLength) * torlerace3;*/
-
-                float lossCos = math.csum(direction * direction * weight3) / (constraintNative.lengthSum * constraintNative.lengthSum)*math.PI*math.PI;
-
+                float lossCos = math.lengthsq(direction);
                 jointloss.positionloss = lossCos;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -568,7 +554,9 @@ namespace MagicMotion
             [NativeDisableParallelForRestriction]
             internal NativeArray<double> losses;
             [NativeDisableParallelForRestriction]
-            internal NativeArray<double> gradientSums;
+            internal NativeArray<double> gradientAlls;
+            [NativeDisableParallelForRestriction]
+            internal NativeArray<float> muscleAlls;
             #endregion
 
 
@@ -615,15 +603,21 @@ namespace MagicMotion
                 var globalData = globalDataNative[index];
 
                  double loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
-                CollectGradient(jointlossNatives, relationDatas, muscleRelativeCounts, jointLength, parallelLength, constraintLength, gradients);
-
+                CollectGradient(jointlossNatives, relationDatas, globalData, gradientAlls, muscleLength, jointLength, parallelLength, constraintLength, gradients);
+                CollectTestData(globalData);
                 losses[globalData.leastLoopCount] = loss;
                 var LBFGSSolver = LBFGSSolvers[index];
-                double gradientSum = gradientSums[globalData.leastLoopCount];
+                double gradientSum = gradientAlls[globalData.leastLoopCount];
                 LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, ref gradientSum, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-                gradientSums[globalData.leastLoopCount] = gradientSum;
+                gradientAlls[globalData.leastLoopCount] = gradientSum;
                 LBFGSSolvers[index] = LBFGSSolver;
                 globalDataNative[index] = globalData;
+            }
+
+            private void CollectTestData(GlobalData globalData)
+            {
+                UnsafeUtility.MemCpy((double*)gradientAlls.GetUnsafePtr() + globalData.leastLoopCount * muscleLength, gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<double>());
+                UnsafeUtility.MemCpy((float*)muscleAlls.GetUnsafePtr() + globalData.leastLoopCount * muscleLength, muscleValues.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<float>());
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -641,20 +635,20 @@ namespace MagicMotion
                 return loss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas , NativeArray<int>relativeCounts, int jointLength, int parallelLength, int constraintLength, NativeArray<double>gradients)
+            private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas ,GlobalData globalData, NativeArray<double> gradientAlls, int muscleLength, int jointLength, int parallelLength, int constraintLength, NativeArray<double>gradients)
             {
                 UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<double>());
-
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
                     double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
-                    gradientTemp /=L_BFGSStatic.EPSILION;
-                    //gradientTemp /= relativeCounts[relationData.jointIndex];
-                    //gradients[relationData.relatedMuscleIndex] += gradientTemp;
+                    gradientTemp /= L_BFGSStatic.EPSILION* globalData.axisDirection;
+                    /*                   gradientTemp /= relativeCounts[relationData.jointIndex];*/
+
                     gradients[relationData.relatedMuscleIndex] += gradientTemp;
                     //gradients[relationData.relatedMuscleIndex] += gradientTemp;
                 }
+
             }
         }
 

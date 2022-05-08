@@ -19,7 +19,7 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public  class MagicMotionKernel
     {
-        public const int iteration =16;
+        public const int iteration =64;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -53,7 +53,8 @@ namespace MagicMotion
         private TransformAccessArray constraintTransformArray;
         //OYM：test data
         private NativeArray<double> lossNativeArray;
-        private NativeArray<double> gradientSumNativeArray;
+        public NativeArray<double> gradientAllNativeArray;
+        public NativeArray<float> muscleValueAllNativeArray;
         #endregion
 
         #region JobsData
@@ -88,9 +89,9 @@ namespace MagicMotion
         private float[] muscleValues;
         private bool[][] jointRelationMap;
 
-        private int parallelDataCount;
-        private int jointCount;
-        private int muscleCount;
+        public int parallelDataCount;
+        public int jointCount;
+        public int muscleCount;
 
         private bool isFinish;
         private bool isCreated;
@@ -202,9 +203,9 @@ namespace MagicMotion
             {
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
                 jointToTransformJob.Schedule(jointTransformArray).Complete();
-                loopTask = Task.Run(() =>
+               // loopTask = Task.Run(() =>
                 {
-                   // initializeMuscleJob.Run(muscleCount);
+                 //  initializeMuscleJob.Run(muscleCount);
                     scheduleConstraintDataJob.Run(parallelDataCount);
                     for (int i = 0; i < iteration+1; i++)
                     {
@@ -218,7 +219,8 @@ namespace MagicMotion
                     double start = lossNativeArray[iteration];
                     double end = lossNativeArray[0];
                     Debug.Log(start + " ~ " + end);
-                });
+                };
+                
                 isFinish = true;
 
 
@@ -400,12 +402,15 @@ namespace MagicMotion
 
             globalDataNativeArray = CreateNativeData<GlobalData>(1, Allocator.Persistent);
 
+
+
             LBFGSNatives[0] = MagicMotion.LBFGSSolver.identity;
 
             L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
 
             lossNativeArray= CreateNativeData<double>(iteration+1, Allocator.Persistent);
-            gradientSumNativeArray = CreateNativeData<double>(iteration + 1, Allocator.Persistent);
+            gradientAllNativeArray = CreateNativeData<double>((iteration + 1)*muscleCount, Allocator.Persistent);
+            muscleValueAllNativeArray = CreateNativeData<float>((iteration + 1) * muscleCount, Allocator.Persistent);
         }
         /// <summary>
         /// Build all job data 
@@ -474,6 +479,7 @@ namespace MagicMotion
                 jointTransformNatives = jointTransformNativeArray,
                 muscleDatas = muscleDataNativeArray,
                 muscleGradientRotations = muscleGradientRotationArray,
+                globalDatas = globalDataNativeArray,
             };
 
             caclulatelossJob = new CaclulatelossJob()
@@ -503,7 +509,8 @@ namespace MagicMotion
                 muscleValues= muscleValueNativeArray,
                 relationDatas =jointRelationDataNativeArray,
                 muscleRelativeCounts=muscleRelativeCountArray,
-                gradientSums= gradientSumNativeArray,
+                muscleAlls= muscleValueAllNativeArray,
+                gradientAlls = gradientAllNativeArray,
                 parallelLength =parallelDataCount,
                 constraintLength =constraintTransforms.Length,
                 muscleLength = muscleCount,
@@ -535,6 +542,37 @@ namespace MagicMotion
             return nativeArr;
         }
         #endregion
+
+        public Keyframe[] GetmusclesKey(int index)
+        {
+
+            Keyframe[] muscles = new Keyframe[iteration + 1];
+            for (int i = 0; i < iteration+1; i++)
+            {
+                muscles[iteration - i]=new Keyframe(1 - i /(float)iteration, muscleValueAllNativeArray[index+i * muscleCount]);
+            }
+            return muscles;
+        }
+        public Keyframe[] GetGradientsKey(int index)
+        {
+            Keyframe[] muscles = new Keyframe[iteration + 1];
+            for (int i = 0; i < iteration + 1; i++)
+            {
+                muscles[iteration - i] = new Keyframe(1 - i / (float)iteration, (float)gradientAllNativeArray[index + i * muscleCount]);
+            }
+            return muscles;
+
+        }
+        public Keyframe[] GetLossKey()
+        {
+            Keyframe[] muscles = new Keyframe[iteration + 1];
+            for (int i = 0; i < iteration + 1; i++)
+            {
+                muscles[iteration-i] = new Keyframe(1-i / (float)iteration, math.log10((float)lossNativeArray[i]));
+            }
+            return muscles;
+
+        }
     }
 }
 

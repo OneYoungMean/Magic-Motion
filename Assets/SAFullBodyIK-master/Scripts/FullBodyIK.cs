@@ -1448,8 +1448,9 @@ namespace SA
 			if( hipsEffector == null || rootEffector == null ) {
 				return;
 			}
-
-			if( hipsEffector.rotationEnabled && hipsEffector.rotationWeight > IKEpsilon ) {
+			//OYM：计算最新的baseHipsBasis，这个值为初始的rot到现在的rot
+			if (hipsEffector.rotationEnabled && hipsEffector.rotationWeight > IKEpsilon)
+			{ 
 				Quaternion hipsRotation = hipsEffector.worldRotation * Inverse( hipsEffector._defaultRotation );
 				if( hipsEffector.rotationWeight < 1.0f - IKEpsilon ) {
 					Quaternion rootRotation = rootEffector.worldRotation * Inverse( rootEffector._defaultRotation );
@@ -1524,7 +1525,7 @@ namespace SA
 						// BodyIK :  wrist / foot / neck
 						// FingerIK : nothing
 						if( effector.effectorType == EffectorType.Eyes ||
-							effector.effectorType == EffectorType.HandFinger ) { // Optimize.
+							effector.effectorType == EffectorType.HandFinger ) { // Optimize.  放在了其他的地方
 #if SAFULLBODYIK_DEBUG
 							effector._hidden_worldPosition = new Vector3();
 #endif

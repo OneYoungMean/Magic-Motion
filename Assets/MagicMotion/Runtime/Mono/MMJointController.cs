@@ -302,7 +302,7 @@ namespace MagicMotion.Mono
                     currentJoint.initiallocalPosition = math.mul(math.inverse(parentJoint.transform.rotation), (float3)(currentJoint.transform.position - parentJoint.transform.position));
 
                     currentJoint.parent = parentJoint;
-                    currentJoint.length = math.length(currentJoint.initiallocalRotation);
+                    currentJoint.length = math.length(currentJoint.initiallocalPosition);
                     currentJoint.cumulativeLength = currentJoint.parent.length + currentJoint.length;
                 }
 
@@ -348,7 +348,7 @@ namespace MagicMotion.Mono
             ConstraintAimRoot.transform.localRotation = Quaternion.identity;
 
             AddConstraint(MMConstraintType.Position);
-            //AddConstraint(MMConstraintType.PositionChange);
+           //AddConstraint(MMConstraintType.DofChange);
         }
         /// <summary>
         /// add constraint on your joint 
@@ -406,7 +406,7 @@ namespace MagicMotion.Mono
                         constraint=positionChangeConstraint;
                         break;
                     case MMConstraintType.DofChange:
-                        var DofChangeConstraint = joint.gameObject.AddComponent<MMPositionChangeConstraint>();
+                        var DofChangeConstraint = joint.gameObject.AddComponent<MMDofChangeConstraint>();
                         DofChangeConstraint.weight3 = Vector3.one;
                         constraint = DofChangeConstraint;
                         break;

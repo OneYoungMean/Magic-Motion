@@ -80,22 +80,23 @@ namespace MagicMotion.Mono
         {
             return new JointData()
             {
-                parentIndex = parent==null?-1: parent.jointIndex,
+                parentIndex = parent == null ? -1 : parent.jointIndex,
                 localPosition = initiallocalPosition,
                 localRotation = initiallocalRotation,
                 maxRange = maxRange,
                 minRange = minRange,
                 dof3Axis = dof3Axis,
                 length = length,
-
+                jointKind = ((int)humanBodyBone < 24 || (int)humanBodyBone == 54) ? JointKind.Body : ((int)humanBodyBone < 38 ? JointKind.LeftHand : JointKind.RightHand),
                 isVaild = enabled,
+
             };
     }
 
         internal void GetNativeConstraintData(out ConstraintData constraint,out List<TransformToConstraintData>transformToConstraints,out List<Transform> transforms )
         {
              constraint=default(ConstraintData);
-            constraint.lengthSum = cumulativeLength;
+            constraint.lengthSum =math.max(0.1f, cumulativeLength);
             transformToConstraints =new List<TransformToConstraintData>();
             transforms=new List<Transform>();
 

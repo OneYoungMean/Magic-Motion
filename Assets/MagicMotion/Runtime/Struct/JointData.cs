@@ -2,8 +2,19 @@
 
 namespace MagicMotion
 {
+    public enum JointKind
+    {
+        LeftHand,
+        RightHand,
+        Body
+    }
     internal struct JointData
     {
+        /// <summary>
+        /// JointKind
+        /// </summary>
+        public JointKind jointKind;
+
         /// <summary>
         ///  Is the joint vaild?
         /// </summary>
@@ -13,15 +24,6 @@ namespace MagicMotion
         ///  parent index in heap
         /// </summary>
         public int parentIndex;
-        /*        /// <summary>
-                /// son index start in heap
-                /// </summary>
-                public int childIndexStart;
-                /// <summary>
-                /// son index end in heap
-                /// they are continuous in the heap
-                /// </summary>
-                public int childIndexEnd;*/
         /// <summary>
         /// if is Position Joint mode ,it means move Range ,else means euler angle;
         /// </summary>
@@ -47,14 +49,5 @@ namespace MagicMotion
         /// the dof3 axis
         /// </summary>
         public float3x3 dof3Axis;
-        /*        /// <summary>
-                /// Dof3 to euler angle to localrotation's value ,I dont know why does it exist.
-                /// Dof3Rotation =math.inverse(dof3RotateOffset) *quaternion.euler(Dof3)* dof3RotateOffset
-                /// </summary>
-                public quaternion dof3RotateOffset;*/
-
-
-        /*
-                public bool isNoChild => childIndexStart < childIndexEnd;*/
     }
 }
