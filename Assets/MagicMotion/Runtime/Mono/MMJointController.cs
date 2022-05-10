@@ -48,12 +48,8 @@ namespace MagicMotion.Mono
         #region UnityFunc
         public void Start()
         {
-            CheckValue();
-            AddRootJointInArray();
-            BuildJointRelation();
-            ReadJointData();
-            RegisterData();
-            isInitialize=true;
+            Initialize();
+
         }
 
 
@@ -88,6 +84,19 @@ namespace MagicMotion.Mono
 
         #region LocalFunc
 
+        public void Initialize()
+        {
+            if (isInitialize)
+            {
+                return;
+            }
+            CheckValue();
+            AddRootJointInArray();
+            BuildJointRelation();
+            ReadJointData();
+            RegisterData();
+            isInitialize = true;
+        }
         private void SetMuscle(float[] muscleValues)
         {
             Debug.Assert(muscleValues.Length == motionMuscles.Length);
@@ -129,6 +138,7 @@ namespace MagicMotion.Mono
                     continue;
                 }
                 currentJoint.jointIndex = i;
+                currentJoint.controller = this;
                 for (Transform parentTransform = currentJoint.transform.parent;
                     parentTransform != null;
                     parentTransform = parentTransform.parent)
@@ -221,7 +231,7 @@ namespace MagicMotion.Mono
         /// <summary>
         /// Update motion for muscle on editor or mian thread
         /// </summary>
-        private void UpdateMotion()
+        public void UpdateMotion()
         {
             //OYM：rebuild sklenon
             for (int i = 0; i < motionJoints.Length; i++)

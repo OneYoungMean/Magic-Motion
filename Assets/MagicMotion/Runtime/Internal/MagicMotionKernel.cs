@@ -14,11 +14,20 @@ using System.Threading.Tasks;
 
 namespace MagicMotion
 {
+    public enum SearchLevel
+    {
+        Single=1,
+        Double=2,
+        Quater=4,
+        Oct=8,
+        Hex=16,
+    }
     //OYM：第一阶段:安全的代码部分
     //OYM：第二阶段，不安全的代码片段
     //OYM：已经不安全的代码片段除外
     public class MagicMotionKernel
     {
+
         public const int iteration = 64;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
@@ -90,6 +99,7 @@ namespace MagicMotion
         private bool[][] jointRelationMap;
 
         public int parallelDataCount;
+        private float[][] searchPoint;
         public int jointCount;
         public int muscleCount;
 
@@ -98,6 +108,7 @@ namespace MagicMotion
 
 
         private Action<float[]> SetMuscleCall;
+        private SearchLevel searchLevel;
         #endregion
 
         #region Accessor
@@ -107,6 +118,10 @@ namespace MagicMotion
         #endregion
 
         #region PublicFunc
+        public MagicMotionKernel(SearchLevel searchLevel=SearchLevel.Double)
+        {
+            this.searchLevel = searchLevel;
+        }
         internal void SetConstraintData(ConstraintData[] constraints, TransformToConstraintData[] transformToConstraints, Transform[] constraintTransforms)
         {
             this.constraints = constraints;
@@ -144,9 +159,15 @@ namespace MagicMotion
             ValueCheck();
             BuildRelationData();
             BuildNativeDataInternal();
+            BuildUnsafePtr();
             BuildJobDataInternal();
             Reset();
             isCreated =true;
+        }
+
+        private void BuildUnsafePtr()
+        {
+
         }
 
         public void Reset()
@@ -177,7 +198,7 @@ namespace MagicMotion
                         MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
 
         }
-        public async void Optimize(float deltatime)
+        public void Optimize(float deltatime)
         {
             if (!isCreated)
             {
@@ -188,38 +209,61 @@ namespace MagicMotion
                 return;
             }
             isFinish = false;
-            for (int i = 0; i < LBFGSNatives.Length; i++)
+
+
+            
+
+            for (int i = 0; i < muscleCount; i++)
             {
-                var globalData = globalDataNativeArray[i];
-                globalData.leastLoopCount = iteration;
-                globalData.isInitialize = false;
-                globalDataNativeArray[i] = globalData;
-
-                var solver = LBFGSNatives[0];
-                solver.state = LBFGSState.Initialize;
-                solver.numberOfVariables = muscleCount;
-                LBFGSNatives[0]=solver;
+                searchPoint[2][i]=(searchPoint[0][i]+1)/2;
+                searchPoint[3][i]= (searchPoint[0][i] - 1) / 2;
             }
-
             if (true)
             {
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
-              //  jointToTransformJob.Schedule(jointTransformArray).Complete();
-               // loopTask = Task.Run(() =>
+                //  jointToTransformJob.Schedule(jointTransformArray).Complete();
+                
+                
+                 //Task.Run(() =>
                 {
-                 //  initializeMuscleJob.Run(muscleCount);
+                    //  initializeMuscleJob.Run(muscleCount);
+                   float bestLoss = float.MaxValue;
+
                     scheduleConstraintDataJob.Run(parallelDataCount);
-                    for (int i = 0; i < iteration+1; i++)
+                    for (int i =0; i <2; i++)
                     {
-                        muscleToDof3Job.Run(muscleCount);
-                        dof3ToRotationJob.Run(jointCount);
-                        buildTransformJob.Run(jointCount);
-                        clacDof3EpsilionJob.Run(muscleCount);
-                        caclulatelossJob.Run(parallelDataCount);
-                        mainControllerJob.Run();
+                        muscleValueNativeArray.CopyFrom(searchPoint[i]);
+                        for (int j = 0; j < LBFGSNatives.Length; j++)
+                        {
+                            var globalData = globalDataNativeArray[j];
+                            globalData.leastLoopCount = iteration;
+                            globalData.isInitialize = false;
+                            globalDataNativeArray[j] = globalData;
+
+                            var solver = LBFGSNatives[j];
+                            solver.state = LBFGSState.Initialize;
+                            solver.numberOfVariables = muscleCount;
+                            LBFGSNatives[j] = solver;
+                        }
+                        for (int j = 0; j < iteration + 1; j++)
+                        {
+                            muscleToDof3Job.Run(muscleCount);
+                            dof3ToRotationJob.Run(jointCount);
+                            buildTransformJob.Run(jointCount);
+                            clacDof3EpsilionJob.Run(muscleCount);
+                            caclulatelossJob.Run(parallelDataCount);
+                            mainControllerJob.Run();
+                        }
+                        if (lossNativeArray[0]<bestLoss)
+                        {
+                            searchPoint[0]= muscleValueNativeArray.ToArray();
+                            bestLoss =(float) lossNativeArray[0];
+                        }
                     }
-                    SetMuscleCall(muscleValueNativeArray.ToArray());
-                };
+
+                    SetMuscleCall(searchPoint[0]);
+                }
+                //);
                 
                 isFinish = true;
 
@@ -342,6 +386,12 @@ namespace MagicMotion
 
             jointMapDatas = jointMapDataTemp.ToArray();
             parallelDataCount = jointMapDatas.Length;
+
+            searchPoint = new float[4][];
+            for (int i = 0; i < searchPoint.Length; i++)
+            {
+                searchPoint[i] = new float[muscleCount];
+            }
         }
         /// <summary>
         /// build all native data

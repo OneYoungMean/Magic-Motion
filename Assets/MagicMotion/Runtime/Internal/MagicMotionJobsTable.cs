@@ -431,7 +431,7 @@ namespace MagicMotion
 
                 float3 constraintPosition = positionConstraint.position;
                 float3 direction = constraintPosition - jointPosition;
-                float lossCos = math.lengthsq(direction);
+                float lossCos = math.lengthsq(direction)/( lengthSum* lengthSum)*math.PI*math.PI;
                 jointloss.positionloss = lossCos;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -513,7 +513,7 @@ namespace MagicMotion
                 jointloss.muscleChangeloss = loss* loss;
             }
         }
-       //[BurstCompile(FloatPrecision.High, FloatMode.Strict)]
+       [BurstCompile(FloatPrecision.High, FloatMode.Strict)]
 
         /// <summary>
         /// Main controller ,will collect loss and gradient

@@ -52,7 +52,6 @@ namespace MagicMotion.Mono
             {
                 Generate();
             }
-
         }
 
         #endregion
@@ -98,6 +97,7 @@ namespace MagicMotion.Mono
               var jointController =   gameObject.AddComponent<MMJointController>();
                 jointController.rootTransform = animator.transform;
                 jointController.motionJoints = motionJoints.Where(x => x != null).ToArray();
+   
                 jointControllers.Add(jointController);
             }
             else
@@ -119,6 +119,10 @@ namespace MagicMotion.Mono
 
                 jointControllers.Add(rightHandController);
             }
+            for (int i = 0; i < jointControllers.Count; i++)
+            {
+                jointControllers[i].Initialize();
+            }
         }
 
         /// <summary>
@@ -137,7 +141,11 @@ namespace MagicMotion.Mono
             currentPose.bodyRotation = Quaternion.identity;
 
             float[] muscleValue = currentPose.muscles;
-            currentPose.muscles = new float[muscleValue.Length];
+            for (int i = 0; i < muscleValue.Length; i++)
+            {
+                muscleValue[i]=math.clamp(muscleValue[i], -1, 1);
+            }
+
             motionJoints = new MMJoint[HumanTrait.BoneCount];
             motionMuscles = new MMMuscle[muscleValue.Length];
 
@@ -234,10 +242,9 @@ namespace MagicMotion.Mono
 
                         }
                         #endregion*/
-            currentPose.muscles = muscleValue;
-            humanPoseHandler.SetHumanPose(ref currentPose);
 
-
+/*            currentPose.muscles = new float[muscleValue.Length];
+            humanPoseHandler.SetHumanPose(ref currentPose);*/
         }
         /// <summary>
         /// step two: build constraitnt and other thing
@@ -374,7 +381,7 @@ namespace MagicMotion.Mono
         private static void GetMuscleRangeAndAxis(Transform targetBone, HumanPose currentPose, HumanPoseHandler humanPoseHandler, int muscleIndex, out float minAngle, out float maxAngle, out float3 axis)
         {
             float[] muscleValue = currentPose.muscles;
-            //defaultValue = 0;
+            float defaultValue = muscleValue[muscleIndex];
 
 /*            minAngle = HumanTrait.GetMuscleDefaultMin(muscleIndex);
             maxAngle = HumanTrait.GetMuscleDefaultMax(muscleIndex);*/
@@ -392,13 +399,27 @@ namespace MagicMotion.Mono
             humanPoseHandler.SetHumanPose(ref currentPose);
             Quaternion initialLocalRotation = targetBone.localRotation;
 
+            muscleValue[muscleIndex] = defaultValue;
+            humanPoseHandler.SetHumanPose(ref currentPose);
+
             //OYM£ºpositiveLocalRotation=initialLocalRotation *positiveRotate,it should under the initialLocalRotation axis.
             Quaternion positiveRotate = Quaternion.Inverse(initialLocalRotation) * positiveLocalRotation;
             Quaternion negativeRotate = Quaternion.Inverse(initialLocalRotation) * negativeLocalRotation;
 
-            positiveRotate.ToAngleAxis(out maxAngle, out Vector3 axis1); //OYM£ºsome bone will loss some rotation,so use default rotation (like upper arm)
-            negativeRotate.ToAngleAxis(out minAngle, out Vector3 axis2);
-            minAngle *= -1;
+            float initMaxAngle, initMinAngle;
+            positiveRotate.ToAngleAxis(out initMaxAngle, out Vector3 axis1); //OYM£ºsome bone will loss some rotation,so use default rotation (like upper arm)
+            negativeRotate.ToAngleAxis(out initMinAngle, out Vector3 axis2);
+
+            if (defaultValue>0)
+            {
+                maxAngle = math.lerp(initMaxAngle, 0, defaultValue);
+                minAngle =-( initMinAngle +initMaxAngle) + maxAngle;
+            }
+            else
+            {
+                minAngle = -math.lerp(initMaxAngle, 0, -defaultValue);
+                maxAngle = initMinAngle + initMaxAngle + minAngle;
+            }
             axis = axis1;
         }
         /// <summary>

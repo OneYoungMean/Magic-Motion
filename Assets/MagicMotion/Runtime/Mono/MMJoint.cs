@@ -14,6 +14,10 @@ namespace MagicMotion.Mono
     public class MMJoint:MonoBehaviour
     {
         /// <summary>
+        /// Controller
+        /// </summary>
+        public MMJointController controller;
+        /// <summary>
         /// the joint Name
         /// </summary>
         public string jointName;
@@ -76,6 +80,11 @@ namespace MagicMotion.Mono
         public HumanBodyBones humanBodyBone;
 
 
+        public void OnValidate()
+        {
+            if (controller != null)
+            controller.UpdateMotion();
+        }
         internal JointData GetNativeJointData()
         {
             return new JointData()

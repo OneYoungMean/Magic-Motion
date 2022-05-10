@@ -41,6 +41,15 @@ namespace MagicMotion.Mono
                 dof = dof,
             };
         }
+
+        private void OnValidate()
+        {
+            if (joint!=null)
+            {
+                joint.OnValidate();
+            }
+
+        }
     }
 }
 
