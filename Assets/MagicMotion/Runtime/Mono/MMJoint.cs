@@ -87,9 +87,7 @@ namespace MagicMotion.Mono
                 minRange = minRange,
                 dof3Axis = dof3Axis,
                 length = length,
-                jointKind = ((int)humanBodyBone < 24 || (int)humanBodyBone == 54) ? JointKind.Body : ((int)humanBodyBone < 38 ? JointKind.LeftHand : JointKind.RightHand),
                 isVaild = enabled,
-
             };
     }
 

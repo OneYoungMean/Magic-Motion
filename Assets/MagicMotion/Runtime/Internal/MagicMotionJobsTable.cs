@@ -303,7 +303,7 @@ namespace MagicMotion
             /// joint datas 
             /// </summary>
             [ReadOnly]
-            public NativeArray<JointData> jointDatas;
+            public NativeSlice<JointData> jointDatas;
             /// <summary>
             /// joint muscle value's rotation 
             /// </summary>

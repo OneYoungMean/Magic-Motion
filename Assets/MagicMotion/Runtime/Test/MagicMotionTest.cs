@@ -131,7 +131,7 @@ namespace MagicMotion
         // Update is called once per frame
         void Update()
         {
-            motionKernel.Update(Time.deltaTime);
+            motionKernel.Optimize(Time.deltaTime);
         }
         private void OnDestroy()
         {

@@ -37,7 +37,7 @@ namespace MagicMotion.Mono
         /// <summary>
         /// To convert human animator as native data.
         /// </summary>
-        private MMJointController jointController;
+        private MMHumanGenerator jointController;
         /// <summary>
         /// MotionKernel
         /// </summary>
@@ -48,12 +48,7 @@ namespace MagicMotion.Mono
         private bool isInitial;
         [SerializeField]
         private int editorIndex;
-        [SerializeField]
-        private AnimationCurve lossCurve = new AnimationCurve();
-        [SerializeField]
-        private AnimationCurve muscleCurve = new AnimationCurve();
-        [SerializeField]
-        private AnimationCurve gradientCurve = new AnimationCurve();
+
         #endregion
 
         #region UnityFunc
@@ -61,26 +56,12 @@ namespace MagicMotion.Mono
         void Start()
         {
 
-            bool isValueCheck = ValueCheck();
+/*            bool isValueCheck = ValueCheck();
             if (!isValueCheck)
             {
                 return;
             }
-            Initialize();
-        }
-        void Update()
-        {
-            if (!isInitial)
-            {
-                return;
-            }
-            kernel.Update(Time.deltaTime);
-
-            UpdateCruve();
-        }
-        private void OnDestroy()
-        {
-            kernel.Dispose();
+            Initialize();*/
         }
         #endregion
 
@@ -105,9 +86,9 @@ namespace MagicMotion.Mono
             {
                 throw new InvalidOperationException("characterAnimator is not human");
             }
-            if (jointController==null&&!gameObject.TryGetComponent<MMJointController>(out jointController))
+            if (jointController==null&&!gameObject.TryGetComponent<MMHumanGenerator>(out jointController))
             {
-                jointController = gameObject.AddComponent<MMJointController>();
+                jointController = gameObject.AddComponent<MMHumanGenerator>();
             }
             if (kernel == null)
             {
@@ -147,19 +128,13 @@ namespace MagicMotion.Mono
         /// </summary>
          private void Initialize()
         {
-            jointController.Initialize(characterAnimator);
-            jointController.RegisterData(kernel);
+            jointController.Generate(characterAnimator);
             kernel.Initialize();
             isInitial = true;
         }
         #endregion
 
-        public void UpdateCruve()
-        {
-            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
-            muscleCurve.keys = kernel.GetmusclesKey(editorIndex);
-            lossCurve.keys = kernel.GetLossKey();
-        }
+
         #region StaticFunc
 
         #endregion

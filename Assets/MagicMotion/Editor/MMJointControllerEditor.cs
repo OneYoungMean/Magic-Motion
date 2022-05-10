@@ -5,9 +5,9 @@ using UnityEditor;
 
 namespace MagicMotion.UnityEditor
 {
-    using Mono;
+/*    using Mono;
     [CustomEditor(typeof(MMJointController))]
-    public class MMAvatarControllerEditor : Editor
+    public class MMJointControllerEditor : Editor
     {
         MMJointController controller;
         public void OnEnable()
@@ -28,16 +28,8 @@ namespace MagicMotion.UnityEditor
                     }
                     controller.UpdateMotion();
                 }
-                else
-                {
-                    if (GUILayout.Button("Generate Joint and muscle"))
-                    {
-                        controller.Initialize();
-                    }
-                }
             }
-
             serializedObject.ApplyModifiedProperties();
         }
-    }
+    }*/
 }

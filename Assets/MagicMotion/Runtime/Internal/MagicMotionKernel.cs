@@ -17,9 +17,9 @@ namespace MagicMotion
     //OYM：第一阶段:安全的代码部分
     //OYM：第二阶段，不安全的代码片段
     //OYM：已经不安全的代码片段除外
-    public  class MagicMotionKernel
+    public class MagicMotionKernel
     {
-        public const int iteration =64;
+        public const int iteration = 64;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         public JobHandle MainHandle;
@@ -96,6 +96,8 @@ namespace MagicMotion
         private bool isFinish;
         private bool isCreated;
 
+
+        private Action<float[]> SetMuscleCall;
         #endregion
 
         #region Accessor
@@ -116,13 +118,8 @@ namespace MagicMotion
             this.joints = joints;
             this.jointsTransforms = jointsTransforms;
             jointCount = joints.Length;
-
-            
-
-
-
         }
-        internal void SetMuscleSata(MuscleData[] muscles,float[] muscleValues = null)
+        internal void SetMuscleSata(MuscleData[] muscles, float[] muscleValues = null)
         {
             this.muscles = muscles;
             muscleCount = muscles.Length;
@@ -136,6 +133,11 @@ namespace MagicMotion
                 this.muscleValues = muscleValues;
             }
 
+        }
+
+        internal void SetOutDataFunc(Action<float[]> SetMuscleCall)
+        { 
+        this.SetMuscleCall = SetMuscleCall;
         }
         public void Initialize()
         {
@@ -175,7 +177,7 @@ namespace MagicMotion
                         MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
 
         }
-        public void Update(float deltatime)
+        public async void Optimize(float deltatime)
         {
             if (!isCreated)
             {
@@ -202,7 +204,7 @@ namespace MagicMotion
             if (true)
             {
                 getConstraintTransformJob.RunReadOnly(constraintTransformArray);
-                jointToTransformJob.Schedule(jointTransformArray).Complete();
+              //  jointToTransformJob.Schedule(jointTransformArray).Complete();
                // loopTask = Task.Run(() =>
                 {
                  //  initializeMuscleJob.Run(muscleCount);
@@ -216,9 +218,7 @@ namespace MagicMotion
                         caclulatelossJob.Run(parallelDataCount);
                         mainControllerJob.Run();
                     }
-                    double start = lossNativeArray[iteration];
-                    double end = lossNativeArray[0];
-                    Debug.Log(start + " ~ " + end);
+                    SetMuscleCall(muscleValueNativeArray.ToArray());
                 };
                 
                 isFinish = true;
@@ -282,7 +282,10 @@ namespace MagicMotion
             {
                 throw new System.Exception("constraint length, is not equal joint length");
             }
-
+            if (SetMuscleCall==null)
+            {
+                throw new System.Exception("SetMuscleCall is empty");
+            }
         }
         /// <summary>
         /// Build relation data ,for the gradient claculate
@@ -454,7 +457,7 @@ namespace MagicMotion
             buildTransformJob = new BuildTransformJob()
            {
                 jointTransformNatives = jointTransformNativeArray,
-               jointDatas = jointDataNativeArray,
+               jointDatas = jointDataNativeArray.Slice(0,jointCount),
                Dof3Quaternions=Dof3QuaternionNativeArray,
            };
             muscleToDof3Job = new MuscleToDof3Job()
@@ -568,7 +571,7 @@ namespace MagicMotion
             Keyframe[] muscles = new Keyframe[iteration + 1];
             for (int i = 0; i < iteration + 1; i++)
             {
-                muscles[iteration-i] = new Keyframe(1-i / (float)iteration, math.log10((float)lossNativeArray[i]));
+                muscles[iteration-i] = new Keyframe(1-i / (float)iteration, (float)lossNativeArray[i]);
             }
             return muscles;
 

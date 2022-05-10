@@ -12,16 +12,17 @@ namespace MagicMotion.Mono
     {
         // Start is called before the first frame update
         public const float MIN__TOLERENCE = 0.001f;
-
+        /// <summary>
+        /// Manager
+        /// </summary>
+        public MMJointController controller;
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
-        [Range(0, 1)]
         public Vector3 weight3;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>
-        [Range(0, 1f)]
         public Vector3 tolerance3;
         /// <summary>
         /// Constraint target

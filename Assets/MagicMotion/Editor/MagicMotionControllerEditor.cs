@@ -15,7 +15,7 @@ namespace MagicMotion.UnityEditor
             controller = (MagicMotionController)target; 
         }
 
-        public override void OnInspectorGUI()
+/*        public override void OnInspectorGUI()
         {
             if (GUILayout.Button("Save"))
             {
@@ -23,7 +23,7 @@ namespace MagicMotion.UnityEditor
                 controller.UpdateCruve();
             }
             base.OnInspectorGUI();
-        }
+        }*/
     }
 
 }

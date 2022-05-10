@@ -11,11 +11,6 @@ namespace MagicMotion
     internal struct JointData
     {
         /// <summary>
-        /// JointKind
-        /// </summary>
-        public JointKind jointKind;
-
-        /// <summary>
         ///  Is the joint vaild?
         /// </summary>
         public bool isVaild;
