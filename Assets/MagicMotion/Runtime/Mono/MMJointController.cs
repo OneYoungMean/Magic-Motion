@@ -198,7 +198,7 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel(SearchLevel.Oct);
+            kernel = new MagicMotionKernel((SearchLevel)4);
 
             MuscleData[] muscleDatas = new MuscleData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)

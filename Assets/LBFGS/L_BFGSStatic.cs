@@ -10,7 +10,7 @@ public unsafe static class L_BFGSStatic
     ///   Gets or sets the number of corrections used in the L-BFGS
     ///   update. Recommended values are between 3 and 7. Default is 5.
     /// </summary>
-    public const int CORRECTION =7 ;
+    public const int CORRECTION =5 ;
     /// <summary>
     /// Max Inner LoopCount
     /// Looks we dont need that ,we controll loop outside

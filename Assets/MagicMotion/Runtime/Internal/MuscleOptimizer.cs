@@ -11,7 +11,7 @@ namespace MagicMotion.Internal
     /// <summary>
     ///  Single Optimize
     /// </summary>
-    internal unsafe struct MuscleOptimizer
+    internal  struct MuscleOptimizer
     {
         #region  Field&Property
 
@@ -338,14 +338,8 @@ namespace MagicMotion.Internal
             #endregion
         }
 
-        public void Optimize(float[] muscle, int iterationCount =32)
+        public void Run()
         {
-            muscleValueNativeArray .CopyFrom(muscle);
-            Optimize(iterationCount);
-        }
-        public void Optimize(int iterationCount = 32)
-        {
-            this.iterationCount = iterationCount;
             Reset();
             for (int j = 0; j < iterationCount + 1; j++)
             {

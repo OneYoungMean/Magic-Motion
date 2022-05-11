@@ -29,7 +29,8 @@ namespace MagicMotion
     public class MagicMotionKernel
     {
 
-        public const int iterationCount = 64;
+        public const int iterationCount = 32;
+        public const int BatchCount = 4;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         //OYM： Base data (read only)
@@ -140,7 +141,7 @@ namespace MagicMotion
             isCreated = true;
         }
 
-        public async void Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
+        public  void Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
         {
             //OYM：未来要异步的部分,尽量不要涉及mono的内容
             if (!isCreated)
@@ -151,62 +152,67 @@ namespace MagicMotion
             {
                 return;
             }
+            waitTask = Task.Run(() =>
+              {
+                  #region Transform Data To NativeArray
+                  jointPositionNativeArray.CopyFrom(jointPositions);
+                  jointRotationNativeArray.CopyFrom(jointRotations);
+                  constraintPositionNativeArray.CopyFrom(constraintPositions);
+                  constraintRotationNativeArray.CopyFrom(constraintRotations);
+                  #endregion
+
+                  #region Build Question
+                  buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
+                  getConstraintTransformJob.Run(transformToConstrainNativeArray.Length);
+                  buildConstraintDataJob.Run(parallelDataCount);
+
+                  #endregion
+
+                  #region Optimize
+
+                  for (int i = 0; i < searchLevel; i++)
+                  {
+                      for (int ii = 0; ii < muscleCount; ii++)
+                      {
+                          float refValue = muscleValueNativeArrays[0][ii];
+                          muscleValueNativeArrays[i][ii] = GetSearchValue(i, refValue);
+                      }
+                  }
+
+                  bestLoss = float.MaxValue;
+                  
+                  for (int i = 0; i < searchLevel; i++)
+                  {
+                      int end = (i + 1) % BatchCount;
+                      loopTasks[end] = Task.Run((loopActions[i]));
+                      if (end == 0||i==searchLevel-1)
+                      {
+                          Task.WaitAll(loopTasks);
+                      }
+                  }
 
 
-            #region Transform Data To NativeArray
-            jointPositionNativeArray.CopyFrom(jointPositions);
-            jointRotationNativeArray.CopyFrom(jointRotations);
-            constraintPositionNativeArray.CopyFrom(constraintPositions);
-            constraintRotationNativeArray.CopyFrom(constraintRotations);
-            #endregion
+                  #endregion
 
-            #region Build Question
-            buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
-            getConstraintTransformJob.Run(transformToConstrainNativeArray.Length);
-            buildConstraintDataJob.Run(parallelDataCount);
-
-            #endregion
-
-            #region Optimize
-
-            for (int i = 0; i < searchLevel; i++)
-            {
-                for (int ii = 0; ii < muscleCount; ii++)
-                {
-                    float refValue = muscleValueNativeArrays[0][ii];
-                    muscleValueNativeArrays[i][ii] = GetSearchValue(i, refValue);
-                }
-            }
-
-            bestLoss = float.MaxValue;
-            for (int i = 0; i < searchLevel; i++)
-            {
-                loopTasks[i] = Task.Run(loopActions[i]);
-            }
-            waitTask= Task.WhenAll(loopTasks);
-
-            await waitTask;
-            #endregion
-
-            #region Output muscle Value
-            if (muscleValueNativeArrays[0].IsCreated)
-            {
-                if (bestOptimizerIndex != 0)
-                {
-                    muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
-                }
-                SetMuscleCall(muscleValueNativeArrays[0].ToArray());
-            }
+                  #region Output muscle Value
+                  if (muscleValueNativeArrays[0].IsCreated)
+                  {
+                      if (bestOptimizerIndex != 0)
+                      {
+                          muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
+                      }
+                      SetMuscleCall(muscleValueNativeArrays[0].ToArray());
+                  }
 
             #endregion
         }
-
-
+            );
+        }
         public async void Dispose()
         {
             if (waitTask!=null&&!waitTask.IsCompleted)
             {
-                            await waitTask;
+                await waitTask;
             }
 
             for (int i = 0; i < disposeList.Count; i++)
@@ -371,7 +377,7 @@ namespace MagicMotion
 
             optimizes = new MuscleOptimizer[searchLevel];
             loopActions = new Action[searchLevel];
-            loopTasks=new Task[searchLevel];
+
             for (int i = 0; i < searchLevel; i++)
             {
                 optimizes[i] = new MuscleOptimizer
@@ -389,10 +395,16 @@ namespace MagicMotion
                 int temp = i;
                 loopActions[i] = () => Opimize(temp);
             }
+
+            loopTasks = new Task[BatchCount];
+            for (int i = 0; i < loopTasks.Length; i++)
+            {
+                loopTasks[i] = Task.CompletedTask;
+            }
         }
         private void Opimize(int index)
         {
-            optimizes[index].Optimize();
+            optimizes[index].Run();
             if (optimizes[index].Loss < bestLoss)
             {
                 bestLoss = optimizes[index].Loss;
@@ -446,10 +458,10 @@ namespace MagicMotion
                     refValue = math.lerp(refValue, 1, 0.1f);
                     break;
                 case >= 8 and < 16:
-                    refValue = UnityEngine.Random.value > 0.5f ? refValue : -refValue;
+                    refValue =math.clamp(refValue* index/16f,-1,1);
                     break;
                 case >= 16 and < 32:
-                    refValue = UnityEngine.Random.value * 2 - 1;
+                    refValue = math.lerp(-1, 1, (index-16 )/ 16f);
                     break;
                 default:
                     break;
@@ -545,7 +557,7 @@ Dof3NativeArray = CreateNativeData<float3>(jointCount, Allocator.Persistent);
 
 Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount, Allocator.Persistent);
 
-gradients = CreateNativeData<float>(muscleCount, Allocator.Persistent);
+gradients = CreateNativeData<double>(muscleCount, Allocator.Persistent);
 
 LBFGSNatives = CreateNativeData<LBFGSSolver>(1, Allocator.Persistent);
 
@@ -553,15 +565,15 @@ globalDataNativeArray = CreateNativeData<GlobalData>(1, Allocator.Persistent);
 
 LBFGSNatives[0] = MagicMotion.LBFGSSolver.identity;
 
-diagonal = CreateNativeData<float>(muscleCount, Allocator.Persistent);
-gradientStore = CreateNativeData<float>(muscleCount, Allocator.Persistent);
-rho = CreateNativeData<float>(L_BFGSStatic. CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
-alpha = CreateNativeData<float>(L_BFGSStatic.CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
-steps = CreateNativeData<float>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
-delta = CreateNativeData<float>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);
+diagonal = CreateNativeData<double>(muscleCount, Allocator.Persistent);
+gradientStore = CreateNativeData<double>(muscleCount, Allocator.Persistent);
+rho = CreateNativeData<double>(L_BFGSStatic. CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
+alpha = CreateNativeData<double>(L_BFGSStatic.CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
+steps = CreateNativeData<double>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
+delta = CreateNativeData<double>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);
 
-lossNativeArray = CreateNativeData<float>(iteration+1, Allocator.Persistent);
-gradientAllNativeArray = CreateNativeData<float>((iteration + 1)*muscleCount, Allocator.Persistent);
+lossNativeArray = CreateNativeData<double>(iteration+1, Allocator.Persistent);
+gradientAllNativeArray = CreateNativeData<double>((iteration + 1)*muscleCount, Allocator.Persistent);
 muscleValueAllNativeArray = CreateNativeData<float>((iteration + 1) * muscleCount, Allocator.Persistent);*/
 /*
 rigHipPositionJob = new RigHipPositionJob()
@@ -667,17 +679,17 @@ muscleToJointJob = new MuscleToJointJob()
         private NativeArray<RigidTransform> jointTransformNativeArray;
         private NativeArray<JoinLoss> jointlossNativeArray;
         //OYM：LBFGS data(readwrite)
-        private NativeArray<float> gradientStore;
-        private NativeArray<float> gradients;
-        private NativeArray<float> diagonal;
-        private NativeArray<float> alpha;
-        private NativeArray<float> steps;
-        private NativeArray<float> delta;
-        private NativeArray<float> rho;
+        private NativeArray<double> gradientStore;
+        private NativeArray<double> gradients;
+        private NativeArray<double> diagonal;
+        private NativeArray<double> alpha;
+        private NativeArray<double> steps;
+        private NativeArray<double> delta;
+        private NativeArray<double> rho;
 
         //OYM：test data
-        private NativeArray<float> lossNativeArray; 
-        public NativeArray<float> gradientAllNativeArray;
+        private NativeArray<double> lossNativeArray; 
+        public NativeArray<double> gradientAllNativeArray;
         public NativeArray<float> muscleValueAllNativeArray;*/
 /*        /// <summary>
 /// Transform musles to joint
