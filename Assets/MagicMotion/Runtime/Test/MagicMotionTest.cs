@@ -1,4 +1,4 @@
-using BioIK2;
+/*using BioIK2;
 using MagicMotion;
 using System;
 using System.Collections;
@@ -82,10 +82,10 @@ namespace MagicMotion
                 {
                     currentConstraint.lengthSum = currentJoint.length + constraintNativeArray[currentJoint.parentIndex].lengthSum;
                 }
-                /*  currentConstraint.DofChangeConstraint.weight3 = 0.51f;
+                *//*  currentConstraint.DofChangeConstraint.weight3 = 0.51f;
                  //currentConstraint.positionChangeConstraint.tolerance3 = 0.01f;
                             currentConstraint.positionChangeConstraint.weight3 = 1;
-                             currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*/
+                             currentConstraint.positionChangeConstraint.oldPosition = bioJoint.transform.position;*//*
 
                 jointNativeArray[i] = currentJoint;
                 jointTransformArray[i] = bioJoint.transform;
@@ -141,4 +141,4 @@ namespace MagicMotion
             }
         }
     }
-}
+}*/

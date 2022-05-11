@@ -58,7 +58,7 @@ namespace MagicMotion
         /// To read constraint data from transform. e.g. position constriant,lookat constraint 
         /// </summary>
         [BurstCompile]
-        public struct TransformToConstraintJob : IJobParallelForTransform
+        public struct TransformToConstraintJob : IJobParallelFor
         {
             /// <summary>
             /// constraint Native data
@@ -69,23 +69,32 @@ namespace MagicMotion
             /// TransformToConstrain Data 
             /// </summary>
             public NativeArray<TransformToConstraintData> transformToConstrainDatas;
-            public int muscleLength;
-            public int jointLength;
-            public void Execute(int index, TransformAccess transform)
+            /// <summary>
+            ///  constraint positions
+            /// </summary>
+            public NativeArray<Vector3> constraintPositions;
+            /// <summary>
+            /// TransformToConstrain Data 
+            /// </summary>
+            public NativeArray<Quaternion> constraintRotations;
+            public void Execute(int index)
             {
                 int point = transformToConstrainDatas[index].jointIndex;
                 MMConstraintType type = transformToConstrainDatas[index].constraintType;
+                 var constraintPosition=constraintPositions[index];
+                var constraintRotation=constraintRotations[index];
+
                var constraint = constraintDatas[ point];
 
                 switch (type)
                 {
                     case MMConstraintType.Position:
-                        constraint.positionConstraint.position = transform.position;
+                        constraint.positionConstraint.position = constraintPosition;
                         break;
                     case MMConstraintType.Rotation:
                         break;
                     case MMConstraintType.LookAt:
-                        constraint.lookAtConstraint.position = transform.position;
+                        constraint.lookAtConstraint.position = constraintPosition;
                         break;
                     default:
                         break;
@@ -97,7 +106,7 @@ namespace MagicMotion
         /// Set Constriant data 
         /// </summary>
         [BurstCompile]
-        public struct ScheduleConstraintDataJob : IJobParallelFor
+        public struct BuildConstraintDataJob : IJobParallelFor
         {
             /// <summary>
             /// Joint relation data 
@@ -105,10 +114,15 @@ namespace MagicMotion
             [ReadOnly]
             public NativeArray<JointRelationData> jointRelationDatas;
             /// <summary>
-            /// Joint world transform
+            /// Joint world position
             /// </summary>
             [ReadOnly,NativeDisableParallelForRestriction]
-            public NativeArray<RigidTransform> jointTransforms;
+            public NativeArray<Vector3> jointPositions;
+            /// <summary>
+            /// Joint world rotation
+            /// </summary>
+            [ReadOnly, NativeDisableParallelForRestriction]
+            public NativeArray<Quaternion> jointRotations;
             /// <summary>
             /// joint dof3 value 
             /// </summary>
@@ -123,10 +137,11 @@ namespace MagicMotion
             {
                 var jointRelation = jointRelationDatas[index];
                 var originConstraint = constraintDatas[jointRelation.jointIndex];
-                var jointTransform = jointTransforms[jointRelation.jointIndex];
+                var jointPosition = jointPositions[jointRelation.jointIndex];
+                var jointRotation = jointRotations[jointRelation.jointIndex];
                 var jointDof3 = Dof3s[jointRelation.jointIndex];
 
-                originConstraint.positionChangeConstraint.oldPosition = jointTransform.pos;
+                originConstraint.positionChangeConstraint.oldPosition = jointPosition;
                 originConstraint.DofChangeConstraint.oldDof3= jointDof3;
                 constraintDatas[index] = originConstraint;
             }
@@ -559,7 +574,6 @@ namespace MagicMotion
             internal NativeArray<float> muscleAlls;
             #endregion
 
-
             /// <summary>
             /// joint loss
             /// </summary>
@@ -571,23 +585,19 @@ namespace MagicMotion
             [NativeDisableParallelForRestriction, ReadOnly]
             public NativeArray<JointRelationData> relationDatas;
             /// <summary>
-            /// joint relative count
+            /// muscle relative constraint count;
             /// </summary>
             [NativeDisableParallelForRestriction, ReadOnly]
-            public NativeArray<int> muscleRelativeCounts;
-            [NativeDisableParallelForRestriction]
+            public NativeArray<int> jointRelativedCounts;
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
+            [NativeDisableParallelForRestriction]
             public NativeArray<float> muscleValues;
             /// <summary>
             ///  parallel's data count
             /// </summary>
             public int parallelLength;
-            /// <summary>
-            ///  constraint count
-            /// </summary>
-            public int constraintLength;
             /// <summary>
             ///  variable's count ,is the same as muscle's count.
             /// </summary>
@@ -602,8 +612,8 @@ namespace MagicMotion
                 int index = 0;
                 var globalData = globalDataNative[index];
 
-                 double loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
-                CollectGradient(jointlossNatives, relationDatas, globalData, gradientAlls, muscleLength, jointLength, parallelLength, constraintLength, gradients);
+                 double loss = Collectloss(jointlossNatives, 0, jointRelativedCounts[0], jointLength);
+                CollectGradient(jointlossNatives, relationDatas, globalData, jointRelativedCounts,gradientAlls, muscleLength, jointLength, parallelLength, gradients);
                 CollectTestData(globalData);
                 losses[globalData.leastLoopCount] = loss;
                 var LBFGSSolver = LBFGSSolvers[index];
@@ -635,13 +645,14 @@ namespace MagicMotion
                 return loss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas ,GlobalData globalData, NativeArray<double> gradientAlls, int muscleLength, int jointLength, int parallelLength, int constraintLength, NativeArray<double>gradients)
+            private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas ,GlobalData globalData, NativeArray<int> jointRelativedCounts, NativeArray<double> gradientAlls, int muscleLength, int jointLength, int parallelLength,NativeArray<double>gradients)
             {
                 UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<double>());
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];
                     double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
+                    gradientTemp /= jointRelativedCounts[relationData.jointIndex];
                     gradientTemp /= L_BFGSStatic.EPSILION* globalData.axisDirection;
                     /*                   gradientTemp /= relativeCounts[relationData.jointIndex];*/
 
@@ -656,7 +667,7 @@ namespace MagicMotion
         {
 
             [ReadOnly]
-            public NativeSlice<RigidTransform> jointTransformNatives;
+            public NativeArray<RigidTransform> jointTransformNatives;
             public void Execute(int index, TransformAccess transform)
             {
                 transform.position = jointTransformNatives[index].pos;

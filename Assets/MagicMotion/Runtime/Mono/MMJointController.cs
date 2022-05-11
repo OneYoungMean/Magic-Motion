@@ -43,13 +43,19 @@ namespace MagicMotion.Mono
         [SerializeField]
         private AnimationCurve gradientCurve = new AnimationCurve();
         private bool isReadyUpdate;
+        private Transform[] jointTransforms;
+        private Transform[] constraintTransforms;
+
+        private Vector3[] jointPositions;
+        private Vector3[] constraintPositions;
+        private Quaternion[] jointRotations;
+        private Quaternion[] constraintRotations;
         #endregion
 
         #region UnityFunc
         public void Start()
         {
             Initialize();
-
         }
 
 
@@ -60,10 +66,12 @@ namespace MagicMotion.Mono
             {
                 return;
             }
+            UpdateData();
 
-            kernel.Optimize(Time.deltaTime);
-
+            kernel.Optimize(Time.deltaTime, jointPositions, jointRotations,constraintPositions,constraintRotations);
         }
+
+
 
         private  void LateUpdate()
         {
@@ -180,6 +188,7 @@ namespace MagicMotion.Mono
             motionMuscles = motionJoints.SelectMany(x => x.muscles).Where(y=>y!=null).ToArray();
             motionConstraints = motionJoints.SelectMany(x => x.constraints).Where(y => y != null).ToList();
         }
+
         /// Input data to kernel
         /// </summary>
         /// <param name="kernel"></param>
@@ -189,27 +198,27 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel();
+            kernel = new MagicMotionKernel(SearchLevel.Oct);
 
             MuscleData[] muscleDatas = new MuscleData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {
                 muscleDatas[i] = motionMuscles[i].GetNativeData();
             }
-            float[] muscleValues = new float[muscleDatas.Length];
-            for (int i = 0; i < motionMuscles.Length; i++)
-            {
-                muscleValues[i] = motionMuscles[i].value;
-            }
-            kernel.SetMuscleSata(muscleDatas, muscleValues);
+            kernel.SetMuscleSata(muscleDatas);
+
+
             JointData[] jointData = new JointData[motionJoints.Length];
-            Transform[] jointTransforms = new Transform[motionJoints.Length];
+            jointPositions = new Vector3[motionJoints.Length];
+            jointRotations = new Quaternion[motionJoints.Length];
+            jointTransforms = new Transform[motionJoints.Length];
+
             for (int i = 0; i < motionJoints.Length; i++)
             {
                 jointData[i] = motionJoints[i].GetNativeJointData();
                 jointTransforms[i] = motionJoints[i].transform;
             }
-            kernel.SetJointData(jointData, jointTransforms);
+            kernel.SetJointData(jointData);
 
             ConstraintData[] constraintNatives = new ConstraintData[motionJoints.Length];
             List<TransformToConstraintData> transformToConstraintCollect = new List<TransformToConstraintData>();
@@ -222,12 +231,27 @@ namespace MagicMotion.Mono
                 transformToConstraintCollect.AddRange(transformToConstraints);
                 aimTransformCollect.AddRange(aimTransforms);
             }
-            kernel.SetConstraintData(constraintNatives, transformToConstraintCollect.ToArray(), aimTransformCollect.ToArray());
+            kernel.SetConstraintData(constraintNatives, transformToConstraintCollect.ToArray());
+            constraintTransforms = aimTransformCollect.ToArray();
+            constraintPositions = new Vector3[constraintTransforms.Length];
+            constraintRotations= new Quaternion[constraintTransforms.Length];
 
             kernel.SetOutDataFunc(SetMuscle);
             kernel.Initialize();
         }
-
+        private void UpdateData()
+        {
+            for (int i = 0; i < jointTransforms.Length; i++)
+            {
+                jointPositions[i] = jointTransforms[i].position;
+                jointRotations[i] = jointTransforms[i].rotation;
+            }
+            for (int i = 0; i < constraintTransforms.Length; i++)
+            {
+                constraintPositions[i] = constraintTransforms[i].position;
+                constraintRotations[i] = constraintTransforms[i].rotation;
+            }
+        }
         /// <summary>
         /// Update motion for muscle on editor or mian thread
         /// </summary>
@@ -294,9 +318,9 @@ namespace MagicMotion.Mono
 
         private  void UpdateCruve()
         {
-            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
+/*            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
             muscleCurve.keys = kernel.GetmusclesKey(editorIndex);
-            lossCurve.keys = kernel.GetLossKey();
+            lossCurve.keys = kernel.GetLossKey();*/
         }
         #endregion
 

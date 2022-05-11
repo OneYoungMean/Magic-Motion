@@ -39,10 +39,6 @@ namespace MagicMotion.Mono
         /// </summary>
         private MMHumanGenerator jointController;
         /// <summary>
-        /// MotionKernel
-        /// </summary>
-        private MagicMotionKernel kernel;
-        /// <summary>
         /// is Initialize
         /// </summary>
         private bool isInitial;
@@ -90,10 +86,6 @@ namespace MagicMotion.Mono
             {
                 jointController = gameObject.AddComponent<MMHumanGenerator>();
             }
-            if (kernel == null)
-            {
-                kernel = new MagicMotionKernel();
-            }
             return ValueCheck(inputMode);
             
         }
@@ -129,7 +121,6 @@ namespace MagicMotion.Mono
          private void Initialize()
         {
             jointController.Generate(characterAnimator);
-            kernel.Initialize();
             isInitial = true;
         }
         #endregion

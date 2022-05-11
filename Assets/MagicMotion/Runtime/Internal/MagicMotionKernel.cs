@@ -14,13 +14,14 @@ using System.Threading.Tasks;
 
 namespace MagicMotion
 {
+    using Internal;
     public enum SearchLevel
     {
-        Single=1,
-        Double=2,
-        Quater=4,
-        Oct=8,
-        Hex=16,
+        Single = 1,
+        Double = 2,
+        Quater = 4,
+        Oct = 8,
+        Hex = 16,
     }
     //OYM：第一阶段:安全的代码部分
     //OYM：第二阶段，不安全的代码片段
@@ -28,60 +29,39 @@ namespace MagicMotion
     public class MagicMotionKernel
     {
 
-        public const int iteration = 64;
+        public const int iterationCount = 64;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
-        public JobHandle MainHandle;
         //OYM： Base data (read only)
-        private NativeArray<JointData> jointDataNativeArray;
+        private NativeArray<JointData> jointDataNativeArray;//OYM：所有jointData的存放位置,长度为parallelLength
         private NativeArray<MuscleData> muscleDataNativeArray;
-        private NativeArray<ConstraintData> constraintNativeArray;
-        private NativeArray<LBFGSSolver> LBFGSNatives;
-        private NativeArray<GlobalData> globalDataNativeArray;
+        private NativeArray<ConstraintData> constraintDataNativeArray;
+
         //OYM：Relative data(readonly)
         private NativeArray<TransformToConstraintData> transformToConstrainNativeArray;
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
-        private NativeArray<int> muscleRelativeCountArray;
-        //OYM：base data (readwrite)
-        private NativeArray<float> muscleValueNativeArray;
-        private NativeArray<float3> Dof3NativeArray;
-        private NativeArray<quaternion> Dof3QuaternionNativeArray;
-        private NativeArray<quaternion> muscleGradientRotationArray;
-        private NativeArray<RigidTransform> jointTransformNativeArray;
-        private NativeArray<JoinLoss> jointlossNativeArray;
-        //OYM：LBFGS data(readwrite)
-        private NativeArray<double> gradientStore;
-        private NativeArray<double> gradients;
-        private NativeArray<double> diagonal;
-        private NativeArray<double> alpha;
-        private NativeArray<double> steps;
-        private NativeArray<double> delta;
-        private NativeArray<double> rho;
+        private NativeArray<int> muscleRelativeCountNativeArray;
+        //OYM： muslceData
+        private NativeArray<float>[] muscleValueNativeArrays;
+
         //OYM：transform data
-        private TransformAccessArray jointTransformArray;
-        private TransformAccessArray constraintTransformArray;
-        //OYM：test data
-        private NativeArray<double> lossNativeArray;
-        public NativeArray<double> gradientAllNativeArray;
-        public NativeArray<float> muscleValueAllNativeArray;
+        private NativeArray<Vector3> jointPositionNativeArray;
+        private NativeArray<Vector3> constraintPositionNativeArray;
+        private NativeArray<Quaternion> jointRotationNativeArray;
+        private NativeArray<Quaternion> constraintRotationNativeArray;
         #endregion
 
         #region JobsData
-
         private TransformToConstraintJob getConstraintTransformJob;
         //private RigHipPositionJob rigHipPositionJob;
-        private BuildTransformJob buildTransformJob;
-        private MuscleToDof3Job muscleToDof3Job;
-        private Dof3ToRotationJob dof3ToRotationJob;
-        private ClacDof3EpsilionJob clacDof3EpsilionJob;
-        private ScheduleConstraintDataJob scheduleConstraintDataJob;
-        private CaclulatelossJob caclulatelossJob;
-        private MainControllerJob mainControllerJob;
-        private JointToTransformJob jointToTransformJob;
+        private BuildConstraintDataJob buildConstraintDataJob;
+
+        private MuscleOptimizer[] optimizes;
 
         #endregion
 
         #region DefaultData
+
         private InitializeMuscleJob initializeMuscleJob;
         private JointData[] joints;
         private MuscleData[] muscles;
@@ -89,49 +69,46 @@ namespace MagicMotion
         private ConstraintData[] constraints;
         private JointRelationData[] jointMapDatas;
 
-        private Transform[] constraintTransforms;
-        private Transform[] jointsTransforms;
-        private Task loopTask;
+        private Task waitTask;
+        private Task[] loopTasks;
+        private Action[] loopActions;
         private List<IDisposable> disposeList;
 
-        private int[] muscleRelativedCounts;
+
+        private int[] jointRelativedCounts;
         private float[] muscleValues;
         private bool[][] jointRelationMap;
 
         public int parallelDataCount;
-        private float[][] searchPoint;
         public int jointCount;
         public int muscleCount;
 
-        private bool isFinish;
+        private volatile float bestLoss;
+        private volatile int bestOptimizerIndex;
+
         private bool isCreated;
 
-
         private Action<float[]> SetMuscleCall;
-        private SearchLevel searchLevel;
-        #endregion
+        private int searchLevel;
 
-        #region Accessor
+
         public bool IsCreated { get { return isCreated; } }
-
 
         #endregion
 
         #region PublicFunc
-        public MagicMotionKernel(SearchLevel searchLevel=SearchLevel.Double)
+        public MagicMotionKernel(SearchLevel searchLevel = SearchLevel.Double)
         {
-            this.searchLevel = searchLevel;
+            this.searchLevel = (int)searchLevel;
         }
-        internal void SetConstraintData(ConstraintData[] constraints, TransformToConstraintData[] transformToConstraints, Transform[] constraintTransforms)
+        internal void SetConstraintData(ConstraintData[] constraints, TransformToConstraintData[] transformToConstraints)
         {
             this.constraints = constraints;
-            this.constraintTransforms = constraintTransforms;
             this.transformToConstraints = transformToConstraints;
         }
-        internal void SetJointData(JointData[] joints, Transform[] jointsTransforms)
+        internal void SetJointData(JointData[] joints)
         {
             this.joints = joints;
-            this.jointsTransforms = jointsTransforms;
             jointCount = joints.Length;
         }
         internal void SetMuscleSata(MuscleData[] muscles, float[] muscleValues = null)
@@ -151,155 +128,92 @@ namespace MagicMotion
         }
 
         internal void SetOutDataFunc(Action<float[]> SetMuscleCall)
-        { 
-        this.SetMuscleCall = SetMuscleCall;
+        {
+            this.SetMuscleCall = SetMuscleCall;
         }
         public void Initialize()
         {
             ValueCheck();
             BuildRelationData();
             BuildNativeDataInternal();
-            BuildUnsafePtr();
             BuildJobDataInternal();
-            Reset();
-            isCreated =true;
+            isCreated = true;
         }
 
-        private void BuildUnsafePtr()
+        public async void Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
         {
-
-        }
-
-        public void Reset()
-        {
-            if (!MainHandle.IsCompleted)
-            {
-                MainHandle.Complete();
-            }
-             initializeMuscleJob = new InitializeMuscleJob()
-            {
-                muscleDatas = muscleDataNativeArray,
-                musclesValues = muscleValueNativeArray
-            };
-            InitializeJointJob initializeJointJob = new InitializeJointJob()
-            {
-                jointTransformDatas = jointTransformNativeArray,
-                muscleLength = muscleCount,
-                jointLength = jointCount
-            };
-            initializeMuscleJob.Run(muscleCount);
-            initializeJointJob.RunReadOnly(jointTransformArray);
-            isFinish = true;
-/*            muscleToJointJob.Run(muscleCount);
-            buildTransformJob.Run(muscleCount);*/
-
-            /*            MainHandle = initializeMuscleJob.Schedule(muscleCount, 32, MainHandle);
-                        MainHandle= muscleToJointJob.Schedule (muscleCount,32, MainHandle);
-                        MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
-
-        }
-        public void Optimize(float deltatime)
-        {
+            //OYM：未来要异步的部分,尽量不要涉及mono的内容
             if (!isCreated)
             {
                 return;
             }
-            if (loopTask!=null&&!loopTask.IsCompleted)
+            if (waitTask != null && !waitTask.IsCompleted)
             {
                 return;
             }
-            isFinish = false;
 
 
-            
+            #region Transform Data To NativeArray
+            jointPositionNativeArray.CopyFrom(jointPositions);
+            jointRotationNativeArray.CopyFrom(jointRotations);
+            constraintPositionNativeArray.CopyFrom(constraintPositions);
+            constraintRotationNativeArray.CopyFrom(constraintRotations);
+            #endregion
 
-            for (int i = 0; i < muscleCount; i++)
+            #region Build Question
+            buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
+            getConstraintTransformJob.Run(transformToConstrainNativeArray.Length);
+            buildConstraintDataJob.Run(parallelDataCount);
+
+            #endregion
+
+            #region Optimize
+
+            for (int i = 0; i < searchLevel; i++)
             {
-                searchPoint[2][i]=(searchPoint[0][i]+1)/2;
-                searchPoint[3][i]= (searchPoint[0][i] - 1) / 2;
-            }
-            if (true)
-            {
-                getConstraintTransformJob.RunReadOnly(constraintTransformArray);
-                //  jointToTransformJob.Schedule(jointTransformArray).Complete();
-                
-                
-                 //Task.Run(() =>
+                for (int ii = 0; ii < muscleCount; ii++)
                 {
-                    //  initializeMuscleJob.Run(muscleCount);
-                   float bestLoss = float.MaxValue;
-
-                    scheduleConstraintDataJob.Run(parallelDataCount);
-                    for (int i =0; i <2; i++)
-                    {
-                        muscleValueNativeArray.CopyFrom(searchPoint[i]);
-                        for (int j = 0; j < LBFGSNatives.Length; j++)
-                        {
-                            var globalData = globalDataNativeArray[j];
-                            globalData.leastLoopCount = iteration;
-                            globalData.isInitialize = false;
-                            globalDataNativeArray[j] = globalData;
-
-                            var solver = LBFGSNatives[j];
-                            solver.state = LBFGSState.Initialize;
-                            solver.numberOfVariables = muscleCount;
-                            LBFGSNatives[j] = solver;
-                        }
-                        for (int j = 0; j < iteration + 1; j++)
-                        {
-                            muscleToDof3Job.Run(muscleCount);
-                            dof3ToRotationJob.Run(jointCount);
-                            buildTransformJob.Run(jointCount);
-                            clacDof3EpsilionJob.Run(muscleCount);
-                            caclulatelossJob.Run(parallelDataCount);
-                            mainControllerJob.Run();
-                        }
-                        if (lossNativeArray[0]<bestLoss)
-                        {
-                            searchPoint[0]= muscleValueNativeArray.ToArray();
-                            bestLoss =(float) lossNativeArray[0];
-                        }
-                    }
-
-                    SetMuscleCall(searchPoint[0]);
+                    float refValue = muscleValueNativeArrays[0][ii];
+                    muscleValueNativeArrays[i][ii] = GetSearchValue(i, refValue);
                 }
-                //);
-                
-                isFinish = true;
-
-
             }
-            else
+
+            bestLoss = float.MaxValue;
+            for (int i = 0; i < searchLevel; i++)
             {
-   /*             this.MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32, this.MainHandle);
-                this.MainHandle= scheduleConstraintDataJob.Schedule(parallelDataCount, 1, this.MainHandle);
-                for (int i = 0; i < iteration; i++)
+                loopTasks[i] = Task.Run(loopActions[i]);
+            }
+            waitTask= Task.WhenAll(loopTasks);
+
+            await waitTask;
+            #endregion
+
+            #region Output muscle Value
+            if (muscleValueNativeArrays[0].IsCreated)
+            {
+                if (bestOptimizerIndex != 0)
                 {
-                    MainHandle = muscleToDof3Job.Schedule(muscleCount, muscleCount / threadCount, MainHandle);
-                    MainHandle = dof3ToRotationJob.Schedule(jointCount, jointCount / threadCount, MainHandle);
-                    MainHandle = buildTransformJob.Schedule(jointCount, MainHandle);
-                    MainHandle = clacDof3EpsilionJob.Schedule(muscleCount, muscleCount / threadCount, MainHandle);
-                    MainHandle = caclulatelossJob.Schedule(parallelDataCount, parallelDataCount / threadCount, MainHandle);
-                    MainHandle = mainControllerJob.Schedule(MainHandle);
+                    muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
                 }
-                this.MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*/
+                SetMuscleCall(muscleValueNativeArrays[0].ToArray());
             }
 
-
+            #endregion
         }
-        public void Dispose()
+
+
+        public async void Dispose()
         {
-            if (!MainHandle.IsCompleted)
+            if (waitTask!=null&&!waitTask.IsCompleted)
             {
-                MainHandle.Complete();
+                            await waitTask;
             }
+
             for (int i = 0; i < disposeList.Count; i++)
             {
                 disposeList[i].Dispose();
             }
             disposeList = null;
-
-            L_BFGSStatic.Disposed(diagonal, gradientStore, rho, alpha, steps, delta);
         }
         #endregion
 
@@ -316,7 +230,7 @@ namespace MagicMotion
                 Dispose();
                 isCreated = false;
             }
-            if (disposeList!=null)
+            if (disposeList != null)
             {
                 throw new Exception("You cannot Initialize it before call Dispose");
             }
@@ -326,7 +240,7 @@ namespace MagicMotion
             {
                 throw new System.Exception("constraint length, is not equal joint length");
             }
-            if (SetMuscleCall==null)
+            if (SetMuscleCall == null)
             {
                 throw new System.Exception("SetMuscleCall is empty");
             }
@@ -346,52 +260,51 @@ namespace MagicMotion
 
             for (int i = 0; i < jointCount; i++)
             {
-                int parentIndex =i;
+                int parentIndex = i;
                 while (parentIndex != -1)
                 {
                     jointRelationMap[parentIndex][i] = true;
                     parentIndex = joints[parentIndex].parentIndex;
                 }
             }
+            jointRelativedCounts = new int[jointCount];
+            int allConstraintCount = 0;
             for (int i = 0; i < jointCount; i++)
             {
                 jointMapDataTemp.Add(new JointRelationData()
                 {
-                    jointIndex=i,
+                    jointIndex = i,
                     relatedJointIndex = -1,
                     relatedMuscleIndex = -1,
                 });
+                allConstraintCount += constraints[i].GetVaildCount();
             }
-            muscleRelativedCounts=new int[jointCount];
+            jointRelativedCounts[0] = allConstraintCount;
+
+
             for (int i = 0; i < muscles.Length; i++)
             {
                 int relativeCount = 0;
                 int jointIndex = muscles[i].jointIndex;
-                for (int j = 0; j < jointCount; j++)
+                for (int ii = 0; ii < jointCount; ii++)
                 {
-                    if (jointRelationMap[jointIndex][j])
+                    if (jointRelationMap[jointIndex][ii])
                     {
                         jointMapDataTemp.Add(new JointRelationData()
                         {
-                            jointIndex = j,
+                            jointIndex = ii,
                             relatedJointIndex = jointIndex,
                             relatedMuscleIndex = i,
                         });
-                        relativeCount+= constraints[j].GetVaildCount();
+                        relativeCount += constraints[ii].GetVaildCount();
                     }
-      
+
                 }
-                muscleRelativedCounts[jointIndex] =relativeCount;
+                jointRelativedCounts[jointIndex] = relativeCount;
             }
 
             jointMapDatas = jointMapDataTemp.ToArray();
             parallelDataCount = jointMapDatas.Length;
-
-            searchPoint = new float[4][];
-            for (int i = 0; i < searchPoint.Length; i++)
-            {
-                searchPoint[i] = new float[muscleCount];
-            }
         }
         /// <summary>
         /// build all native data
@@ -403,11 +316,13 @@ namespace MagicMotion
             {
                 throw new System.Exception("Disposed NativeArray before you create it");
             }
+
             jointRelationDataNativeArray = CreateNativeData(jointMapDatas, Allocator.Persistent);
-            constraintNativeArray = CreateNativeData<ConstraintData>(parallelDataCount, Allocator.Persistent);
+
+            constraintDataNativeArray = CreateNativeData<ConstraintData>(parallelDataCount, Allocator.Persistent);
             for (int i = 0; i < parallelDataCount; i++)
             {
-                constraintNativeArray[i]=constraints[jointMapDatas[i].jointIndex];
+                constraintDataNativeArray[i] = constraints[jointMapDatas[i].jointIndex];
             }
 
             jointDataNativeArray = CreateNativeData<JointData>(parallelDataCount, Allocator.Persistent);
@@ -416,54 +331,22 @@ namespace MagicMotion
                 jointDataNativeArray[i] = joints[jointMapDatas[i].jointIndex];
             }
 
-            jointTransformNativeArray = CreateNativeData<RigidTransform>(jointCount, Allocator.Persistent);
-            for (int i = 0; i < jointCount; i++)
-            {
-                RigidTransform rigid;
-                if (i % jointCount == 0)
-                {
-                    rigid.pos = jointsTransforms[0].position;
-                    rigid.rot = jointsTransforms[0].rotation;
-                }
-                else
-                {
-                    rigid = RigidTransform.identity;
-                }
-                jointTransformNativeArray[i] = rigid;
-            }
-
-            muscleDataNativeArray = CreateNativeData(muscles, Allocator.Persistent);
-            muscleValueNativeArray = CreateNativeData(muscleValues, Allocator.Persistent);
-            muscleGradientRotationArray = CreateNativeData<quaternion>(muscles.Length, Allocator.Persistent);
-            muscleRelativeCountArray = CreateNativeData<int>(muscleRelativedCounts, Allocator.Persistent);
-
             transformToConstrainNativeArray = CreateNativeData(transformToConstraints, Allocator.Persistent);
+            muscleDataNativeArray = CreateNativeData(muscles, Allocator.Persistent);
 
-            constraintTransformArray = CreateNativeData(constraintTransforms);
+            muscleRelativeCountNativeArray = CreateNativeData<int>(jointRelativedCounts, Allocator.Persistent);
 
-            jointTransformArray = CreateNativeData(jointsTransforms);
+            jointPositionNativeArray = CreateNativeData<Vector3>(jointCount);
+            jointRotationNativeArray = CreateNativeData<Quaternion>(jointCount);
 
-            jointlossNativeArray = CreateNativeData<JoinLoss>(parallelDataCount, Allocator.Persistent);
+            constraintPositionNativeArray = CreateNativeData<Vector3>(transformToConstraints.Length);
+            constraintRotationNativeArray = CreateNativeData<Quaternion>(transformToConstraints.Length);
+            muscleValueNativeArrays = new NativeArray<float>[(int)searchLevel];
 
-            Dof3NativeArray = CreateNativeData<float3>(jointCount, Allocator.Persistent);
-
-            Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount, Allocator.Persistent);
-
-            gradients = CreateNativeData<double>(muscleCount, Allocator.Persistent);
-
-            LBFGSNatives = CreateNativeData<LBFGSSolver>(1, Allocator.Persistent);
-
-            globalDataNativeArray = CreateNativeData<GlobalData>(1, Allocator.Persistent);
-
-
-
-            LBFGSNatives[0] = MagicMotion.LBFGSSolver.identity;
-
-            L_BFGSStatic.CreateWorkVector(muscleCount, out diagonal, out gradientStore, out rho, out alpha, out steps, out delta);
-
-            lossNativeArray= CreateNativeData<double>(iteration+1, Allocator.Persistent);
-            gradientAllNativeArray = CreateNativeData<double>((iteration + 1)*muscleCount, Allocator.Persistent);
-            muscleValueAllNativeArray = CreateNativeData<float>((iteration + 1) * muscleCount, Allocator.Persistent);
+            for (int i = 0; i < searchLevel; i++)
+            {
+                muscleValueNativeArrays[i] = CreateNativeData<float>(muscleCount);
+            }
         }
         /// <summary>
         /// Build all job data 
@@ -472,39 +355,235 @@ namespace MagicMotion
         {
             getConstraintTransformJob = new TransformToConstraintJob()
             {
-                transformToConstrainDatas= transformToConstrainNativeArray,
-                constraintDatas = constraintNativeArray,
-                muscleLength = muscleCount,
-                jointLength = jointCount
+                transformToConstrainDatas = transformToConstrainNativeArray,
+                constraintPositions = constraintPositionNativeArray,
+                constraintRotations = constraintRotationNativeArray,
+                constraintDatas = constraintDataNativeArray,
             };
-            scheduleConstraintDataJob = new ScheduleConstraintDataJob()
-            {
-                jointTransforms = jointTransformNativeArray,
-                jointRelationDatas = jointRelationDataNativeArray,
-                Dof3s = Dof3NativeArray,
-                constraintDatas = constraintNativeArray
-            };
-            /*
-           rigHipPositionJob = new RigHipPositionJob()
-           {
-               jointDatas = jointDataArray,
-               constraintNatives = constraintNativeArray,
-               jointTransformNatives = jointTransformNativeArray,
-               jointLength = jointCount,
-               loopCount = 10,
-           };
 
-           muscleToJointJob = new MuscleToJointJob()
-           {
-               globalDataNative= globalDataNativeArray,
-               Dof3s = Dof3NativeArray,
-               muscleDatas = muscleDataArray,
-               musclesValues = muscleValueNativeArray,
-               jointCount = jointCount,
-               muscleCount = muscleCount,
-           };
-                        */
-            buildTransformJob = new BuildTransformJob()
+            buildConstraintDataJob = new BuildConstraintDataJob()
+            {
+                jointPositions = jointPositionNativeArray,
+                jointRotations = jointRotationNativeArray,
+                jointRelationDatas = jointRelationDataNativeArray,
+                constraintDatas = constraintDataNativeArray,
+            };
+
+            optimizes = new MuscleOptimizer[searchLevel];
+            loopActions = new Action[searchLevel];
+            loopTasks=new Task[searchLevel];
+            for (int i = 0; i < searchLevel; i++)
+            {
+                optimizes[i] = new MuscleOptimizer
+                (
+                parallelDataCount, jointCount, muscleCount, iterationCount,
+                muscleRelativeCountNativeArray,
+                jointDataNativeArray,
+                muscleDataNativeArray,
+                constraintDataNativeArray,
+                jointRelationDataNativeArray,
+                muscleValueNativeArrays[i],
+                disposeList
+                );
+
+                int temp = i;
+                loopActions[i] = () => Opimize(temp);
+            }
+        }
+        private void Opimize(int index)
+        {
+            optimizes[index].Optimize();
+            if (optimizes[index].Loss < bestLoss)
+            {
+                bestLoss = optimizes[index].Loss;
+                bestOptimizerIndex = index;
+            }
+        }
+        private NativeArray<T> CreateNativeData<T>(T[] arr, Allocator allocator = Allocator.Persistent) where T : struct
+        {
+            var nativeArr = new NativeArray<T>(arr, allocator);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
+        private NativeArray<T> CreateNativeData<T>(int length, Allocator allocator = Allocator.Persistent) where T : struct
+        {
+            var nativeArr = new NativeArray<T>(length, allocator);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
+        private TransformAccessArray CreateNativeData(Transform[] transforms)
+        {
+            var nativeArr = new TransformAccessArray(transforms);
+            disposeList.Add(nativeArr);
+            return nativeArr;
+        }
+
+        private static float GetSearchValue(int index, float refValue)
+        {
+            switch (index)
+            {
+                case 0:
+                    break;
+                case 1:
+                    refValue = 0;
+                    break;
+                case 2:
+                    refValue = -1;
+                    break;
+                case 3:
+                    refValue = 1;
+                    break;
+                case 4:
+                    refValue = math.lerp(refValue, -1, 0.01f);
+                    break;
+                case 5:
+                    refValue = math.lerp(refValue, 1, 0.01f);
+                    break;
+                case 6:
+                    refValue = math.lerp(refValue, -1, 0.1f);
+                    break;
+                case 7:
+                    refValue = math.lerp(refValue, 1, 0.1f);
+                    break;
+                case >= 8 and < 16:
+                    refValue = UnityEngine.Random.value > 0.5f ? refValue : -refValue;
+                    break;
+                case >= 16 and < 32:
+                    refValue = UnityEngine.Random.value * 2 - 1;
+                    break;
+                default:
+                    break;
+            }
+            return refValue;
+        }
+
+        #endregion
+
+        /*        public Keyframe[] GetmusclesKey(int index)
+                {
+
+                    Keyframe[] muscles = new Keyframe[iteration + 1];
+                    for (int i = 0; i < iteration+1; i++)
+                    {
+                        muscles[iteration - i]=new Keyframe(1 - i /(float)iteration, muscleValueAllNativeArray[index+i * muscleCount]);
+                    }
+                    return muscles;
+                }
+                public Keyframe[] GetGradientsKey(int index)
+                {
+                    Keyframe[] muscles = new Keyframe[iteration + 1];
+                    for (int i = 0; i < iteration + 1; i++)
+                    {
+                        muscles[iteration - i] = new Keyframe(1 - i / (float)iteration, (float)gradientAllNativeArray[index + i * muscleCount]);
+                    }
+                    return muscles;
+
+                }
+                public Keyframe[] GetLossKey()
+                {
+                    Keyframe[] muscles = new Keyframe[iteration + 1];
+                    for (int i = 0; i < iteration + 1; i++)
+                    {
+                        muscles[iteration-i] = new Keyframe(1-i / (float)iteration, (float)lossNativeArray[i]);
+                    }
+                    return muscles;
+
+                }*/
+    }
+}
+
+/*          for (int i = 0; i < muscleCount; i++)
+            {
+                searchPoint[2][i]=(searchPoint[0][i]+1)/2;
+                searchPoint[3][i]= (searchPoint[0][i] - 1) / 2;
+            }
+            if (true)
+            {
+*//*                getConstraintTransformJob.RunReadOnly(constraintTransformArray);*//*
+                //  jointToTransformJob.Schedule(jointTransformArray).Complete();
+                
+                
+                 //Task.Run(() =>
+                {
+                    //  initializeMuscleJob.Run(muscleCount);
+
+                }
+                //);
+                
+                isFinish = true;
+
+
+            }
+            else
+            {
+   *//*             this.MainHandle = getConstraintTransformJob.ScheduleReadOnly(constraintTransformArray, 32, this.MainHandle);
+                this.MainHandle= scheduleConstraintDataJob.Schedule(parallelDataCount, 1, this.MainHandle);
+                for (int i = 0; i < iteration; i++)
+                {
+                    MainHandle = muscleToDof3Job.Schedule(muscleCount, muscleCount / threadCount, MainHandle);
+                    MainHandle = dof3ToRotationJob.Schedule(jointCount, jointCount / threadCount, MainHandle);
+                    MainHandle = buildTransformJob.Schedule(jointCount, MainHandle);
+                    MainHandle = clacDof3EpsilionJob.Schedule(muscleCount, muscleCount / threadCount, MainHandle);
+                    MainHandle = caclulatelossJob.Schedule(parallelDataCount, parallelDataCount / threadCount, MainHandle);
+                    MainHandle = mainControllerJob.Schedule(MainHandle);
+                }
+                this.MainHandle = jointToTransformJob.Schedule(jointTransformArray, MainHandle);*//*
+            }
+
+*/
+/*          
+muscleValueNativeArray = CreateNativeData(muscleValues, Allocator.Persistent);
+muscleGradientRotationArray = CreateNativeData<quaternion>(muscles.Length, Allocator.Persistent);
+
+constraintTransformArray = CreateNativeData(constraintTransforms);
+
+jointTransformArray = CreateNativeData(jointsTransforms);
+
+jointlossNativeArray = CreateNativeData<JoinLoss>(parallelDataCount, Allocator.Persistent);
+
+Dof3NativeArray = CreateNativeData<float3>(jointCount, Allocator.Persistent);
+
+Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount, Allocator.Persistent);
+
+gradients = CreateNativeData<float>(muscleCount, Allocator.Persistent);
+
+LBFGSNatives = CreateNativeData<LBFGSSolver>(1, Allocator.Persistent);
+
+globalDataNativeArray = CreateNativeData<GlobalData>(1, Allocator.Persistent);
+
+LBFGSNatives[0] = MagicMotion.LBFGSSolver.identity;
+
+diagonal = CreateNativeData<float>(muscleCount, Allocator.Persistent);
+gradientStore = CreateNativeData<float>(muscleCount, Allocator.Persistent);
+rho = CreateNativeData<float>(L_BFGSStatic. CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
+alpha = CreateNativeData<float>(L_BFGSStatic.CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
+steps = CreateNativeData<float>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
+delta = CreateNativeData<float>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);
+
+lossNativeArray = CreateNativeData<float>(iteration+1, Allocator.Persistent);
+gradientAllNativeArray = CreateNativeData<float>((iteration + 1)*muscleCount, Allocator.Persistent);
+muscleValueAllNativeArray = CreateNativeData<float>((iteration + 1) * muscleCount, Allocator.Persistent);*/
+/*
+rigHipPositionJob = new RigHipPositionJob()
+{
+   jointDatas = jointDataArray,
+   constraintNatives = constraintNativeArray,
+   jointTransformNatives = jointTransformNativeArray,
+   jointLength = jointCount,
+   loopCount = 10,
+};
+
+muscleToJointJob = new MuscleToJointJob()
+{
+   globalDataNative= globalDataNativeArray,
+   Dof3s = Dof3NativeArray,
+   muscleDatas = muscleDataArray,
+   musclesValues = muscleValueNativeArray,
+   jointCount = jointCount,
+   muscleCount = muscleCount,
+};
+            */
+/*            buildTransformJob = new BuildTransformJob()
            {
                 jointTransformNatives = jointTransformNativeArray,
                jointDatas = jointDataNativeArray.Slice(0,jointCount),
@@ -561,71 +640,66 @@ namespace MagicMotion
                 jointlossNatives = jointlossNativeArray,
                 muscleValues= muscleValueNativeArray,
                 relationDatas =jointRelationDataNativeArray,
-                muscleRelativeCounts=muscleRelativeCountArray,
                 muscleAlls= muscleValueAllNativeArray,
                 gradientAlls = gradientAllNativeArray,
                 parallelLength =parallelDataCount,
                 constraintLength =constraintTransforms.Length,
                 muscleLength = muscleCount,
                 jointLength = jointCount,
-            };
+            };*/
 
-            jointToTransformJob = new JointToTransformJob()
+/*            jointToTransformJob = new JointToTransformJob()
             {
                 jointTransformNatives = jointTransformNativeArray.Slice(0, jointCount),
-            };
-        }
+            };*/
+/*        
+        private TransformAccessArray jointTransformArray;
+        private TransformAccessArray constraintTransformArray;
+*/
 
-        private NativeArray<T> CreateNativeData<T>(T[] arr, Allocator allocator =Allocator.Persistent) where  T: struct
-        {
-            var nativeArr = new NativeArray<T>(arr, allocator);
-            disposeList.Add(nativeArr);
-            return nativeArr;
-        }
-        private NativeArray<T> CreateNativeData<T>(int length, Allocator allocator = Allocator.Persistent) where T : struct
-        {
-            var nativeArr = new NativeArray<T>(length, allocator);
-            disposeList.Add(nativeArr);
-            return nativeArr;
-        }
-        private TransformAccessArray CreateNativeData(Transform[] transforms)
-        {
-            var nativeArr = new TransformAccessArray(transforms);
-            disposeList.Add(nativeArr);
-            return nativeArr;
-        }
-        #endregion
+//OYM：base data (readwrite)
+/*        private NativeArray<LBFGSSolver> LBFGSNatives;
+        private NativeArray<GlobalData> globalDataNativeArray;
+        private NativeArray<float> muscleValueNativeArray;
+        private NativeArray<float3> Dof3NativeArray;
+        private NativeArray<quaternion> Dof3QuaternionNativeArray;
+        private NativeArray<quaternion> muscleGradientRotationArray;
+        private NativeArray<RigidTransform> jointTransformNativeArray;
+        private NativeArray<JoinLoss> jointlossNativeArray;
+        //OYM：LBFGS data(readwrite)
+        private NativeArray<float> gradientStore;
+        private NativeArray<float> gradients;
+        private NativeArray<float> diagonal;
+        private NativeArray<float> alpha;
+        private NativeArray<float> steps;
+        private NativeArray<float> delta;
+        private NativeArray<float> rho;
 
-        public Keyframe[] GetmusclesKey(int index)
-        {
-
-            Keyframe[] muscles = new Keyframe[iteration + 1];
-            for (int i = 0; i < iteration+1; i++)
-            {
-                muscles[iteration - i]=new Keyframe(1 - i /(float)iteration, muscleValueAllNativeArray[index+i * muscleCount]);
-            }
-            return muscles;
-        }
-        public Keyframe[] GetGradientsKey(int index)
-        {
-            Keyframe[] muscles = new Keyframe[iteration + 1];
-            for (int i = 0; i < iteration + 1; i++)
-            {
-                muscles[iteration - i] = new Keyframe(1 - i / (float)iteration, (float)gradientAllNativeArray[index + i * muscleCount]);
-            }
-            return muscles;
-
-        }
-        public Keyframe[] GetLossKey()
-        {
-            Keyframe[] muscles = new Keyframe[iteration + 1];
-            for (int i = 0; i < iteration + 1; i++)
-            {
-                muscles[iteration-i] = new Keyframe(1-i / (float)iteration, (float)lossNativeArray[i]);
-            }
-            return muscles;
-
-        }
-    }
-}
-
+        //OYM：test data
+        private NativeArray<float> lossNativeArray; 
+        public NativeArray<float> gradientAllNativeArray;
+        public NativeArray<float> muscleValueAllNativeArray;*/
+/*        /// <summary>
+/// Transform musles to joint
+/// </summary>
+private MuscleToDof3Job muscleToDof3Job;
+/// <summary>
+/// clac Dof3 rotaton
+/// </summary>
+private Dof3ToRotationJob dof3ToRotationJob;
+/// <summary>
+/// clac Dof3 epsilion rotation
+/// </summary>
+private ClacDof3EpsilionJob clacDof3EpsilionJob;
+/// <summary>
+/// Build skelnion
+/// </summary>
+private BuildTransformJob buildTransformJob;
+/// <summary>
+/// clac loss value
+/// </summary>
+private CaclulatelossJob caclulatelossJob;
+/// <summary>
+/// CollectGradient and loss value;
+/// </summary>
+private MainControllerJob mainControllerJob;*/
