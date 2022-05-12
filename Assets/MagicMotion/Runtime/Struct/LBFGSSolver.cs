@@ -220,7 +220,7 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
 
-        public void Optimize(double loss, ref int leastLoopCount,ref double gradientSum, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
+        public void Optimize(double loss, ref int leastLoopCount, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
 NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta, NativeArray<float> currentSolution, NativeArray<double> gradient
             )
         {
@@ -246,7 +246,6 @@ NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<dou
                         {
                             OutsideLoopHead(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref innerLoopStep, ref preloss, ref loss, ref lossX, ref lossY, ref gradientInitialX, ref gradientInitialY, ref funcState, ref iterations, ref matrixPoint, ref numberOfVariables, ref point, ref isLoopOutside, ref isLoopInside, ref isInBracket, ref stage1, ref delta, ref steps, ref diagonal , ref gradientStore, ref gradient, ref rho, ref alpha, ref currentSolution);
 
-                            gradientSum = preGradientSum;
                             if (isLoopOutside)
                             {
                                 state = LBFGSState.InsideLoopHead;

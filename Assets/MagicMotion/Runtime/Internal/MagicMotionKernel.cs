@@ -29,7 +29,8 @@ namespace MagicMotion
     public class MagicMotionKernel
     {
 
-        public const int iterationCount = 32;
+        public const int insideIteration =8;
+        public const int outsideIteration  =1;
         public const int BatchCount = 4;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
@@ -77,7 +78,6 @@ namespace MagicMotion
 
 
         private int[] jointRelativedCounts;
-        private float[] muscleValues;
         private bool[][] jointRelationMap;
 
         public int parallelDataCount;
@@ -112,20 +112,10 @@ namespace MagicMotion
             this.joints = joints;
             jointCount = joints.Length;
         }
-        internal void SetMuscleSata(MuscleData[] muscles, float[] muscleValues = null)
+        internal void SetMuscleSata(MuscleData[] muscles)
         {
             this.muscles = muscles;
             muscleCount = muscles.Length;
-
-            if (muscleValues == null)
-            {
-                this.muscleValues = new float[muscleCount];
-            }
-            else
-            {
-                this.muscleValues = muscleValues;
-            }
-
         }
 
         internal void SetOutDataFunc(Action<float[]> SetMuscleCall)
@@ -180,32 +170,41 @@ namespace MagicMotion
                   }
 
                   bestLoss = float.MaxValue;
-                  
-                  for (int i = 0; i < searchLevel; i++)
+
+                  for (int i = 0; i < outsideIteration; i++)
                   {
-                      int end = (i + 1) % BatchCount;
-                      loopTasks[end] = Task.Run((loopActions[i]));
-                      if (end == 0||i==searchLevel-1)
+                      for (int ii = 0; ii < searchLevel; ii++)
                       {
-                          Task.WaitAll(loopTasks);
+                          int end = (ii + 1) % BatchCount;
+                          loopTasks[end] = Task.Run((loopActions[ii]));
+                          if (end == 0 || ii == searchLevel - 1)
+                          {
+                              Task.WaitAll(loopTasks);
+                          }
                       }
+                      for (int ii = 0; ii < searchLevel; ii++)
+                      {
+                          if (optimizes[ii].Loss < bestLoss)
+                          {
+                              bestLoss = optimizes[ii].Loss;
+                              bestOptimizerIndex = ii;
+                          }
+                      }
+                      if (bestOptimizerIndex != 0)
+                      {
+                          muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
+                      }
+                      Debug.Log(bestLoss);
                   }
 
 
                   #endregion
 
                   #region Output muscle Value
-                  if (muscleValueNativeArrays[0].IsCreated)
-                  {
-                      if (bestOptimizerIndex != 0)
-                      {
-                          muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
-                      }
-                      SetMuscleCall(muscleValueNativeArrays[0].ToArray());
-                  }
-
-            #endregion
-        }
+                  //OYM£ºmostly it will update on the next frame...
+                  SetMuscleCall(muscleValueNativeArrays[0].ToArray());
+                  #endregion
+              }
             );
         }
         public async void Dispose()
@@ -382,7 +381,7 @@ namespace MagicMotion
             {
                 optimizes[i] = new MuscleOptimizer
                 (
-                parallelDataCount, jointCount, muscleCount, iterationCount,
+                parallelDataCount, jointCount, muscleCount, insideIteration,
                 muscleRelativeCountNativeArray,
                 jointDataNativeArray,
                 muscleDataNativeArray,
@@ -405,11 +404,6 @@ namespace MagicMotion
         private void Opimize(int index)
         {
             optimizes[index].Run();
-            if (optimizes[index].Loss < bestLoss)
-            {
-                bestLoss = optimizes[index].Loss;
-                bestOptimizerIndex = index;
-            }
         }
         private NativeArray<T> CreateNativeData<T>(T[] arr, Allocator allocator = Allocator.Persistent) where T : struct
         {
@@ -471,36 +465,19 @@ namespace MagicMotion
 
         #endregion
 
-        /*        public Keyframe[] GetmusclesKey(int index)
-                {
+        public Keyframe[] GetmusclesKey(int index)
+        {
+            return optimizes[bestOptimizerIndex].GetmusclesKey( index);
 
-                    Keyframe[] muscles = new Keyframe[iteration + 1];
-                    for (int i = 0; i < iteration+1; i++)
-                    {
-                        muscles[iteration - i]=new Keyframe(1 - i /(float)iteration, muscleValueAllNativeArray[index+i * muscleCount]);
-                    }
-                    return muscles;
-                }
-                public Keyframe[] GetGradientsKey(int index)
-                {
-                    Keyframe[] muscles = new Keyframe[iteration + 1];
-                    for (int i = 0; i < iteration + 1; i++)
-                    {
-                        muscles[iteration - i] = new Keyframe(1 - i / (float)iteration, (float)gradientAllNativeArray[index + i * muscleCount]);
-                    }
-                    return muscles;
-
-                }
-                public Keyframe[] GetLossKey()
-                {
-                    Keyframe[] muscles = new Keyframe[iteration + 1];
-                    for (int i = 0; i < iteration + 1; i++)
-                    {
-                        muscles[iteration-i] = new Keyframe(1-i / (float)iteration, (float)lossNativeArray[i]);
-                    }
-                    return muscles;
-
-                }*/
+        }
+        public Keyframe[] GetGradientsKey(int index)
+        {
+            return optimizes[bestOptimizerIndex].GetGradientsKey(index);
+        }
+        public Keyframe[] GetLossKey()
+        {
+            return optimizes[bestOptimizerIndex].GetLossKey();
+        }
     }
 }
 

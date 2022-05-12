@@ -163,7 +163,7 @@ namespace MagicMotion.Mono
                     {
 
                         motionMuscles[i] = targetJoint.gameObject.AddComponent<MMMuscle>();
-                        motionMuscles[i].value = muscleValue[muscleIndex];
+                        //motionMuscles[i].value = muscleValue[muscleIndex];
                         motionMuscles[i].dof = dof;
                         motionMuscles[i].muscleIndex = muscleIndex;
                         motionMuscles[i].muscleName = muscleName;

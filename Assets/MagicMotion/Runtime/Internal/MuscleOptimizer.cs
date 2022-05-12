@@ -4,6 +4,7 @@ using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Jobs;
 using Unity.Mathematics;
+using UnityEngine;
 using static MagicMotion.MagicMotionJobsTable;
 
 namespace MagicMotion.Internal
@@ -321,8 +322,8 @@ namespace MagicMotion.Internal
                 muscleValues = muscleValueNativeArray,
                 relationDatas = jointRelationDataNativeArray,
                 jointRelativedCounts=muscleRelativeCountNativeArray,
-                muscleAlls = muscleValueAllNativeArray,
-                gradientAlls = gradientAllNativeArray,
+/*                muscleAlls = muscleValueAllNativeArray,
+                gradientAlls = gradientAllNativeArray,*/
                 parallelLength = parallelDataCount,
                 muscleLength = muscleCount,
                 jointLength = jointCount,
@@ -362,6 +363,34 @@ namespace MagicMotion.Internal
             var solver = LBFGSNatives[0];
             solver.state = LBFGSState.Initialize;
             LBFGSNatives[0] = solver;
+        }
+
+        internal Keyframe[] GetmusclesKey(int index)
+        {
+            Keyframe[] results = new Keyframe[iterationCount + 1];
+            for (int i = 0; i < iterationCount + 1; i++)
+            {
+                results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount, muscleValueAllNativeArray[index + i * muscleCount]);
+            }
+            return results;
+        }
+        internal Keyframe[] GetGradientsKey(int index)
+        {
+            Keyframe[] results = new Keyframe[iterationCount + 1];
+            for (int i = 0; i < iterationCount + 1; i++)
+            {
+                results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount, (float)gradientAllNativeArray[index + i * muscleCount]);
+            }
+            return results;
+        }
+        internal Keyframe[] GetLossKey()
+        {
+            Keyframe[] results = new Keyframe[iterationCount + 1];
+            for (int i = 0; i < iterationCount + 1; i++)
+            {
+                results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount,math.log( (float) lossNativeArray[i]));
+            }
+            return results;
         }
         #endregion
     }

@@ -33,7 +33,8 @@ namespace MagicMotion.Mono
         /// <summary>
         /// isInitialize
         /// </summary>
-        public bool isInitialize;
+        [SerializeField,HideInInspector]
+        private bool isInitialize;
         [SerializeField]
         private int editorIndex = 0;
         [SerializeField]
@@ -56,6 +57,7 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
+            RegisterData(); 
         }
 
 
@@ -102,7 +104,6 @@ namespace MagicMotion.Mono
             AddRootJointInArray();
             BuildJointRelation();
             ReadJointData();
-            RegisterData();
             isInitialize = true;
         }
         private void SetMuscle(float[] muscleValues)
@@ -318,9 +319,9 @@ namespace MagicMotion.Mono
 
         private  void UpdateCruve()
         {
-/*            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
+            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
             muscleCurve.keys = kernel.GetmusclesKey(editorIndex);
-            lossCurve.keys = kernel.GetLossKey();*/
+            lossCurve.keys = kernel.GetLossKey();
         }
         #endregion
 
