@@ -33,16 +33,15 @@ namespace MagicMotion.Mono
         /// <summary>
         /// isInitialize
         /// </summary>
-        [SerializeField,HideInInspector]
         private bool isInitialize;
-        [SerializeField]
-        private int editorIndex = 0;
+/*        [SerializeField]
+        private int editorIndex = 0;*/
         [SerializeField]
         private AnimationCurve lossCurve = new AnimationCurve();
-        [SerializeField]
-        private AnimationCurve muscleCurve = new AnimationCurve();
-        [SerializeField]
-        private AnimationCurve gradientCurve = new AnimationCurve();
+/*        [SerializeField]*/
+/*        private AnimationCurve muscleCurve = new AnimationCurve();*/
+/*        [SerializeField]*/
+/*        private AnimationCurve gradientCurve = new AnimationCurve();*/
         private bool isReadyUpdate;
         private Transform[] jointTransforms;
         private Transform[] constraintTransforms;
@@ -62,7 +61,7 @@ namespace MagicMotion.Mono
 
 
 
-        private void Update()
+        private async void Update()
         {
             if (!isInitialize)
             {
@@ -70,12 +69,14 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-            kernel.Optimize(Time.deltaTime, jointPositions, jointRotations,constraintPositions,constraintRotations);
+           await  kernel.Optimize(Time.deltaTime, jointPositions, jointRotations,constraintPositions,constraintRotations);
+
+            AfterUpdate();
         }
 
 
 
-        private  void LateUpdate()
+        private  void AfterUpdate()
         {
             if (isReadyUpdate)
             {
@@ -87,7 +88,7 @@ namespace MagicMotion.Mono
 
         private void OnDestroy()
         {
-            kernel.Dispose();
+            kernel?.Dispose();
         }
 
         #endregion
@@ -103,9 +104,13 @@ namespace MagicMotion.Mono
             CheckValue();
             AddRootJointInArray();
             BuildJointRelation();
-            ReadJointData();
-            isInitialize = true;
+            GetMuscleAndConstraintData();
+            if (Application.isPlaying)
+            {
+                isInitialize = true;
+            }
         }
+
         private void SetMuscle(float[] muscleValues)
         {
             Debug.Assert(muscleValues.Length == motionMuscles.Length);
@@ -115,6 +120,7 @@ namespace MagicMotion.Mono
             }
             isReadyUpdate = true;
         }
+
         private void CheckValue()
         {
             if (motionJoints == null || motionJoints.Length == 0)
@@ -133,6 +139,8 @@ namespace MagicMotion.Mono
                 newArray[0] = rootJoint;
                 motionJoints = newArray;
             }
+            motionJoints[0].jointIndex = 0;
+            motionJoints[0].parent = null;
         }
 
         private void BuildJointRelation()
@@ -162,8 +170,8 @@ namespace MagicMotion.Mono
 
                 if (currentJoint.parent == null)
                 {
-                    currentJoint.initiallocalRotation = currentJoint.transform.rotation;
-                    currentJoint.initiallocalPosition = currentJoint.transform.position;
+                    currentJoint.initiallocalRotation = currentJoint.transform.localRotation;
+                    currentJoint.initiallocalPosition = currentJoint.transform.localPosition;
                     currentJoint.length = currentJoint.cumulativeLength = 0;
                 }
                 else
@@ -180,14 +188,44 @@ namespace MagicMotion.Mono
             }
             #endregion
         }
-        private void ReadJointData()
+        private void GetMuscleAndConstraintData()
         {
             if (motionJoints==null)
             {
                 throw new InvalidOperationException("motionJoint List is Empty");
             }
-            motionMuscles = motionJoints.SelectMany(x => x.muscles).Where(y=>y!=null).ToArray();
-            motionConstraints = motionJoints.SelectMany(x => x.constraints).Where(y => y != null).ToList();
+            List<MMConstraint> constraints= new List<MMConstraint> ();
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                var joint= motionJoints[i];
+                for (int ii = 0; ii < joint.constraints?.Length; ii++)
+                {
+                    if (joint.constraints[ii]!=null)
+                    {
+                        constraints.Add(motionJoints[i].constraints[ii]);
+                    }
+                }
+            }
+            this.motionConstraints = constraints;
+
+            List<MMMuscle> muscles = new List<MMMuscle> ();
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                var joint = motionJoints[i];
+                if (motionJoints.FirstOrDefault(x => x.parent == joint) == null &&
+    (joint.constraints == null || joint.constraints[(int)MMConstraintType.LookAt] == null)
+    )
+                {
+                    continue;
+                }
+                for (int ii = 0; ii < joint.muscles?.Length; ii++)
+                {
+                    if (joint.muscles[ii] == null) continue;
+                    muscles.Add(joint.muscles[ii]);
+                }
+            }
+
+            motionMuscles = muscles.ToArray() ;
         }
 
         /// Input data to kernel
@@ -242,7 +280,12 @@ namespace MagicMotion.Mono
         }
         private void UpdateData()
         {
-            for (int i = 0; i < jointTransforms.Length; i++)
+            jointPositions[0] = jointTransforms[0].position;
+            quaternion parentRotation = jointTransforms[0].parent==null ? quaternion.identity : jointTransforms[0].parent.rotation;
+            jointRotations[0]= math.mul(parentRotation, motionJoints[0].initiallocalRotation);
+
+
+            for (int i = 1; i < jointTransforms.Length; i++)
             {
                 jointPositions[i] = jointTransforms[i].position;
                 jointRotations[i] = jointTransforms[i].rotation;
@@ -275,7 +318,10 @@ namespace MagicMotion.Mono
                     currentJoint.muscles[1] == null ? 0 : currentJoint.muscles[1].value,
                     currentJoint.muscles[2] == null ? 0 : currentJoint.muscles[2].value);
 
-
+                if (math.all(Dof3==0))
+                {
+                    continue;
+                }
                 float3 Dof3toRadian = math.radians(
                         math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
                     + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1))
@@ -295,39 +341,33 @@ namespace MagicMotion.Mono
                     eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), eulerAngle);
                 }
 
-
-                quaternion parentRotation; float3 parentPosition;
                 if (currentJoint.parent == null)
                 {
                     /*                    parentPosition = currentJoint.transform.position;
                                         parentRotation = currentJoint.transform.rotation;
                     */
-                    parentPosition = float3.zero;
-                    parentRotation = quaternion.identity;
+                    jointTransform.localRotation = math.mul(currentJoint.initiallocalRotation, eulerAngle);
                 }
                 else
                 {
-                    parentRotation = currentJoint.parent.transform.rotation;
-                    parentPosition = currentJoint.parent.transform.position;
+                    quaternion parentRotation = currentJoint.parent.transform.rotation;
+                    float3 parentPosition = currentJoint.parent.transform.position;
+                    jointTransform.position = parentPosition + math.mul(parentRotation, currentJoint.initiallocalPosition);
+                    jointTransform.rotation = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
                 }
-
-                jointTransform.position = parentPosition + math.mul(parentRotation, currentJoint.initiallocalPosition);
-                jointTransform.rotation = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
             }
 
         }
 
         private  void UpdateCruve()
         {
-            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
-            muscleCurve.keys = kernel.GetmusclesKey(editorIndex);
+/*            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);
+            muscleCurve.keys = kernel.GetmusclesKey(editorIndex);*/
             lossCurve.keys = kernel.GetLossKey();
         }
         #endregion
 
         #region StaticFunc
         #endregion
-
-
     }
 }

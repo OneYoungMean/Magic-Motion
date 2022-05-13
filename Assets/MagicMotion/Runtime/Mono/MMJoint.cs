@@ -24,7 +24,6 @@ namespace MagicMotion.Mono
         /// <summary>
         /// data index in array
         /// </summary>
-        [HideInInspector]
         public int jointIndex;
         /// <summary>
         ///  the joint's parent , the hip 's parent is empty

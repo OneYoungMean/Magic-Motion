@@ -29,9 +29,9 @@ namespace MagicMotion
     public class MagicMotionKernel
     {
 
-        public const int insideIteration =8;
+        public const int insideIteration =16;
         public const int outsideIteration  =1;
-        public const int BatchCount = 4;
+        public const int BatchCount =4;
         public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         //OYM： Base data (read only)
@@ -73,7 +73,7 @@ namespace MagicMotion
 
         private Task waitTask;
         private Task[] loopTasks;
-        private Action[] loopActions;
+        private Action[][] loopActions;
         private List<IDisposable> disposeList;
 
 
@@ -131,7 +131,7 @@ namespace MagicMotion
             isCreated = true;
         }
 
-        public  void Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
+        public async Task Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
         {
             //OYM：未来要异步的部分,尽量不要涉及mono的内容
             if (!isCreated)
@@ -173,15 +173,12 @@ namespace MagicMotion
 
                   for (int i = 0; i < outsideIteration; i++)
                   {
-                      for (int ii = 0; ii < searchLevel; ii++)
+                      for (int ii = 0; ii < loopActions.Length; ii++)
                       {
-                          int end = (ii + 1) % BatchCount;
-                          loopTasks[end] = Task.Run((loopActions[ii]));
-                          if (end == 0 || ii == searchLevel - 1)
-                          {
-                              Task.WaitAll(loopTasks);
-                          }
+                          //OYM：Main Optimize Func is in here.
+                          Parallel.Invoke(loopActions[ii]);
                       }
+
                       for (int ii = 0; ii < searchLevel; ii++)
                       {
                           if (optimizes[ii].Loss < bestLoss)
@@ -194,7 +191,6 @@ namespace MagicMotion
                       {
                           muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
                       }
-                      Debug.Log(bestLoss);
                   }
 
 
@@ -206,6 +202,8 @@ namespace MagicMotion
                   #endregion
               }
             );
+
+            await waitTask;
         }
         public async void Dispose()
         {
@@ -303,7 +301,6 @@ namespace MagicMotion
                         });
                         relativeCount += constraints[ii].GetVaildCount();
                     }
-
                 }
                 jointRelativedCounts[jointIndex] = relativeCount;
             }
@@ -374,9 +371,23 @@ namespace MagicMotion
                 constraintDatas = constraintDataNativeArray,
             };
 
-            optimizes = new MuscleOptimizer[searchLevel];
-            loopActions = new Action[searchLevel];
 
+            int loopActionLength = searchLevel / BatchCount + (searchLevel % BatchCount == 0 ? 0 : 1);
+            loopActions = new Action[loopActionLength][];
+
+            for (int i = 0; i < loopActions.Length; i++)
+            {
+                if (i==loopActions.Length-1&& searchLevel % BatchCount!=0)
+                {
+                    loopActions[i] =new Action[ searchLevel % BatchCount];
+                }
+                else
+                {
+                    loopActions[i] = new Action[BatchCount];
+                }
+            }
+
+            optimizes = new MuscleOptimizer[searchLevel];
             for (int i = 0; i < searchLevel; i++)
             {
                 optimizes[i] = new MuscleOptimizer
@@ -392,7 +403,9 @@ namespace MagicMotion
                 );
 
                 int temp = i;
-                loopActions[i] = () => Opimize(temp);
+
+                loopActions[i/BatchCount][i%BatchCount] = () => optimizes[temp].Run(jointPositionNativeArray[0],jointRotationNativeArray[0]);
+
             }
 
             loopTasks = new Task[BatchCount];
@@ -400,10 +413,6 @@ namespace MagicMotion
             {
                 loopTasks[i] = Task.CompletedTask;
             }
-        }
-        private void Opimize(int index)
-        {
-            optimizes[index].Run();
         }
         private NativeArray<T> CreateNativeData<T>(T[] arr, Allocator allocator = Allocator.Persistent) where T : struct
         {

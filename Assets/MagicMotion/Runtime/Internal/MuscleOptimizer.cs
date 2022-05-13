@@ -243,7 +243,7 @@ namespace MagicMotion.Internal
             this.globalDataNativeArray = CreateNativeData<GlobalData>(1);
             this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
-            this.muscleGradientRotationArray = CreateNativeData<quaternion>(parallelDataCount);
+            this.muscleGradientRotationArray = CreateNativeData<quaternion>(muscleCount);
             this.jointlossNativeArray = CreateNativeData<JoinLoss>(parallelDataCount);
             this.jointTransformNativeArray = CreateNativeData<RigidTransform>(jointCount);
             this.gradients = CreateNativeData<double>(muscleCount);
@@ -339,30 +339,44 @@ namespace MagicMotion.Internal
             #endregion
         }
 
-        public void Run()
+        public void Run(Vector3 rootPosition, Quaternion rootRotation)
         {
-            Reset();
-            for (int j = 0; j < iterationCount + 1; j++)
+            try
             {
-                muscleToDof3Job.Run(muscleCount);
-                dof3ToRotationJob.Run(jointCount);
-                buildTransformJob.Run(jointCount);
-                clacDof3EpsilionJob.Run(muscleCount);
-                caclulatelossJob.Run(parallelDataCount);
-                mainControllerJob.Run();
+                Reset(rootPosition, rootRotation);
+                for (int j = 0; j < iterationCount + 1; j++)
+                {
+                    muscleToDof3Job.Run(muscleCount);
+                    dof3ToRotationJob.Run(jointCount);
+                    buildTransformJob.Run(jointCount);
+                    clacDof3EpsilionJob.Run(muscleCount);
+                    caclulatelossJob.Run(parallelDataCount);
+                    mainControllerJob.Run();
+                }
             }
+            catch (Exception e)
+            {
+
+                Debug.LogError(e);
+            }
+
         }
         
         
-        private void Reset()
+        private void Reset(Vector3 rootPosition, Quaternion rootRotation)
         {
+            //OYM：reset globalData
             var globalData = globalDataNativeArray[0];
             globalData.leastLoopCount = iterationCount;
             globalDataNativeArray[0] = globalData;
-
+            //OYM：reset solver
             var solver = LBFGSNatives[0];
             solver.state = LBFGSState.Initialize;
             LBFGSNatives[0] = solver;
+            //OYM：reset root trasnform
+
+            buildTransformJob.rootPosition = rootPosition;
+            buildTransformJob.rootRotation = rootRotation; 
         }
 
         internal Keyframe[] GetmusclesKey(int index)

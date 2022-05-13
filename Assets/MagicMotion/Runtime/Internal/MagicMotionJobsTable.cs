@@ -35,21 +35,25 @@ namespace MagicMotion
         /// <summary>
         /// Set joint Transform data before update
         /// </summary>
-        public struct InitializeJointJob : IJobParallelForTransform
+        public struct InitializeJointJob : IJobParallelFor
         {
             /// <summary>
             /// Joint's world transform data
             /// </summary>
             public NativeArray<RigidTransform> jointTransformDatas;
-
-            public int muscleLength;
-            public int jointLength;
-
-            public void Execute(int index, TransformAccess transform)
+            /// <summary>
+            /// Joint's world transform data
+            /// </summary>
+            public NativeArray<Vector3> jointPositions;
+            /// <summary>
+            /// Joint's world transform data
+            /// </summary>
+            public NativeArray<quaternion> jointRotations;
+            public void Execute(int index)
             {
                 var rigid = jointTransformDatas[ index];
-                rigid.pos = transform.position;
-                rigid.rot = transform.rotation;
+                rigid.pos = jointPositions[index];
+                rigid.rot = jointRotations[index];
                 jointTransformDatas[index] = rigid;
 
             }
@@ -324,26 +328,30 @@ namespace MagicMotion
             /// </summary>
             [ReadOnly]
             public NativeArray<quaternion> Dof3Quaternions;
+
+            public float3 rootPosition;
+            public quaternion rootRotation;
+
             public void Execute(int index)
             {
                 JointData currentJoint = jointDatas[index];
                 RigidTransform currentTransform = jointTransformNatives[index];
                 quaternion eulerAngle = Dof3Quaternions[index];
-                quaternion parentRotation; float3 parentPosition;
 
                 if (currentJoint.parentIndex == -1)
                 {
-                    parentPosition = float3.zero;
-                    parentRotation = quaternion.identity;
+                    currentTransform.pos = rootPosition;
+                    currentTransform.rot = math.mul(rootRotation, eulerAngle);
                 }
                 else
                 {
                     RigidTransform parentTransform = jointTransformNatives[currentJoint.parentIndex];
-                    parentPosition = parentTransform.pos;
-                    parentRotation = parentTransform.rot;
+                    float3 parentPosition = parentTransform.pos;
+                    quaternion parentRotation = parentTransform.rot;
+                    currentTransform.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
+                    currentTransform.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
+
                 }
-                currentTransform.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
-                currentTransform.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
                 jointTransformNatives[index] = currentTransform;
             }
         }
@@ -652,7 +660,7 @@ namespace MagicMotion
                 {
                     JointRelationData relationData = relationDatas[i];
                     double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
-                    gradientTemp /= jointRelativedCounts[relationData.jointIndex];
+                    gradientTemp /= jointRelativedCounts[relationData.relatedJointIndex];
                     gradientTemp /= L_BFGSStatic.EPSILION;
                     
 
@@ -672,6 +680,19 @@ namespace MagicMotion
             {
                 transform.position = jointTransformNatives[index].pos;
                 transform.rotation=jointTransformNatives[index].rot;
+            }
+        }
+
+        //OYM：阿伟去写点正经的东西好不好
+        //OYM：老想着优化是没有前途的
+        [BurstCompile]
+        public struct TestJob : IJobParallelFor
+        {
+            [NativeDisableParallelForRestriction]
+            public NativeSlice<float> testData;
+            public void Execute(int index)
+            {
+                testData[index] = math.cos(testData[index]);
             }
         }
     }
