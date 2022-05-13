@@ -14,7 +14,7 @@ namespace MagicMotion.Mono
     /// <summary>
     /// The joint and constraint manager
     /// </summary>
-    public class MMHumanGenerator : MonoBehaviour
+    public class MMHumanGenerator : MonoBehaviour,IGetConstraint
     {
         public const float LOOKAT_LENGTH = 0.1f;
 
@@ -37,12 +37,14 @@ namespace MagicMotion.Mono
         public bool isInitialize;
 
         public bool isIndepentdentHand;
+        public bool isBuildConstraintRelation;
 
         public List<MMJointController> jointControllers;
+        public List<MMConstraint> motionConstraints;
         public MMJoint[] motionJoints;
         public MMMuscle[] motionMuscles;
 
-        private List<MMConstraint> motionConstraints;
+
         #endregion
 
         #region UnityFunc
@@ -92,17 +94,17 @@ namespace MagicMotion.Mono
         ///  Get Constraint By HumanBone
         /// </summary>
 
-        private Transform GetConstraintTarget(HumanBodyBones humanBodyBones, MMConstraintType constraintType)
+        public MMConstraint GetConstraintTarget(HumanBodyBones humanBodyBones, MMConstraintType constraintType)
         {
-            var targetJoint = motionJoints.FirstOrDefault(x => x.humanBodyBone == humanBodyBones);
+            var targetJoint = motionJoints.FirstOrDefault(x => x !=null&& x.humanBodyBone == humanBodyBones);
             if (targetJoint == null) return null;
 
             switch (constraintType)
             {
                 case MMConstraintType.Position:
-                    return (targetJoint.constraints[0] as MMPositionConstraint).targetTransform;
+                    return targetJoint.constraints[0];
                 case MMConstraintType.LookAt:
-                    return (targetJoint.constraints[1] as MMLookConstraint).targetTransform;
+                    return targetJoint.constraints[1] ;
                 default:
                     return null ;
             }
@@ -253,12 +255,12 @@ namespace MagicMotion.Mono
         private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
-            ConstraintAimRoot = new GameObject("Aim Root");
+/*            ConstraintAimRoot = new GameObject("Aim Root");
 
 
             ConstraintAimRoot.transform.parent = transform;
             ConstraintAimRoot.transform.localPosition = Vector3.zero;
-            ConstraintAimRoot.transform.localRotation = Quaternion.identity;
+            ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
 
             AddConstraint(MMConstraintType.Position);
            //AddConstraint(MMConstraintType.DofChange);
@@ -289,7 +291,8 @@ namespace MagicMotion.Mono
                         positionConstraint.weight3 =Vector3.one;
                         positionConstraint.AddTarget(positionIK.transform);
                         constraint = positionConstraint;
-                        if (joint.parent != null && joint.parent.constraints[(int)constraintType] != null)
+
+                        if (isBuildConstraintRelation&&joint.parent != null && joint.parent.constraints[(int)constraintType] != null)
                         {
                             positionIK.transform.parent =( joint.parent.constraints[(int)constraintType] as MMPositionConstraint).targetTransform;
                         }

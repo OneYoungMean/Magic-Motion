@@ -26,7 +26,7 @@ namespace MagicMotion
     //OYM：第一阶段:安全的代码部分
     //OYM：第二阶段，不安全的代码片段
     //OYM：已经不安全的代码片段除外
-    public class MagicMotionKernel
+    internal class MagicMotionKernel
     {
         #region  NativeArrayData
         //OYM： Base data (read only)

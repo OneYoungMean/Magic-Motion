@@ -292,6 +292,10 @@ PrefabInstance:
   m_Modification:
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 1908170799893243698, guid: d9286b1e4836dc34492fccdabae26490, type: 3}
+      propertyPath: m_ApplyRootMotion
+      value: 0
+      objectReference: {fileID: 0}
     - target: {fileID: 5949224902257176500, guid: d9286b1e4836dc34492fccdabae26490, type: 3}
       propertyPath: m_DirtyAABB
       value: 0
@@ -737,7 +741,9 @@ MonoBehaviour:
   animator: {fileID: 0}
   isInitialize: 0
   isIndepentdentHand: 0
+  isBuildConstraintRelation: 0
   jointControllers: []
+  motionConstraints: []
   motionJoints: []
   motionMuscles: []
 --- !u!1 &319245579
@@ -1504,76 +1510,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!114 &493056773
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1586,76 +1522,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!4 &493056774
 Transform:
   m_ObjectHideFlags: 0
@@ -1684,12 +1550,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5c8ee35d22a6941429abd716defd7bb1, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  weight: 1
-  Target: {fileID: 389388109}
-  targetPositon: {x: 0, y: 0, z: 0}
-  ViewingDirection: {x: -0.25, y: 1, z: 0}
-  MaximumError: 0.1
 --- !u!4 &493056776
 Transform:
   m_ObjectHideFlags: 0
@@ -1735,76 +1595,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!1 &493056801
 GameObject:
   m_ObjectHideFlags: 0
@@ -1834,76 +1624,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!1 &493056803
 GameObject:
   m_ObjectHideFlags: 0
@@ -1949,16 +1669,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21c5e241fa368284db60f91396e85b80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  weight: 1
-  Target: {fileID: 1803743982}
-  targetPosition:
-    x: 0
-    y: 0
-    z: 0
-  MaximumError: 0.001
-  ChainLength: 0
-  Rescaling: 0
 --- !u!4 &493056806
 Transform:
   m_ObjectHideFlags: 0
@@ -1991,76 +1701,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!4 &493056808
 Transform:
   m_ObjectHideFlags: 0
@@ -2175,76 +1815,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!114 &493056843
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2257,76 +1827,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!114 &493056844
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2339,76 +1839,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!114 &493056845
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2421,76 +1851,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!114 &493056846
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2503,76 +1863,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d73a93bb26eb6294fa79e40cab5c25a3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  jointType: 0
-  bioMotion: {fileID: 0}
-  parent: {fileID: 0}
-  anchor:
-    x: 0
-    y: 0
-    z: 0
-  orientation:
-    x: 0
-    y: 0
-    z: 0
-  defaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  defaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimationPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimatedDefaultPosition:
-    x: 0
-    y: 0
-    z: 0
-  AnimationRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  AnimatedDefaultRotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  rotationMat:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  LSA:
-    x: 0
-    y: 0
-    z: 0
-  ADPADRSA:
-    x: 0
-    y: 0
-    z: 0
-  lastPosition:
-    x: 0
-    y: 0
-    z: 0
-  lastrotation:
-    value:
-      x: 0
-      y: 0
-      z: 0
-      w: 0
-  scale:
-    x: 0
-    y: 0
-    z: 0
 --- !u!4 &493056847
 Transform:
   m_ObjectHideFlags: 0
@@ -2619,16 +1909,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 21c5e241fa368284db60f91396e85b80, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  segment: {fileID: 0}
-  weight: 1
-  Target: {fileID: 2051485005}
-  targetPosition:
-    x: 0
-    y: 0
-    z: 0
-  MaximumError: 0.001
-  ChainLength: 0
-  Rescaling: 0
 --- !u!4 &493056850
 Transform:
   m_ObjectHideFlags: 0
@@ -2808,7 +2088,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 100566, guid: 94351b7e8a1f7bc489e1e858cef8981d, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 400566, guid: 94351b7e8a1f7bc489e1e858cef8981d, type: 3}
       propertyPath: m_RootOrder
@@ -3706,9 +2986,25 @@ MonoBehaviour:
   animator: {fileID: 0}
   isInitialize: 0
   isIndepentdentHand: 0
+  isBuildConstraintRelation: 0
   jointControllers: []
+  motionConstraints: []
   motionJoints: []
   motionMuscles: []
+--- !u!114 &1316607950
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1316607946}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58d20e6cd9827d14fb59b64e3fff3f04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  humanGenerator: {fileID: 1316607947}
+  isInitialize: 0
 --- !u!1 &1407076023
 GameObject:
   m_ObjectHideFlags: 0
@@ -4627,9 +3923,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73b8ecaddbb6a4dd1b5ff0d96cce8ff2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InformEventSystem: 1
-  Sensitivity: 5
-  LastMousePosition: {x: 0, y: 0}
 --- !u!135 &1803743984
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -4830,9 +4123,25 @@ MonoBehaviour:
   animator: {fileID: 0}
   isInitialize: 0
   isIndepentdentHand: 0
+  isBuildConstraintRelation: 1
   jointControllers: []
+  motionConstraints: []
   motionJoints: []
   motionMuscles: []
+--- !u!114 &1909892409
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1909892407}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58d20e6cd9827d14fb59b64e3fff3f04, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  humanGenerator: {fileID: 1909892408}
+  isInitialize: 0
 --- !u!1 &1919928480
 GameObject:
   m_ObjectHideFlags: 0
@@ -4865,9 +4174,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73b8ecaddbb6a4dd1b5ff0d96cce8ff2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InformEventSystem: 1
-  Sensitivity: 1
-  LastMousePosition: {x: 0, y: 0}
 --- !u!135 &1919928482
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -5427,9 +4733,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 73b8ecaddbb6a4dd1b5ff0d96cce8ff2, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  InformEventSystem: 1
-  Sensitivity: 5
-  LastMousePosition: {x: 0, y: 0}
 --- !u!135 &2051485007
 SphereCollider:
   m_ObjectHideFlags: 0

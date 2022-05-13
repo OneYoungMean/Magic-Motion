@@ -461,9 +461,15 @@ namespace MagicMotion
                 float3 jointPosition = jointTransform.pos;
                 float lengthSum = constraintNative.lengthSum;
 
+                float3 weight3 = positionConstraint.weight3;
                 float3 constraintPosition = positionConstraint.position;
                 float3 direction = constraintPosition - jointPosition;
-                float lossCos = math.lengthsq(direction);
+                if (math.all(direction==0))
+                {
+                    return;
+                }
+
+                float lossCos = math.csum(direction* direction* weight3);
                 lossCos /= ( lengthSum* lengthSum);
                 lossCos *= math.PI * math.PI;
                 jointloss.positionloss = lossCos;

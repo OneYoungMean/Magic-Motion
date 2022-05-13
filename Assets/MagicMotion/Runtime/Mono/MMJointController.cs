@@ -30,7 +30,7 @@ namespace MagicMotion.Mono
         /// <summary>
         ///  optimize kernel
         /// </summary>
-        public MagicMotionKernel kernel;
+        internal MagicMotionKernel kernel;
         /// <summary>
         /// isInitialize
         /// </summary>
