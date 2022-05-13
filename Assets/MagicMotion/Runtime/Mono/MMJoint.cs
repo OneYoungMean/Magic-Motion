@@ -99,12 +99,10 @@ namespace MagicMotion.Mono
             };
     }
 
-        internal void GetNativeConstraintData(out ConstraintData constraint,out List<TransformToConstraintData>transformToConstraints,out List<Transform> transforms )
+        internal ConstraintData GetNativeConstraintData()
         {
-             constraint=default(ConstraintData);
+            var constraint=default(ConstraintData);
             constraint.lengthSum =math.max(0.1f, cumulativeLength);
-            transformToConstraints =new List<TransformToConstraintData>();
-            transforms=new List<Transform>();
 
             for (int i = 0; i < constraints.Length; i++)
             {
@@ -120,25 +118,13 @@ namespace MagicMotion.Mono
                     case MMConstraintType.Position:
                         var positionConstraint = constraintData as MMPositionConstraint;
                         constraint.positionConstraint= positionConstraint.GetNativeData();
-                        transformToConstraints.Add(new TransformToConstraintData()
-                        {
-                            jointIndex = jointIndex,
-                            constraintType = type
-                        });
-                        transforms.Add(positionConstraint.targetTransform);
+                  
                         break;
                     case MMConstraintType.Rotation:
                         break;
                     case MMConstraintType.LookAt:
                         var lookAtConstraint = constraintData as MMLookConstraint;
                         constraint.lookAtConstraint = lookAtConstraint.GetNativeData();
-
-                        transformToConstraints.Add(new TransformToConstraintData()
-                        {
-                            jointIndex = jointIndex,
-                            constraintType = type
-                        });
-                        transforms.Add(lookAtConstraint.targetTransform);
                         break;
                     case MMConstraintType.Collider:
                         break;
@@ -148,10 +134,15 @@ namespace MagicMotion.Mono
                     case MMConstraintType.DofChange:
                         constraint.DofChangeConstraint = (constraintData as MMDofChangeConstraint).GetNativeData();
                         break;
+                    case MMConstraintType.Direction:
+                        constraint.directionConstraint = (constraintData as MMDirectionConstraint).GetNativeData();
+                        break;
                     default:
                         break;
                 }
+
             }
+            return constraint;
         }
     }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -43,13 +44,10 @@ namespace MagicMotion.Mono
 /*        [SerializeField]*/
 /*        private AnimationCurve gradientCurve = new AnimationCurve();*/
         private bool isReadyUpdate;
-        private Transform[] jointTransforms;
-        private Transform[] constraintTransforms;
 
-        private Vector3[] jointPositions;
-        private Vector3[] constraintPositions;
-        private Quaternion[] jointRotations;
-        private Quaternion[] constraintRotations;
+        private float3 worldPosition;
+        private quaternion worldRotation;
+        private ConstraintData[] constraintDatas;
         #endregion
 
         #region UnityFunc
@@ -61,7 +59,7 @@ namespace MagicMotion.Mono
 
 
 
-        private async void Update()
+        private void Update()
         {
             if (!isInitialize)
             {
@@ -69,20 +67,16 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-           await  kernel.Optimize(Time.deltaTime, jointPositions, jointRotations,constraintPositions,constraintRotations);
+            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation);
 
-            AfterUpdate();
-        }
-
-
-
-        private  void AfterUpdate()
-        {
+            //OYM：这部分我一直没想好怎么写会好一点
+            //OYM：异步赋值再访问感觉怪怪的.
             if (isReadyUpdate)
             {
                 UpdateMotion();
                 UpdateCruve();
             }
+
             isReadyUpdate = false;
         }
 
@@ -95,6 +89,68 @@ namespace MagicMotion.Mono
 
         #region LocalFunc
 
+        /// <summary>
+        /// Update motion for muscle on editor or mian thread
+        /// </summary>
+        public void UpdateMotion()
+        {
+            //OYM：rebuild sklenon
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                MMJoint currentJoint = motionJoints[i];
+                if (currentJoint == null || !currentJoint.enabled)
+                {
+                    continue;
+                }
+
+                Transform jointTransform = currentJoint.transform;
+
+                //OYM：Dof to euler angle
+                float3 Dof3 = new float3(
+                    currentJoint.muscles[0] == null ? 0 : currentJoint.muscles[0].value,
+                    currentJoint.muscles[1] == null ? 0 : currentJoint.muscles[1].value,
+                    currentJoint.muscles[2] == null ? 0 : currentJoint.muscles[2].value);
+
+                if (math.all(Dof3 == 0))
+                {
+                    continue;
+                }
+                float3 Dof3toRadian = math.radians(
+                        math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
+                    + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1))
+                    );
+
+                quaternion eulerAngle = quaternion.identity;
+                if (Dof3[0] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), eulerAngle);
+                }
+                if (Dof3[1] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), eulerAngle);
+                }
+                if (Dof3[2] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), eulerAngle);
+                }
+
+                if (currentJoint.parent == null)
+                {
+                    /*                    parentPosition = currentJoint.transform.position;
+                                        parentRotation = currentJoint.transform.rotation;
+                    */
+                    jointTransform.localRotation = math.mul(currentJoint.initiallocalRotation, eulerAngle);
+                }
+                else
+                {
+                    quaternion parentRotation = currentJoint.parent.transform.rotation;
+                    float3 parentPosition = currentJoint.parent.transform.position;
+                    jointTransform.position = parentPosition + math.mul(parentRotation, currentJoint.initiallocalPosition);
+                    jointTransform.rotation = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
+                }
+            }
+
+        }
         public void Initialize()
         {
             if (isInitialize)
@@ -237,7 +293,7 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)4);
+            kernel = new MagicMotionKernel((SearchLevel)4,21,3);
 
             MuscleData[] muscleDatas = new MuscleData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
@@ -248,117 +304,34 @@ namespace MagicMotion.Mono
 
 
             JointData[] jointData = new JointData[motionJoints.Length];
-            jointPositions = new Vector3[motionJoints.Length];
-            jointRotations = new Quaternion[motionJoints.Length];
-            jointTransforms = new Transform[motionJoints.Length];
 
             for (int i = 0; i < motionJoints.Length; i++)
             {
                 jointData[i] = motionJoints[i].GetNativeJointData();
-                jointTransforms[i] = motionJoints[i].transform;
             }
             kernel.SetJointData(jointData);
 
-            ConstraintData[] constraintNatives = new ConstraintData[motionJoints.Length];
-            List<TransformToConstraintData> transformToConstraintCollect = new List<TransformToConstraintData>();
-            List<Transform> aimTransformCollect = new List<Transform>();
+            constraintDatas = new ConstraintData[motionJoints.Length];
 
             for (int i = 0; i < motionJoints.Length; i++)
             {
-                motionJoints[i].GetNativeConstraintData(out ConstraintData constraint, out List<TransformToConstraintData> transformToConstraints, out List<Transform> aimTransforms);
-                constraintNatives[i] = constraint;
-                transformToConstraintCollect.AddRange(transformToConstraints);
-                aimTransformCollect.AddRange(aimTransforms);
+                var constraint= motionJoints[i].GetNativeConstraintData();
+                constraintDatas[i] = constraint;
             }
-            kernel.SetConstraintData(constraintNatives, transformToConstraintCollect.ToArray());
-            constraintTransforms = aimTransformCollect.ToArray();
-            constraintPositions = new Vector3[constraintTransforms.Length];
-            constraintRotations= new Quaternion[constraintTransforms.Length];
-
+            kernel.SetConstraintData(constraintDatas);
             kernel.SetOutDataFunc(SetMuscle);
             kernel.Initialize();
         }
         private void UpdateData()
         {
-            jointPositions[0] = jointTransforms[0].position;
-            quaternion parentRotation = jointTransforms[0].parent==null ? quaternion.identity : jointTransforms[0].parent.rotation;
-            jointRotations[0]= math.mul(parentRotation, motionJoints[0].initiallocalRotation);
+            worldPosition = rootTransform.position;
+            worldRotation = rootTransform.parent==null ? quaternion.identity : rootTransform.parent.rotation;
 
-
-            for (int i = 1; i < jointTransforms.Length; i++)
+            for (int i = 0; i < constraintDatas.Length; i++)
             {
-                jointPositions[i] = jointTransforms[i].position;
-                jointRotations[i] = jointTransforms[i].rotation;
-            }
-            for (int i = 0; i < constraintTransforms.Length; i++)
-            {
-                constraintPositions[i] = constraintTransforms[i].position;
-                constraintRotations[i] = constraintTransforms[i].rotation;
+                constraintDatas[i] = motionJoints[i].GetNativeConstraintData();
             }
         }
-        /// <summary>
-        /// Update motion for muscle on editor or mian thread
-        /// </summary>
-        public void UpdateMotion()
-        {
-            //OYM：rebuild sklenon
-            for (int i = 0; i < motionJoints.Length; i++)
-            {
-                MMJoint currentJoint = motionJoints[i];
-                if (currentJoint == null || !currentJoint.enabled)
-                {
-                    continue;
-                }
-
-                Transform jointTransform = currentJoint.transform;
-
-                //OYM：Dof to euler angle
-                float3 Dof3 = new float3(
-                    currentJoint.muscles[0] == null ? 0 : currentJoint.muscles[0].value,
-                    currentJoint.muscles[1] == null ? 0 : currentJoint.muscles[1].value,
-                    currentJoint.muscles[2] == null ? 0 : currentJoint.muscles[2].value);
-
-                if (math.all(Dof3==0))
-                {
-                    continue;
-                }
-                float3 Dof3toRadian = math.radians(
-                        math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
-                    + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1))
-                    );
-
-                quaternion eulerAngle = quaternion.identity;
-                if (Dof3[0] != 0)
-                {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), eulerAngle);
-                }
-                if (Dof3[1] != 0)
-                {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), eulerAngle);
-                }
-                if (Dof3[2] != 0)
-                {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), eulerAngle);
-                }
-
-                if (currentJoint.parent == null)
-                {
-                    /*                    parentPosition = currentJoint.transform.position;
-                                        parentRotation = currentJoint.transform.rotation;
-                    */
-                    jointTransform.localRotation = math.mul(currentJoint.initiallocalRotation, eulerAngle);
-                }
-                else
-                {
-                    quaternion parentRotation = currentJoint.parent.transform.rotation;
-                    float3 parentPosition = currentJoint.parent.transform.position;
-                    jointTransform.position = parentPosition + math.mul(parentRotation, currentJoint.initiallocalPosition);
-                    jointTransform.rotation = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
-                }
-            }
-
-        }
-
         private  void UpdateCruve()
         {
 /*            gradientCurve.keys = kernel.GetGradientsKey(editorIndex);

@@ -88,6 +88,25 @@ namespace MagicMotion.Mono
             isInitialize = true;
         }
 
+        /// <summary>
+        ///  Get Constraint By HumanBone
+        /// </summary>
+
+        private Transform GetConstraintTarget(HumanBodyBones humanBodyBones, MMConstraintType constraintType)
+        {
+            var targetJoint = motionJoints.FirstOrDefault(x => x.humanBodyBone == humanBodyBones);
+            if (targetJoint == null) return null;
+
+            switch (constraintType)
+            {
+                case MMConstraintType.Position:
+                    return (targetJoint.constraints[0] as MMPositionConstraint).targetTransform;
+                case MMConstraintType.LookAt:
+                    return (targetJoint.constraints[1] as MMLookConstraint).targetTransform;
+                default:
+                    return null ;
+            }
+        }
         private void PostProcess()
         {
             jointControllers = new List<MMJointController>();
@@ -200,7 +219,10 @@ namespace MagicMotion.Mono
                     }
                 }
             }
-
+            var rootJoint = animator.GetBoneTransform(HumanBodyBones.Hips).gameObject.AddComponent<MMJoint>();
+            rootJoint.humanBodyBone = (HumanBodyBones)HumanBodyBones.Hips;
+            rootJoint.jointName = HumanBodyBones.Hips.ToString();
+            motionJoints[0] = rootJoint;
             #endregion
             #region Clac localPosition and localRotation
 
@@ -212,39 +234,22 @@ namespace MagicMotion.Mono
                     continue;
                 }
                 currentJoint.jointIndex = i;
-                for (Transform parentTransform = currentJoint.transform.parent;
-                    parentTransform != null;
-                    parentTransform = parentTransform.parent)
+                int humanIndex = (int)currentJoint.humanBodyBone;
+                int parentIndex =HumanTrait.GetParentBone(humanIndex);
+                while (parentIndex!=-1)
                 {
-                    MMJoint parentJoint = motionJoints.FirstOrDefault(x => x!=null&& x.transform == parentTransform);
-                    if (parentJoint != null)
+                    if (motionJoints[parentIndex] != null)
                     {
-                        currentJoint.parent = parentJoint;
+                        currentJoint.parent = motionJoints[parentIndex];
                         break;
                     }
+                    parentIndex = HumanTrait.GetParentBone(parentIndex);
                 }
+
                 motionJoints[i] = currentJoint;
             }
             #endregion
-            /*            #region Load muscle's Range
-                        //OYM£ºload 3 import range if not useDefaultValues
-                        var humanbone = humandescription.human;
-                        for (int i = 0; i < humanbone.Length; i++)
-                        {
-                            var jointDescription = humanbone[i];
-                            int boneIndex = Array.IndexOf(HumanTrait.BoneName, jointDescription.humanName);
-                            if (!jointDescription.limit.useDefaultValues)
-                            {
-                                var motionJoint = motionJoints[boneIndex];
-                                motionJoint.minRange = jointDescription.limit.min;
-                                motionJoint.maxRange = jointDescription.limit.max;
-                            }
 
-                        }
-                        #endregion*/
-
-/*            currentPose.muscles = new float[muscleValue.Length];
-            humanPoseHandler.SetHumanPose(ref currentPose);*/
         }
         /// <summary>
         /// step two: build constraitnt and other thing
@@ -252,12 +257,6 @@ namespace MagicMotion.Mono
         private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
-            ConstraintAimRoot = new GameObject("Aim Root");
-
-
-            ConstraintAimRoot.transform.parent = transform;
-            ConstraintAimRoot.transform.localPosition = Vector3.zero;
-            ConstraintAimRoot.transform.localRotation = Quaternion.identity;
 
             AddConstraint(MMConstraintType.Position);
            //AddConstraint(MMConstraintType.DofChange);
@@ -268,7 +267,7 @@ namespace MagicMotion.Mono
         /// <param name="constraintType"></param>
         private void AddConstraint(MMConstraintType constraintType)
         {
-            for (int i = 1; i < motionJoints.Length; i++)
+            for (int i = 0; i < motionJoints.Length; i++)
             {
                 var joint = motionJoints[i];
                 if (joint==null)
@@ -279,8 +278,9 @@ namespace MagicMotion.Mono
                 switch (constraintType)
                 {
                     case MMConstraintType.Position:
-                        GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
+                        if (joint.humanBodyBone == HumanBodyBones.LeftEye || joint.humanBodyBone == HumanBodyBones.RightEye) continue;
 
+                        GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
 
                         var positionConstraint =
                        joint.gameObject.AddComponent<MMPositionConstraint>();
@@ -337,33 +337,6 @@ namespace MagicMotion.Mono
                 }
             }
         }
-        /// <summary>
-        /// Remove empty element or sort something 
-        /// </summary>
-/*        private void Regular()
-        {
-            List<MMJoint> vaildJoint = new List<MMJoint>();
-            for (int i = 0; i < motionJoints.Length; i++)
-            {
-                if (motionJoints[i] != null)
-                {
-                    motionJoints[i].jointIndex = vaildJoint.Count;
-                    vaildJoint.Add(motionJoints[i]);
-                }
-            }
-            motionJoints = vaildJoint.ToArray();
-
-            List<MMMuscle> vaildmotionMuscle = new List<MMMuscle>();
-            for (int i = 0; i < motionMuscles.Length; i++)
-            {
-                if (motionMuscles[i] != null)
-                {
-                    motionMuscles[i].muscleIndex = vaildmotionMuscle.Count;
-                    vaildmotionMuscle.Add(motionMuscles[i]);
-                }
-            }
-            motionMuscles = vaildmotionMuscle.ToArray();
-        }*/
 
         #endregion
 
@@ -1807,5 +1780,52 @@ namespace MagicMotion.Mono
             }
         }
     */
+
+/// <summary>
+/// Remove empty element or sort something 
+/// </summary>
+/*        private void Regular()
+        {
+            List<MMJoint> vaildJoint = new List<MMJoint>();
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                if (motionJoints[i] != null)
+                {
+                    motionJoints[i].jointIndex = vaildJoint.Count;
+                    vaildJoint.Add(motionJoints[i]);
+                }
+            }
+            motionJoints = vaildJoint.ToArray();
+
+            List<MMMuscle> vaildmotionMuscle = new List<MMMuscle>();
+            for (int i = 0; i < motionMuscles.Length; i++)
+            {
+                if (motionMuscles[i] != null)
+                {
+                    motionMuscles[i].muscleIndex = vaildmotionMuscle.Count;
+                    vaildmotionMuscle.Add(motionMuscles[i]);
+                }
+            }
+            motionMuscles = vaildmotionMuscle.ToArray();
+        }*/
+/*            #region Load muscle's Range
+            //OYM£ºload 3 import range if not useDefaultValues
+            var humanbone = humandescription.human;
+            for (int i = 0; i < humanbone.Length; i++)
+            {
+                var jointDescription = humanbone[i];
+                int boneIndex = Array.IndexOf(HumanTrait.BoneName, jointDescription.humanName);
+                if (!jointDescription.limit.useDefaultValues)
+                {
+                    var motionJoint = motionJoints[boneIndex];
+                    motionJoint.minRange = jointDescription.limit.min;
+                    motionJoint.maxRange = jointDescription.limit.max;
+                }
+
+            }
+            #endregion*/
+
+/*            currentPose.muscles = new float[muscleValue.Length];
+            humanPoseHandler.SetHumanPose(ref currentPose);*/
 #endregion
 

@@ -297,8 +297,9 @@ namespace MagicMotion.Internal
 
             caclulatelossJob = new CaclulatelossJob()
             {
-                constraintNatives = constraintNativeArray,
+                constraintDatas = constraintNativeArray,
                 jointRelationDatas = jointRelationDataNativeArray,
+                jointDatas=jointDataNativeArray,
                 jointTransformNatives = jointTransformNativeArray,
                 Dof3s = Dof3NativeArray,
                 muscleGradientRotations = muscleGradientRotationArray,
@@ -361,8 +362,12 @@ namespace MagicMotion.Internal
             }
 
         }
-        
-        
+
+        internal void Run(object rootPosition, object rootRotation)
+        {
+            throw new NotImplementedException();
+        }
+
         private void Reset(Vector3 rootPosition, Quaternion rootRotation)
         {
             //OYM：reset globalData

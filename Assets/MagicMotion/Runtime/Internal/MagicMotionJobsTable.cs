@@ -58,7 +58,7 @@ namespace MagicMotion
 
             }
         }
-        /// <summary>
+/*        /// <summary>
         /// To read constraint data from transform. e.g. position constriant,lookat constraint 
         /// </summary>
         [BurstCompile]
@@ -105,7 +105,7 @@ namespace MagicMotion
                 }
                 constraintDatas[point] = constraint;
             }
-        }
+        }*/
         /// <summary>
         /// Set Constriant data 
         /// </summary>
@@ -117,16 +117,16 @@ namespace MagicMotion
             /// </summary>
             [ReadOnly]
             public NativeArray<JointRelationData> jointRelationDatas;
-            /// <summary>
+/*            /// <summary>
             /// Joint world position
             /// </summary>
-            [ReadOnly,NativeDisableParallelForRestriction]
+            [ReadOnly, NativeDisableParallelForRestriction]
             public NativeArray<Vector3> jointPositions;
             /// <summary>
             /// Joint world rotation
             /// </summary>
             [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<Quaternion> jointRotations;
+            public NativeArray<Quaternion> jointRotations;*/
             /// <summary>
             /// joint dof3 value 
             /// </summary>
@@ -140,13 +140,12 @@ namespace MagicMotion
             public void Execute(int index)
             {
                 var jointRelation = jointRelationDatas[index];
+
                 var originConstraint = constraintDatas[jointRelation.jointIndex];
-                var jointPosition = jointPositions[jointRelation.jointIndex];
-                var jointRotation = jointRotations[jointRelation.jointIndex];
                 var jointDof3 = Dof3s[jointRelation.jointIndex];
 
-                originConstraint.positionChangeConstraint.oldPosition = jointPosition;
                 originConstraint.DofChangeConstraint.oldDof3= jointDof3;
+
                 constraintDatas[index] = originConstraint;
             }
         }
@@ -367,7 +366,12 @@ namespace MagicMotion
             /// Constriant data 
             /// </summary>
             [ReadOnly]
-            public NativeArray<ConstraintData> constraintNatives;
+            public NativeArray<ConstraintData> constraintDatas;
+            /// <summary>
+            /// Constriant data 
+            /// </summary>
+            [ReadOnly]
+            public NativeArray<JointData> jointDatas;
             /// <summary>
             /// Joint relation data ,for claculate the new world transf
             /// </summary>
@@ -397,7 +401,7 @@ namespace MagicMotion
             {
 
                 JointRelationData jointRelationData = jointRelationDatas[index];    
-                ConstraintData constraintNative = constraintNatives[index];
+                ConstraintData constraintNative = constraintDatas[index];
                 JoinLoss jointloss = jointlossNatives[index];
 
 
@@ -415,26 +419,31 @@ namespace MagicMotion
                 {
                     UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
-/*                if (constraintNative.DofConstraint.isVaild)
+                if (constraintNative.directionConstraint.isVaild)
                 {
-                    UpdateMuscleloss(ref jointloss, ref Dof3, ref constraintNative);
+                    UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
                 }
-                if (constraintNative.lookAtConstraint.isVaild)
-                {
-                    UpdateLookAtloss(ref jointloss, ref jointTransform, ref constraintNative);
-                }
-                if (constraintNative.colliderConstraint.isVaild)
-                {
-                    UpdateColliderConstraint(ref jointloss, ref jointTransform, ref constraintNative);
-                }
-                if (constraintNative.positionChangeConstraint.isVaild)
-                {
-                    UpdatePositionChangeloss(ref jointloss, ref jointTransform, ref constraintNative);
-                }
-                if (constraintNative.DofChangeConstraint .isVaild)
-                {
-                    UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
-                }*/
+
+                /*                if (constraintNative.DofConstraint.isVaild)
+                                {
+                                    UpdateMuscleloss(ref jointloss, ref Dof3, ref constraintNative);
+                                }
+                                if (constraintNative.lookAtConstraint.isVaild)
+                                {
+                                    UpdateLookAtloss(ref jointloss, ref jointTransform, ref constraintNative);
+                                }
+                                if (constraintNative.colliderConstraint.isVaild)
+                                {
+                                    UpdateColliderConstraint(ref jointloss, ref jointTransform, ref constraintNative);
+                                }
+                                if (constraintNative.positionChangeConstraint.isVaild)
+                                {
+                                    UpdatePositionChangeloss(ref jointloss, ref jointTransform, ref constraintNative);
+                                }
+                                if (constraintNative.DofChangeConstraint .isVaild)
+                                {
+                                    UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
+                                }*/
                 jointloss.Clacloss();
                jointlossNatives[index] = jointloss;
             }
@@ -529,11 +538,11 @@ namespace MagicMotion
             private static void UpdateMuscleChangeloss(ref JoinLoss jointloss, ref float3 Dof3, ref ConstraintData constraintNative)
             {
                 float3 oldDof3 = constraintNative.DofChangeConstraint .oldDof3;
-                float3 torlerence3 = constraintNative.DofChangeConstraint .torlerence3;
+                float3 tolerance3 = constraintNative.DofChangeConstraint .tolerance3;
                 float3 weight3 = constraintNative.DofChangeConstraint .weight3;
 
                 float3 Dof3Change = math.abs( Dof3 - oldDof3);
-                Dof3Change = math.max(0, Dof3Change - torlerence3)* weight3;
+                Dof3Change = math.max(0, Dof3Change - tolerance3)* weight3;
                 float loss = math.csum(Dof3Change)/3;
                 jointloss.muscleChangeloss = loss* loss;
             }
@@ -660,7 +669,7 @@ namespace MagicMotion
                 {
                     JointRelationData relationData = relationDatas[i];
                     double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
-                    gradientTemp /= jointRelativedCounts[relationData.relatedJointIndex];
+                    //gradientTemp = gradientTemp /jointRelativedCounts[relationData.relatedJointIndex] *jointRelativedCounts[0];
                     gradientTemp /= L_BFGSStatic.EPSILION;
                     
 

@@ -29,7 +29,7 @@ namespace MagicMotion.Mono
         {
             return new DofChangeConstraint()
             {
-                torlerence3 = tolerance3,
+                tolerance3 = tolerance3,
                 weight3 = weight3,
             };
         }

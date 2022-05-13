@@ -28,11 +28,6 @@ namespace MagicMotion
     //OYM：已经不安全的代码片段除外
     public class MagicMotionKernel
     {
-
-        public const int insideIteration =16;
-        public const int outsideIteration  =1;
-        public const int BatchCount =4;
-        public static int threadCount = JobsUtility.JobWorkerCount;
         #region  NativeArrayData
         //OYM： Base data (read only)
         private NativeArray<JointData> jointDataNativeArray;//OYM：所有jointData的存放位置,长度为parallelLength
@@ -40,21 +35,15 @@ namespace MagicMotion
         private NativeArray<ConstraintData> constraintDataNativeArray;
 
         //OYM：Relative data(readonly)
-        private NativeArray<TransformToConstraintData> transformToConstrainNativeArray;
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
         private NativeArray<int> muscleRelativeCountNativeArray;
         //OYM： muslceData
         private NativeArray<float>[] muscleValueNativeArrays;
 
         //OYM：transform data
-        private NativeArray<Vector3> jointPositionNativeArray;
-        private NativeArray<Vector3> constraintPositionNativeArray;
-        private NativeArray<Quaternion> jointRotationNativeArray;
-        private NativeArray<Quaternion> constraintRotationNativeArray;
         #endregion
 
         #region JobsData
-        private TransformToConstraintJob getConstraintTransformJob;
         //private RigHipPositionJob rigHipPositionJob;
         private BuildConstraintDataJob buildConstraintDataJob;
 
@@ -67,7 +56,7 @@ namespace MagicMotion
         private InitializeMuscleJob initializeMuscleJob;
         private JointData[] joints;
         private MuscleData[] muscles;
-        private TransformToConstraintData[] transformToConstraints;
+/*        private TransformToConstraintData[] transformToConstraints;*/
         private ConstraintData[] constraints;
         private JointRelationData[] jointMapDatas;
 
@@ -76,36 +65,42 @@ namespace MagicMotion
         private Action[][] loopActions;
         private List<IDisposable> disposeList;
 
-
         private int[] jointRelativedCounts;
         private bool[][] jointRelationMap;
 
-        public int parallelDataCount;
-        public int jointCount;
-        public int muscleCount;
+        private int parallelDataCount;
+        private int jointCount;
+        private int muscleCount;
 
         private volatile float bestLoss;
         private volatile int bestOptimizerIndex;
 
-        private bool isCreated;
+        private bool isInitialize;
 
         private Action<float[]> SetMuscleCall;
         private int searchLevel;
 
+        public int insideIteration;
+        public int outsideIteration;
+        public int batchCount;
+        private float3 worldPosition;
+        private quaternion worldRotation;
 
-        public bool IsCreated { get { return isCreated; } }
+        public bool IsCreated { get { return isInitialize; } }
 
         #endregion
 
         #region PublicFunc
-        public MagicMotionKernel(SearchLevel searchLevel = SearchLevel.Double)
+        public MagicMotionKernel(SearchLevel searchLevel = SearchLevel.Double,int insideIteration=16,int outsideIteration=1,int batchCount=4)
         {
             this.searchLevel = (int)searchLevel;
+            this.insideIteration = insideIteration;
+            this.outsideIteration = outsideIteration;
+            this.batchCount = batchCount;
         }
-        internal void SetConstraintData(ConstraintData[] constraints, TransformToConstraintData[] transformToConstraints)
+        internal void SetConstraintData(ConstraintData[] constraints)
         {
             this.constraints = constraints;
-            this.transformToConstraints = transformToConstraints;
         }
         internal void SetJointData(JointData[] joints)
         {
@@ -128,13 +123,11 @@ namespace MagicMotion
             BuildRelationData();
             BuildNativeDataInternal();
             BuildJobDataInternal();
-            isCreated = true;
+            isInitialize = true;
         }
-
-        public async Task Optimize(float deltatime, Vector3[] jointPositions, Quaternion[] jointRotations, Vector3[] constraintPositions, Quaternion[] constraintRotations)
+        internal async Task OptimizeAsync(float deltatime, float3 worldPosition, quaternion worldRotation)
         {
-            //OYM：未来要异步的部分,尽量不要涉及mono的内容
-            if (!isCreated)
+            if (!isInitialize)
             {
                 return;
             }
@@ -143,71 +136,72 @@ namespace MagicMotion
                 return;
             }
             waitTask = Task.Run(() =>
-              {
-                  #region Transform Data To NativeArray
-                  jointPositionNativeArray.CopyFrom(jointPositions);
-                  jointRotationNativeArray.CopyFrom(jointRotations);
-                  constraintPositionNativeArray.CopyFrom(constraintPositions);
-                  constraintRotationNativeArray.CopyFrom(constraintRotations);
-                  #endregion
-
-                  #region Build Question
-                  buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
-                  getConstraintTransformJob.Run(transformToConstrainNativeArray.Length);
-                  buildConstraintDataJob.Run(parallelDataCount);
-
-                  #endregion
-
-                  #region Optimize
-
-                  for (int i = 0; i < searchLevel; i++)
-                  {
-                      for (int ii = 0; ii < muscleCount; ii++)
-                      {
-                          float refValue = muscleValueNativeArrays[0][ii];
-                          muscleValueNativeArrays[i][ii] = GetSearchValue(i, refValue);
-                      }
-                  }
-
-                  bestLoss = float.MaxValue;
-
-                  for (int i = 0; i < outsideIteration; i++)
-                  {
-                      for (int ii = 0; ii < loopActions.Length; ii++)
-                      {
-                          //OYM：Main Optimize Func is in here.
-                          Parallel.Invoke(loopActions[ii]);
-                      }
-
-                      for (int ii = 0; ii < searchLevel; ii++)
-                      {
-                          if (optimizes[ii].Loss < bestLoss)
-                          {
-                              bestLoss = optimizes[ii].Loss;
-                              bestOptimizerIndex = ii;
-                          }
-                      }
-                      if (bestOptimizerIndex != 0)
-                      {
-                          muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
-                      }
-                  }
-
-
-                  #endregion
-
-                  #region Output muscle Value
-                  //OYM：mostly it will update on the next frame...
-                  SetMuscleCall(muscleValueNativeArrays[0].ToArray());
-                  #endregion
-              }
-            );
-
+  { Optimize(deltatime, worldPosition, worldRotation); });
             await waitTask;
+        }
+        public void Optimize(float deltatime, float3 worldPosition, quaternion worldRotation)
+        {
+            //OYM：未来要异步的部分,尽量不要涉及mono的内容
+            if (!isInitialize)
+            {
+                return;
+            }
+
+            #region Build Question
+            this.worldPosition = worldPosition;
+            this.worldRotation = worldRotation;
+            NativeArray<ConstraintData>.Copy(constraints, constraintDataNativeArray, constraints.Length);
+            buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
+            buildConstraintDataJob.Run(parallelDataCount);
+
+            #endregion
+
+            #region Optimize
+
+            for (int i = 0; i < outsideIteration; i++)
+            {
+                bestLoss = float.MaxValue;
+                for (int ii = 0; ii < searchLevel; ii++)
+                {
+                    for (int iii = 0; iii < muscleCount; iii++)
+                    {
+                        float refValue = muscleValueNativeArrays[0][iii];
+                        muscleValueNativeArrays[ii][iii] = GetSearchValue(ii, refValue);
+                    }
+                }
+                for (int ii = 0; ii < loopActions.Length; ii++)
+                {
+                    //OYM：Main Optimize Func is in here.
+                    Parallel.Invoke(loopActions[ii]);
+                }
+
+                for (int ii = 0; ii < searchLevel; ii++)
+                {
+                    if (optimizes[ii].Loss < bestLoss)
+                    {
+                        bestLoss = optimizes[ii].Loss;
+                        bestOptimizerIndex = ii;
+                    }
+                }
+                if (bestOptimizerIndex != 0)
+                {
+                    muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
+                }
+            }
+            Debug.Log(bestOptimizerIndex+" - "+optimizes[bestOptimizerIndex].Loss);
+
+            #endregion
+
+            #region Output muscle Value
+            //OYM：mostly it will update on the next frame...
+            SetMuscleCall(muscleValueNativeArrays[0].ToArray());
+            #endregion
+
+
         }
         public async void Dispose()
         {
-            if (waitTask!=null&&!waitTask.IsCompleted)
+            if (waitTask != null && !waitTask.IsCompleted)
             {
                 await waitTask;
             }
@@ -228,10 +222,10 @@ namespace MagicMotion
         /// <exception cref="System.Exception"></exception>
         private void ValueCheck()
         {
-            if (isCreated)
+            if (isInitialize)
             {
                 Dispose();
-                isCreated = false;
+                isInitialize = false;
             }
             if (disposeList != null)
             {
@@ -314,7 +308,7 @@ namespace MagicMotion
         /// <exception cref="System.Exception"></exception>
         private void BuildNativeDataInternal()
         {
-            if (isCreated)
+            if (isInitialize)
             {
                 throw new System.Exception("Disposed NativeArray before you create it");
             }
@@ -333,16 +327,10 @@ namespace MagicMotion
                 jointDataNativeArray[i] = joints[jointMapDatas[i].jointIndex];
             }
 
-            transformToConstrainNativeArray = CreateNativeData(transformToConstraints, Allocator.Persistent);
             muscleDataNativeArray = CreateNativeData(muscles, Allocator.Persistent);
 
             muscleRelativeCountNativeArray = CreateNativeData<int>(jointRelativedCounts, Allocator.Persistent);
 
-            jointPositionNativeArray = CreateNativeData<Vector3>(jointCount);
-            jointRotationNativeArray = CreateNativeData<Quaternion>(jointCount);
-
-            constraintPositionNativeArray = CreateNativeData<Vector3>(transformToConstraints.Length);
-            constraintRotationNativeArray = CreateNativeData<Quaternion>(transformToConstraints.Length);
             muscleValueNativeArrays = new NativeArray<float>[(int)searchLevel];
 
             for (int i = 0; i < searchLevel; i++)
@@ -355,35 +343,29 @@ namespace MagicMotion
         /// </summary>
         private void BuildJobDataInternal()
         {
-            getConstraintTransformJob = new TransformToConstraintJob()
+/*            getConstraintTransformJob = new TransformToConstraintJob()
             {
-                transformToConstrainDatas = transformToConstrainNativeArray,
-                constraintPositions = constraintPositionNativeArray,
-                constraintRotations = constraintRotationNativeArray,
                 constraintDatas = constraintDataNativeArray,
-            };
+            };*/
 
             buildConstraintDataJob = new BuildConstraintDataJob()
             {
-                jointPositions = jointPositionNativeArray,
-                jointRotations = jointRotationNativeArray,
                 jointRelationDatas = jointRelationDataNativeArray,
                 constraintDatas = constraintDataNativeArray,
             };
 
-
-            int loopActionLength = searchLevel / BatchCount + (searchLevel % BatchCount == 0 ? 0 : 1);
+            int loopActionLength = searchLevel / batchCount + (searchLevel % batchCount == 0 ? 0 : 1);
             loopActions = new Action[loopActionLength][];
 
             for (int i = 0; i < loopActions.Length; i++)
             {
-                if (i==loopActions.Length-1&& searchLevel % BatchCount!=0)
+                if (i == loopActions.Length - 1 && searchLevel % batchCount != 0)
                 {
-                    loopActions[i] =new Action[ searchLevel % BatchCount];
+                    loopActions[i] = new Action[searchLevel % batchCount];
                 }
                 else
                 {
-                    loopActions[i] = new Action[BatchCount];
+                    loopActions[i] = new Action[batchCount];
                 }
             }
 
@@ -404,11 +386,11 @@ namespace MagicMotion
 
                 int temp = i;
 
-                loopActions[i/BatchCount][i%BatchCount] = () => optimizes[temp].Run(jointPositionNativeArray[0],jointRotationNativeArray[0]);
+                loopActions[i / batchCount][i % batchCount] = () => optimizes[temp].Run(worldPosition, worldRotation);
 
             }
 
-            loopTasks = new Task[BatchCount];
+            loopTasks = new Task[batchCount];
             for (int i = 0; i < loopTasks.Length; i++)
             {
                 loopTasks[i] = Task.CompletedTask;
@@ -443,28 +425,30 @@ namespace MagicMotion
                     refValue = 0;
                     break;
                 case 2:
-                    refValue = -1;
+                    refValue = math.lerp(refValue, -1, 5e-4f);
+
                     break;
                 case 3:
-                    refValue = 1;
+                    refValue = math.lerp(refValue, 1, 5e-4f);
+
                     break;
                 case 4:
-                    refValue = math.lerp(refValue, -1, 0.01f);
+                    refValue = math.lerp(refValue, -1, 5e-3f);
                     break;
                 case 5:
-                    refValue = math.lerp(refValue, 1, 0.01f);
+                    refValue = math.lerp(refValue, 1, 5e-3f);
                     break;
                 case 6:
-                    refValue = math.lerp(refValue, -1, 0.1f);
+                    refValue = math.lerp(refValue, -1, 5e-2f);
                     break;
                 case 7:
-                    refValue = math.lerp(refValue, 1, 0.1f);
+                    refValue = math.lerp(refValue, 1, 5e-2f);
                     break;
                 case >= 8 and < 16:
-                    refValue =math.clamp(refValue* index/16f,-1,1);
+                    refValue = math.clamp(refValue * index / 16f, -1, 1);
                     break;
                 case >= 16 and < 32:
-                    refValue = math.lerp(-1, 1, (index-16 )/ 16f);
+                    refValue = math.lerp(-1, 1, (index - 16) / 16f);
                     break;
                 default:
                     break;
@@ -476,7 +460,7 @@ namespace MagicMotion
 
         public Keyframe[] GetmusclesKey(int index)
         {
-            return optimizes[bestOptimizerIndex].GetmusclesKey( index);
+            return optimizes[bestOptimizerIndex].GetmusclesKey(index);
 
         }
         public Keyframe[] GetGradientsKey(int index)
