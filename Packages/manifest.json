@@ -1,7 +1,7 @@
 {
   "dependencies": {
     "com.unity.burst": "1.6.5",
-    "com.unity.collab-proxy": "1.15.15",
+    "com.unity.collab-proxy": "1.15.16",
     "com.unity.ide.visualstudio": "2.0.15",
     "com.unity.jobs": "0.50.0-preview.8",
     "com.unity.test-framework": "1.1.31",
