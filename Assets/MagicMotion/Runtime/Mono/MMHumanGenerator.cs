@@ -219,10 +219,7 @@ namespace MagicMotion.Mono
                     }
                 }
             }
-            var rootJoint = animator.GetBoneTransform(HumanBodyBones.Hips).gameObject.AddComponent<MMJoint>();
-            rootJoint.humanBodyBone = (HumanBodyBones)HumanBodyBones.Hips;
-            rootJoint.jointName = HumanBodyBones.Hips.ToString();
-            motionJoints[0] = rootJoint;
+
             #endregion
             #region Clac localPosition and localRotation
 
@@ -234,18 +231,17 @@ namespace MagicMotion.Mono
                     continue;
                 }
                 currentJoint.jointIndex = i;
-                int humanIndex = (int)currentJoint.humanBodyBone;
-                int parentIndex =HumanTrait.GetParentBone(humanIndex);
-                while (parentIndex!=-1)
+                for (Transform parentTransform = currentJoint.transform.parent;
+                    parentTransform != null;
+                    parentTransform = parentTransform.parent)
                 {
-                    if (motionJoints[parentIndex] != null)
+                    MMJoint parentJoint = motionJoints.FirstOrDefault(x => x!=null&& x.transform == parentTransform);
+                    if (parentJoint != null)
                     {
-                        currentJoint.parent = motionJoints[parentIndex];
+                        currentJoint.parent = parentJoint;
                         break;
                     }
-                    parentIndex = HumanTrait.GetParentBone(parentIndex);
                 }
-
                 motionJoints[i] = currentJoint;
             }
             #endregion
@@ -257,6 +253,12 @@ namespace MagicMotion.Mono
         private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
+            ConstraintAimRoot = new GameObject("Aim Root");
+
+
+            ConstraintAimRoot.transform.parent = transform;
+            ConstraintAimRoot.transform.localPosition = Vector3.zero;
+            ConstraintAimRoot.transform.localRotation = Quaternion.identity;
 
             AddConstraint(MMConstraintType.Position);
            //AddConstraint(MMConstraintType.DofChange);
@@ -267,7 +269,7 @@ namespace MagicMotion.Mono
         /// <param name="constraintType"></param>
         private void AddConstraint(MMConstraintType constraintType)
         {
-            for (int i = 0; i < motionJoints.Length; i++)
+            for (int i = 1; i < motionJoints.Length; i++)
             {
                 var joint = motionJoints[i];
                 if (joint==null)
@@ -278,9 +280,8 @@ namespace MagicMotion.Mono
                 switch (constraintType)
                 {
                     case MMConstraintType.Position:
-                        if (joint.humanBodyBone == HumanBodyBones.LeftEye || joint.humanBodyBone == HumanBodyBones.RightEye) continue;
-
                         GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
+
 
                         var positionConstraint =
                        joint.gameObject.AddComponent<MMPositionConstraint>();
