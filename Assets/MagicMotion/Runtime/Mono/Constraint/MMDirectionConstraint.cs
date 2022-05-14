@@ -66,7 +66,14 @@ namespace MagicMotion.Mono
                 direction = (toDirection.position - fromDirection.position).normalized,
             };
         }
+
+        private void OnDrawGizmos()
+        {
+            Gizmos.color = Color.green;
+            Gizmos.DrawSphere(TargetTransform.position, 0.01f);
+        }
         #endregion
+
 
     }
 }

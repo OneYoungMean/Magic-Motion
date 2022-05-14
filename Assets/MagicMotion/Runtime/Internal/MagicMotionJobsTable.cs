@@ -112,18 +112,13 @@ namespace MagicMotion
         /// Set Constriant data 
         /// </summary>
         [BurstCompile]
-        public struct BuildConstraintDataJob : IJobParallelFor
+        public struct CopyConstraintDataJob : IJobParallelFor
         {
             /// <summary>
             /// Joint relation data 
             /// </summary>
             [ReadOnly]
             public NativeArray<JointRelationData> jointRelationDatas;
-            /// <summary>
-            /// joint dof3 value 
-            /// </summary>
-            [ReadOnly,NativeDisableParallelForRestriction]
-            public NativeArray<float3> Dof3s;
             /// <summary>
             /// constraint data 
             /// </summary>
@@ -132,12 +127,7 @@ namespace MagicMotion
             public void Execute(int index)
             {
                 var jointRelation = jointRelationDatas[index];
-
                 var originConstraint = constraintDatas[jointRelation.jointIndex];
-                var jointDof3 = Dof3s[jointRelation.jointIndex];
-
-                originConstraint.DofChangeConstraint.oldDof3= jointDof3;
-
                 constraintDatas[index] = originConstraint;
             }
         }

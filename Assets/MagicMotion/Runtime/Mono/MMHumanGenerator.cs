@@ -278,9 +278,9 @@ namespace MagicMotion.Mono
                         ConstraintAimRoot.transform.parent = transform;
                         ConstraintAimRoot.transform.localPosition = Vector3.zero;
                         ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
-
-            AddPositionConstraint();
-           //AddConstraint(MMConstraintType.DofChange);
+            AddDirectionConstraint();
+            //AddPositionConstraint();
+            //AddConstraint(MMConstraintType.DofChange);
         }
         /// <summary>
         /// add direction constraint on your joint 
@@ -296,6 +296,7 @@ namespace MagicMotion.Mono
 
             for (int i = 1; i < motionJoints.Length; i++)
             {
+                if (motionJoints[i] == null) continue;
                 var joint = motionJoints[i];
 
                 MMDirectionConstraint directionConstraint = joint.CreateConstraint(constraintType) as MMDirectionConstraint;
@@ -330,11 +331,9 @@ namespace MagicMotion.Mono
 
             for (int i = 1; i < motionJoints.Length; i++)
             {
+                if (motionJoints[i] == null) continue;
                 var joint = motionJoints[i];
-                if (joint==null)
-                {
-                    continue;
-                }
+
                 MMPositionConstraint constraint = joint.CreateConstraint(constraintType) as MMPositionConstraint;
                 if (constraint != null)
                 {

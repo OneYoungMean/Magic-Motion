@@ -45,7 +45,7 @@ namespace MagicMotion
 
         #region JobsData
         //private RigHipPositionJob rigHipPositionJob;
-        private BuildConstraintDataJob buildConstraintDataJob;
+        private CopyConstraintDataJob copyConstraintDataJob;
 
         private MuscleOptimizer[] optimizes;
 
@@ -151,8 +151,7 @@ namespace MagicMotion
             this.worldPosition = worldPosition;
             this.worldRotation = worldRotation;
             NativeArray<ConstraintData>.Copy(constraints, constraintDataNativeArray, constraints.Length);
-            buildConstraintDataJob.Dof3s = optimizes[bestOptimizerIndex].Dof3s;
-            buildConstraintDataJob.Run(parallelDataCount);
+            copyConstraintDataJob.Run(parallelDataCount);
 
             #endregion
 
@@ -348,7 +347,7 @@ namespace MagicMotion
                 constraintDatas = constraintDataNativeArray,
             };*/
 
-            buildConstraintDataJob = new BuildConstraintDataJob()
+            copyConstraintDataJob = new CopyConstraintDataJob()
             {
                 jointRelationDatas = jointRelationDataNativeArray,
                 constraintDatas = constraintDataNativeArray,
