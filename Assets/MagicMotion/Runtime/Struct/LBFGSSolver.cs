@@ -29,13 +29,12 @@ using System;
 using Unity.Mathematics;
 using Unity.Collections.LowLevel.Unsafe;
 using Unity.Collections;
-using static L_BFGSStatic;
+using static MagicMotion.Extern.L_BFGSStatic;
 
 namespace MagicMotion
 {
     public enum LBFGSState : Byte
-    {
-        
+    {    
         Initialize = 0,
         Refresh=1,
         OutsideLoopHead = 2,

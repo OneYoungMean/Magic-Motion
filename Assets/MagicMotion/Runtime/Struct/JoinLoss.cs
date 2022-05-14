@@ -2,15 +2,15 @@
 {
     internal struct JoinLoss
     {
-        public float positionloss;
+/*        public float positionloss;
         public float muscleloss;
         public float lookAtloss;
         public float colliderloss;
         public float positionChangeloss;
-        public float muscleChangeloss;
-        internal float lossSum;
+        public float muscleChangeloss;*/
+        internal double lossSum;
 
-        public void Clacloss()
+/*        public void Clacloss()
         {
             lossSum = positionloss + muscleloss + lookAtloss + colliderloss + positionChangeloss + muscleChangeloss;
             Clear();
@@ -24,7 +24,7 @@
             colliderloss = 0;
             positionChangeloss = 0;
             muscleChangeloss = 0;
-        }
+        }*/
 
         public override string ToString()
         {

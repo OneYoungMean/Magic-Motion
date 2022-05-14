@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using Unity.Burst;
 using Unity.Burst.CompilerServices;
+using System;
 
 namespace MagicMotion.Mono
 {
@@ -27,11 +28,11 @@ namespace MagicMotion.Mono
         [Range(-1,1)]
         public float value;
 
-        internal MuscleData GetNativeData()
+        internal MuscleData GetNativeData(MMJoint[] group)
         {
             return new MuscleData()
             {
-                jointIndex = joint.jointIndex,
+                jointIndex = Array.IndexOf(group,joint),
                 dof = dof,
             };
         }

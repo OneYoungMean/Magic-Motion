@@ -23,10 +23,6 @@ namespace MagicMotion.Mono
         /// </summary>
         public string jointName;
         /// <summary>
-        /// data index in array
-        /// </summary>
-        public int jointIndex;
-        /// <summary>
         ///  the joint's parent , the hip 's parent is empty
         /// </summary>
         public MMJoint parent;
@@ -100,11 +96,11 @@ namespace MagicMotion.Mono
         {
             return constraints[(int)constraintType];
         }
-        internal JointData GetNativeJointData()
+        internal JointData GetNativeJointData(MMJoint[] group)
         {
             return new JointData()
             {
-                parentIndex = parent == null ? -1 : parent.jointIndex,
+                parentIndex = parent == null ? -1 : Array.IndexOf(group,parent),
                 localPosition = initiallocalPosition,
                 localRotation = initiallocalRotation,
                 maxRange = maxRange,

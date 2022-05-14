@@ -223,9 +223,8 @@ namespace MagicMotion.Mono
             var rootMotionJoint = animator.GetBoneTransform(HumanBodyBones.Hips).gameObject.AddComponent<MMJoint>();
             rootMotionJoint.humanBodyBone = HumanBodyBones.Hips;
             rootMotionJoint.jointName = HumanTrait.BoneName[0];
-            rootMotionJoint.jointIndex = 0;
-            rootMotionJoint.maxRange = new float3(45, 45, 45);
-            rootMotionJoint.minRange = new float3(-45, -45, -45);
+            rootMotionJoint.maxRange = new float3(20, 20, 20);
+            rootMotionJoint.minRange = new float3(-20, -20, -20);
             rootMotionJoint.dof3Axis = float3x3.identity;
             for (int i = 0; i < 2; i++)
             {
@@ -251,7 +250,6 @@ namespace MagicMotion.Mono
                 {
                     continue;
                 }
-                currentJoint.jointIndex = i;
                 for (Transform parentTransform = currentJoint.transform.parent;
                     parentTransform != null;
                     parentTransform = parentTransform.parent)

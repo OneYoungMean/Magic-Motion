@@ -7,9 +7,11 @@ using System;
 using UnityEngine;
 using Unity.Collections.LowLevel.Unsafe;
 using System.Runtime.CompilerServices;
+using MagicMotion.Extern;
 
 namespace MagicMotion
 {
+    using static Extrension;
     internal static unsafe class MagicMotionJobsTable
     {
         /// <summary>
@@ -117,16 +119,6 @@ namespace MagicMotion
             /// </summary>
             [ReadOnly]
             public NativeArray<JointRelationData> jointRelationDatas;
-/*            /// <summary>
-            /// Joint world position
-            /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<Vector3> jointPositions;
-            /// <summary>
-            /// Joint world rotation
-            /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<Quaternion> jointRotations;*/
             /// <summary>
             /// joint dof3 value 
             /// </summary>
@@ -367,11 +359,7 @@ namespace MagicMotion
             /// </summary>
             [ReadOnly]
             public NativeArray<ConstraintData> constraintDatas;
-            /// <summary>
-            /// Constriant data 
-            /// </summary>
-            [ReadOnly]
-            public NativeArray<JointData> jointDatas;
+
             /// <summary>
             /// Joint relation data ,for claculate the new world transf
             /// </summary>
@@ -412,9 +400,9 @@ namespace MagicMotion
                     quaternion muscleGradientRotation = muscleGradientRotations[jointRelationData.relatedMuscleIndex];
                     RebuildJointTransform(ref jointTransform, ref relatedTransform, ref muscleGradientRotation);
                 }
+              float3 Dof3 = Dof3s[jointRelationData.jointIndex];
 
-                float3 Dof3 = Dof3s[jointRelationData.jointIndex];
-
+                jointloss.lossSum = 0;
                 if (constraintNative.positionConstraint.isVaild)
                 {
                     UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
@@ -444,7 +432,6 @@ namespace MagicMotion
                                 {
                                     UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
                                 }*/
-                jointloss.Clacloss();
                jointlossNatives[index] = jointloss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -472,7 +459,7 @@ namespace MagicMotion
                 float lossCos = math.csum(direction* direction* weight3);
                 lossCos /= ( lengthSum* lengthSum);
                 lossCos *= math.PI * math.PI;
-                jointloss.positionloss = lossCos;
+                jointloss.lossSum += lossCos;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateMuscleloss(ref JoinLoss jointloss, ref float3 Dof3, ref ConstraintData constraintNative)
@@ -481,7 +468,7 @@ namespace MagicMotion
                 float3 weight3 = constraintNative.DofConstraint.weight3;
                 float3 Dof3Outside = math.max(math.abs(Dof3) - tolerance3,0);
                 float loss =math.csum(Dof3Outside * weight3);
-                jointloss.muscleloss = loss;
+                jointloss.lossSum += loss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateLookAtloss(ref JoinLoss jointloss, ref RigidTransform jointTransform, ref ConstraintData constraintNative)
@@ -502,7 +489,7 @@ namespace MagicMotion
 
             float loss = math.acos(cosA);
                 loss = math.max(0, math.abs(loss) - tolerance * math.PI);
-            jointloss.lookAtloss= loss* loss*weight;
+                jointloss.lossSum += loss * loss*weight;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateColliderConstraint(ref JoinLoss jointloss, ref RigidTransform jointTransform, ref ConstraintData constraintNative)
@@ -538,7 +525,7 @@ namespace MagicMotion
 
                 //loss =;
 
-                jointloss.positionChangeloss = loss*10;
+                jointloss.lossSum += loss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateMuscleChangeloss(ref JoinLoss jointloss, ref float3 Dof3, ref ConstraintData constraintNative)
@@ -550,7 +537,7 @@ namespace MagicMotion
                 float3 Dof3Change = math.abs( Dof3 - oldDof3);
                 Dof3Change = math.max(0, Dof3Change - tolerance3)* weight3;
                 float loss = math.csum(Dof3Change)/3;
-                jointloss.muscleChangeloss = loss* loss;
+                jointloss.lossSum += loss * loss;
             }
         }
        [BurstCompile(FloatPrecision.High, FloatMode.Strict)]
@@ -670,7 +657,7 @@ namespace MagicMotion
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas ,GlobalData globalData, NativeArray<int> jointRelativedCounts, int muscleLength, int jointLength, int parallelLength,NativeArray<double>gradients)
             {
-                UnsafeUtility.MemClear(gradients.GetUnsafePtr(), gradients.Length * UnsafeUtility.SizeOf<double>());
+                ClearNativeArrayData(gradients);
                 for (int i = jointLength; i < parallelLength; i++)
                 {
                     JointRelationData relationData = relationDatas[i];

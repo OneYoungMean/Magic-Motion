@@ -193,8 +193,6 @@ namespace MagicMotion.Mono
                 newArray[0] = rootJoint;
                 motionJoints = newArray;
             }
-            motionJoints[0].jointIndex = 0;
-            motionJoints[0].parent = null;
         }
 
         private void BuildJointRelation()
@@ -208,7 +206,6 @@ namespace MagicMotion.Mono
                 {
                     continue;
                 }
-                currentJoint.jointIndex = i;
                 currentJoint.controller = this;
                 for (Transform parentTransform = currentJoint.transform.parent;
                     parentTransform != null;
@@ -296,7 +293,7 @@ namespace MagicMotion.Mono
             MuscleData[] muscleDatas = new MuscleData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {
-                muscleDatas[i] = motionMuscles[i].GetNativeData();
+                muscleDatas[i] = motionMuscles[i].GetNativeData(motionJoints);
             }
             kernel.SetMuscleSata(muscleDatas);
 
@@ -305,7 +302,7 @@ namespace MagicMotion.Mono
 
             for (int i = 0; i < motionJoints.Length; i++)
             {
-                jointData[i] = motionJoints[i].GetNativeJointData();
+                jointData[i] = motionJoints[i].GetNativeJointData(motionJoints);
             }
             kernel.SetJointData(jointData);
 
