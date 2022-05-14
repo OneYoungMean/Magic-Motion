@@ -375,11 +375,11 @@ namespace MagicMotion.Internal
             globalData.leastLoopCount = iterationCount;
             globalDataNativeArray[0] = globalData;
             //OYM：reset solver
+
             var solver = LBFGSNatives[0];
             solver.state = LBFGSState.Initialize;
             LBFGSNatives[0] = solver;
             //OYM：reset root trasnform
-
             buildTransformJob.rootPosition = rootPosition;
             buildTransformJob.rootRotation = rootRotation; 
         }

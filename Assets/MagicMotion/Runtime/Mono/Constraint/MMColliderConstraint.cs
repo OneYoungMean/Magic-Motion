@@ -1,10 +1,10 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace MagicMotion.Mono
 {
-    public class MMColliderConstraint : MMConstraint
+    public class MMLookConstraint : MMConstraint
     {
         #region  Field&Property
 
@@ -13,33 +13,25 @@ namespace MagicMotion.Mono
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
-        [Range(0,1)]
-        public float weight=1;
+        [Range(0, 1)]
+        public float weight = 1;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>
         [Range(MIN__TOLERENCE, 180f)]
-        public float tolerance= MIN__TOLERENCE;
+        public float tolerance = MIN__TOLERENCE;
         /// <summary>
         /// Constraint target
         /// </summary>
         public Transform targetTransform;
         /// <summary>
-        /// collider Direction
+        /// joint lookat direction
         /// </summary>
-        public Vector3 colliderDirection;
-        /// <summary>
-        /// collider length ,sphere is zero
-        /// </summary>
-        public float length;
-        /// <summary>
-        /// collider radius 
-        /// </summary>
-        public float radius;
+        public Vector3 jointDirection;
         /// <summary>
         /// Constraint Type
         /// </summary>
-        public override MMConstraintType ConstraintType => MMConstraintType.Collider;
+        public override MMConstraintType ConstraintType => MMConstraintType.LookAt;
         /// <summary>
         /// Target transform;
         /// </summary>
@@ -57,8 +49,6 @@ namespace MagicMotion.Mono
         {
             this.targetTransform = targetTransform;
             initalLocalPosition = targetTransform.localPosition;
-
-            colliderDirection = Quaternion.Inverse(targetTransform.rotation) * Vector3.up;
         }
 
         public override void ReSet()
@@ -70,20 +60,17 @@ namespace MagicMotion.Mono
         {
             return new ConstriantContainer()
             {
-                colliderConstraint = GetNativeData(),
+                lookAtConstraint = GetNativeData(),
             };
         }
 
-        internal ColliderConstraint GetNativeData()
+        internal LookAtConstraint GetNativeData()
         {
-            return new ColliderConstraint()
+            return new LookAtConstraint()
             {
                 weight = weight,
-                localDirection = targetTransform.rotation* colliderDirection,
-                localPosition=targetTransform.position,
-
-                length = length,
-                radius = radius,
+                tolerance = tolerance,
+                direction = jointDirection,
             };
         }
 

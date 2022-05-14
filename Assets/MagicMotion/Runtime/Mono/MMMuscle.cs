@@ -9,11 +9,6 @@ namespace MagicMotion.Mono
     public class MMMuscle:MonoBehaviour
     {
         /// <summary>
-        /// the muscle index
-        /// </summary>
-        [HideInInspector]
-        public int muscleIndex;
-        /// <summary>
         /// muscle dof ,must from range 0-2
         /// </summary>
         [HideInInspector]
@@ -36,7 +31,6 @@ namespace MagicMotion.Mono
         {
             return new MuscleData()
             {
-                muscleIndex = muscleIndex,
                 jointIndex = joint.jointIndex,
                 dof = dof,
             };

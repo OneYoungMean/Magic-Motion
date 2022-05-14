@@ -54,7 +54,7 @@ public class TestScript : MonoBehaviour
                 {
                     if (mediaPipeDatas.TryGetValue(humanBody, out MediaPipeData mediaPipeData))
                     {
-                        positionConstraint.targetTransform.position = mediaPipeData.position;
+                        positionConstraint.TargetTransform.position = mediaPipeData.position;
                         positionConstraint.weight3 = Vector3.one * mediaPipeData.weight;
                     }
                     else

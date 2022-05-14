@@ -42,9 +42,9 @@ namespace MagicMotion.Mono
         public List<MMJointController> jointControllers;
         public List<MMConstraint> motionConstraints;
         public MMJoint[] motionJoints;
-        public MMMuscle[] motionMuscles;
+        public List<MMMuscle> motionMuscles;
 
-
+        private Transform[] rootTrasnforms=new Transform[sizeof(byte)*8];
         #endregion
 
         #region UnityFunc
@@ -168,7 +168,7 @@ namespace MagicMotion.Mono
             }
 
             motionJoints = new MMJoint[HumanTrait.BoneCount];
-            motionMuscles = new MMMuscle[muscleValue.Length];
+            motionMuscles = new List<MMMuscle>();
 
 
             #region Generate Muscle and joint
@@ -183,11 +183,10 @@ namespace MagicMotion.Mono
                     if (targetJoint != null)
                     {
 
-                        motionMuscles[i] = targetJoint.gameObject.AddComponent<MMMuscle>();
-                        //motionMuscles[i].value = muscleValue[muscleIndex];
-                        motionMuscles[i].dof = dof;
-                        motionMuscles[i].muscleIndex = muscleIndex;
-                        motionMuscles[i].muscleName = muscleName;
+                        var motionMuscle = targetJoint.gameObject.AddComponent<MMMuscle>();
+                        motionMuscle.dof = dof;
+                        motionMuscle.muscleName = muscleName;
+
 
                         GetMuscleRangeAndAxis(targetJoint, currentPose, humanPoseHandler, muscleIndex, out float minAngle, out float maxAngle, out float3 axis);
 
@@ -196,14 +195,12 @@ namespace MagicMotion.Mono
                         if (motionJoint == null)
                         {
                             motionJoint = targetJoint.gameObject.AddComponent<MMJoint>();
-                            /*                            motionJoint.position = targetJoint.position;
-                                                        motionJoint.rotation = targetJoint.rotation;*/
                             motionJoint.humanBodyBone = (HumanBodyBones)jointIndex;
                             motionJoint.jointName = jointName;
 
                         }
-                        motionJoint.muscles[dof] = motionMuscles[i];
-                        motionMuscles[i].joint = motionJoint;
+                        motionJoint.muscles[dof] = motionMuscle;
+                        motionMuscle.joint = motionJoint;
 
                         float3x3 dof3Axis = motionJoint.dof3Axis;
                         dof3Axis[dof] = axis;
@@ -218,9 +215,31 @@ namespace MagicMotion.Mono
                         motionJoint.maxRange = maxRange;
 
                         motionJoints[jointIndex] = motionJoint;
+                        motionMuscles.Add(motionMuscle);
                     }
                 }
             }
+            #region Add Hip Joint
+            var rootMotionJoint = animator.GetBoneTransform(HumanBodyBones.Hips).gameObject.AddComponent<MMJoint>();
+            rootMotionJoint.humanBodyBone = HumanBodyBones.Hips;
+            rootMotionJoint.jointName = HumanTrait.BoneName[0];
+            rootMotionJoint.jointIndex = 0;
+            rootMotionJoint.maxRange = new float3(45, 45, 45);
+            rootMotionJoint.minRange = new float3(-45, -45, -45);
+            rootMotionJoint.dof3Axis = float3x3.identity;
+            for (int i = 0; i < 2; i++)
+            {
+                var rootMuscle= rootMotionJoint.gameObject.AddComponent<MMMuscle>();
+                rootMuscle.dof = i;
+                rootMuscle.muscleName = "rootMuscle " +i;
+                rootMuscle.joint = rootMotionJoint;
+                rootMotionJoint.muscles[i] = rootMuscle;
+                motionMuscles.Add(rootMuscle);
+            }
+
+             motionJoints[0]=rootMotionJoint;
+
+            #endregion
 
             #endregion
             #region Clac localPosition and localRotation
@@ -255,22 +274,62 @@ namespace MagicMotion.Mono
         private void Initialize2()
         {
             motionConstraints = new List<MMConstraint>();
-/*            ConstraintAimRoot = new GameObject("Aim Root");
+            /*            ConstraintAimRoot = new GameObject("Aim Root");
 
 
-            ConstraintAimRoot.transform.parent = transform;
-            ConstraintAimRoot.transform.localPosition = Vector3.zero;
-            ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
+                        ConstraintAimRoot.transform.parent = transform;
+                        ConstraintAimRoot.transform.localPosition = Vector3.zero;
+                        ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
 
-            AddConstraint(MMConstraintType.Position);
+            AddPositionConstraint();
            //AddConstraint(MMConstraintType.DofChange);
         }
         /// <summary>
-        /// add constraint on your joint 
+        /// add direction constraint on your joint 
         /// </summary>
         /// <param name="constraintType"></param>
-        private void AddConstraint(MMConstraintType constraintType)
+        private void AddDirectionConstraint()
         {
+            MMConstraintType constraintType = MMConstraintType.Direction;
+            var rootTransform = new GameObject("IK_Root_" + constraintType.ToString()).transform;
+            rootTrasnforms[(int)constraintType] = rootTransform;
+            rootTransform.parent = animator.transform;
+            rootTransform.position = motionJoints[0].transform.position;
+
+            for (int i = 1; i < motionJoints.Length; i++)
+            {
+                var joint = motionJoints[i];
+
+                MMDirectionConstraint directionConstraint = joint.CreateConstraint(constraintType) as MMDirectionConstraint;
+                if (directionConstraint != null)
+                {
+                    Transform targetTransform = new GameObject("IK_" + joint.name + "_" + constraintType.ToString()).transform;
+
+                    Transform originTransform;
+                    if (joint.parent==null|| joint.parent.GetConstraint(constraintType) == null)
+                    {
+                        originTransform = rootTransform;
+                    }
+                    else
+                    {
+                        originTransform = joint.parent.GetConstraint(constraintType).TargetTransform;
+                    }
+                    targetTransform.parent = originTransform;
+                    targetTransform.position = joint.transform.position;
+                    directionConstraint.SetTarget(originTransform, targetTransform);
+                    motionConstraints.Add(directionConstraint);
+                }
+            }
+        }
+
+        private void AddPositionConstraint()
+        {
+            MMConstraintType constraintType = MMConstraintType.Position;
+            var rootTransform = new GameObject("IK_Root_" + constraintType.ToString()).transform;
+            rootTrasnforms[(int)constraintType] = rootTransform;
+            rootTransform.parent = animator.transform;
+            rootTransform.position = motionJoints[0].transform.position;
+
             for (int i = 1; i < motionJoints.Length; i++)
             {
                 var joint = motionJoints[i];
@@ -278,70 +337,27 @@ namespace MagicMotion.Mono
                 {
                     continue;
                 }
-                MMConstraint constraint;
-                switch (constraintType)
+                MMPositionConstraint constraint = joint.CreateConstraint(constraintType) as MMPositionConstraint;
+                if (constraint != null)
                 {
-                    case MMConstraintType.Position:
-                        GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
+                    Transform targetTransform = new GameObject("IK_" + joint.name + "_"+ constraintType.ToString()).transform;
 
-
-                        var positionConstraint =
-                       joint.gameObject.AddComponent<MMPositionConstraint>();
-                        
-                        positionConstraint.weight3 =Vector3.one;
-                        positionConstraint.AddTarget(positionIK.transform);
-                        constraint = positionConstraint;
-
-                        if (isBuildConstraintRelation&&joint.parent != null && joint.parent.constraints[(int)constraintType] != null)
-                        {
-                            positionIK.transform.parent =( joint.parent.constraints[(int)constraintType] as MMPositionConstraint).targetTransform;
-                        }
-                        else
-                        {
-                            positionIK.transform.parent = transform;
-                        }
-                        positionIK.transform.position = joint.transform.position;
-                        break;
-                    case MMConstraintType.Rotation:
-                        constraint = null;
-                        break;
-                    case MMConstraintType.LookAt:
-
-                        GameObject lookAtIK = new GameObject("IK_" + motionJoints[i].name + "_Lookat");
-                        lookAtIK.transform.parent = joint.transform;
-                        lookAtIK.transform.position = joint.transform.position + LOOKAT_LENGTH * joint.transform.forward;
-                        var lookatConstraint= joint.gameObject.AddComponent<MMLookConstraint>();
-                        lookatConstraint.weight=1;
-                        lookatConstraint.jointDirection = Vector3.forward;
-                        lookatConstraint.AddTarget(lookAtIK.transform);
-                        constraint = lookatConstraint;
-
-                        break;
-                    case MMConstraintType.Collider:
-                        constraint = null;
-                        break;
-                    case MMConstraintType.PositionChange:
-                        var positionChangeConstraint = joint.gameObject.AddComponent<MMPositionChangeConstraint>();
-                        positionChangeConstraint.weight3 = Vector3.one;
-                        constraint=positionChangeConstraint;
-                        break;
-                    case MMConstraintType.DofChange:
-                        var DofChangeConstraint = joint.gameObject.AddComponent<MMDofChangeConstraint>();
-                        DofChangeConstraint.weight3 = Vector3.one;
-                        constraint = DofChangeConstraint;
-                        break;
-                    default:
-                        constraint= null;
-                        break;
-                }
-                joint.constraints[(int)constraintType] = constraint;
-                if (constraint!=null)
-                {
+                    Transform parentTransform;
+                    if (joint.parent == null || joint.parent.GetConstraint(constraintType) == null)
+                    {
+                        parentTransform = rootTransform;
+                    }
+                    else
+                    {
+                        parentTransform = joint.parent.GetConstraint(constraintType).TargetTransform;
+                    }
+                    targetTransform.parent = parentTransform;
+                    targetTransform.position = joint.transform.position;
+                    constraint.SetTarget(targetTransform);
                     motionConstraints.Add(constraint);
                 }
             }
         }
-
         #endregion
 
         #region StaticFunc
@@ -1832,4 +1848,61 @@ namespace MagicMotion.Mono
 /*            currentPose.muscles = new float[muscleValue.Length];
             humanPoseHandler.SetHumanPose(ref currentPose);*/
 #endregion
+#region note2
+/*switch (constraintType)
+{
+    case MMConstraintType.Position:
+        GameObject positionIK = new GameObject("IK_" + this.motionJoints[i].name + "_Position");
 
+
+        var positionConstraint =
+       joint.gameObject.AddComponent<MMPositionConstraint>();
+
+        positionConstraint.weight3 = Vector3.one;
+        positionConstraint.AddTarget(positionIK.transform);
+        constraint = positionConstraint;
+
+        if (isBuildConstraintRelation && joint.parent != null && joint.parent.constraints[(int)constraintType] != null)
+        {
+            positionIK.transform.parent = (joint.parent.constraints[(int)constraintType] as MMPositionConstraint).targetTransform;
+        }
+        else
+        {
+            positionIK.transform.parent = transform;
+        }
+        positionIK.transform.position = joint.transform.position;
+        break;
+    case MMConstraintType.Rotation:
+        constraint = null;
+        break;
+    case MMConstraintType.LookAt:
+
+        GameObject lookAtIK = new GameObject("IK_" + motionJoints[i].name + "_Lookat");
+        lookAtIK.transform.parent = joint.transform;
+        lookAtIK.transform.position = joint.transform.position + LOOKAT_LENGTH * joint.transform.forward;
+        var lookatConstraint = joint.gameObject.AddComponent<MMLookConstraint>();
+        lookatConstraint.weight = 1;
+        lookatConstraint.jointDirection = Vector3.forward;
+        lookatConstraint.AddTarget(lookAtIK.transform);
+        constraint = lookatConstraint;
+
+        break;
+    case MMConstraintType.Collider:
+        constraint = null;
+        break;
+    case MMConstraintType.PositionChange:
+        var positionChangeConstraint = joint.gameObject.AddComponent<MMPositionChangeConstraint>();
+        positionChangeConstraint.weight3 = Vector3.one;
+        constraint = positionChangeConstraint;
+        break;
+    case MMConstraintType.DofChange:
+        var DofChangeConstraint = joint.gameObject.AddComponent<MMDofChangeConstraint>();
+        DofChangeConstraint.weight3 = Vector3.one;
+        constraint = DofChangeConstraint;
+        break;
+    default:
+        constraint = null;
+        break;
+}*/
+
+#endregion

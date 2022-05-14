@@ -90,7 +90,7 @@ namespace MagicMotion.Mono
         #region LocalFunc
 
         /// <summary>
-        /// Update motion for muscle on editor or mian thread
+        /// Update motion for muscle on editor or main thread
         /// </summary>
         public void UpdateMotion()
         {
@@ -110,6 +110,7 @@ namespace MagicMotion.Mono
                     currentJoint.muscles[0] == null ? 0 : currentJoint.muscles[0].value,
                     currentJoint.muscles[1] == null ? 0 : currentJoint.muscles[1].value,
                     currentJoint.muscles[2] == null ? 0 : currentJoint.muscles[2].value);
+                currentJoint.dof3Value= Dof3;
 
                 if (math.all(Dof3 == 0))
                 {
@@ -136,9 +137,6 @@ namespace MagicMotion.Mono
 
                 if (currentJoint.parent == null)
                 {
-                    /*                    parentPosition = currentJoint.transform.position;
-                                        parentRotation = currentJoint.transform.rotation;
-                    */
                     jointTransform.localRotation = math.mul(currentJoint.initiallocalRotation, eulerAngle);
                 }
                 else

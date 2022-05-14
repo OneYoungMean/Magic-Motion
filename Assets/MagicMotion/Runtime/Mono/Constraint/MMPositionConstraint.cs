@@ -10,12 +10,9 @@ namespace MagicMotion.Mono
     /// </summary>
     public class MMPositionConstraint : MMConstraint
     {
-        // Start is called before the first frame update
+        #region  Field&Property
+
         public const float MIN__TOLERENCE = 0.001f;
-        /// <summary>
-        /// Manager
-        /// </summary>
-        public MMJointController controller;
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
@@ -25,49 +22,42 @@ namespace MagicMotion.Mono
         /// </summary>
         public Vector3 tolerance3;
         /// <summary>
-        /// Constraint target
+        /// targetTransform
         /// </summary>
-        public Transform targetTransform;
+        public override Transform TargetTransform => targetTransform;
+        /// <summary>
+        /// constraintType
+        /// </summary>
+        public override MMConstraintType ConstraintType => MMConstraintType.Position;
 
         /// <summary>
         /// initialLocalPosition;
         /// </summary>
         private Vector3 initalLocalPosition;
+        [SerializeField]
         /// <summary>
-        /// initialLocalQuaternion;
+        /// Constraint target
         /// </summary>
-        private Quaternion initalLocalRotation;
+        private Transform targetTransform;
+        #endregion
+        #region LocalFunc
 
-
-        public void AddTarget(Transform targetTransform)
+        public void SetTarget(Transform targetTransform)
         {
             this.targetTransform = targetTransform;
             initalLocalPosition = targetTransform.localPosition;
-            initalLocalRotation = targetTransform.localRotation;
         }
-
-/*        public override MMConstraintNative GetNativeData()
-        {
-            return new MMConstraintNative()
-            {
-                constraintType = MMConstraintType.Position,
-                position = transform.position,
-                weight3 = weight3,
-                torlerace3 = tolerance3,
-            };
-
-        }*/
-
         public override void ReSet()
         {
             transform.localPosition = initalLocalPosition;
-            transform.localRotation = initalLocalRotation;
-
         }
 
-        public override MMConstraintType GetConstraintType()
+        internal override ConstriantContainer GetConstriantContainer()
         {
-            return MMConstraintType.Position;
+            return new ConstriantContainer()
+            {
+                positionConstraint = GetNativeData()
+            };
         }
 
         internal PositionConstraint GetNativeData()
@@ -83,8 +73,20 @@ namespace MagicMotion.Mono
         public void OnDrawGizmos()
         {
             Gizmos.color = Color.red;
-            Gizmos.DrawSphere(targetTransform.position,0.02f);
+            Gizmos.DrawSphere(targetTransform.position,0.01f);
         }
+        #endregion
     }
 }
 
+/*        public override MMConstraintNative GetNativeData()
+        {
+            return new MMConstraintNative()
+            {
+                constraintType = MMConstraintType.Position,
+                position = transform.position,
+                weight3 = weight3,
+                torlerace3 = tolerance3,
+            };
+
+        }*/

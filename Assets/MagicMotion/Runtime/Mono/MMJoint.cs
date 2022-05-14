@@ -13,6 +13,7 @@ namespace MagicMotion.Mono
     /// </summary>
     public class MMJoint:MonoBehaviour
     {
+        #region  Field&Property
         /// <summary>
         /// Controller
         /// </summary>
@@ -64,6 +65,11 @@ namespace MagicMotion.Mono
         public float3x3 dof3Axis;
 
         /// <summary>
+        /// the joint dof3 Value;
+        /// </summary>
+        public Vector3 dof3Value;
+
+        /// <summary>
         /// initial localPosition 's Length
         /// </summary>
         public float length;
@@ -77,12 +83,22 @@ namespace MagicMotion.Mono
         /// the joint human type
         /// </summary>
         public HumanBodyBones humanBodyBone;
+        #endregion
 
+        #region UnityFunc
 
         public void OnValidate()
         {
             if (controller != null)
             controller.UpdateMotion();
+        }
+
+        #endregion
+
+        #region LocalFunc
+        public MMConstraint GetConstraint(MMConstraintType constraintType)
+        {
+            return constraints[(int)constraintType];
         }
         internal JointData GetNativeJointData()
         {
@@ -97,17 +113,17 @@ namespace MagicMotion.Mono
                 length = length,
                 isVaild = enabled,
             };
-    }
+        }
 
         internal ConstraintData GetNativeConstraintData()
         {
-            var constraint=default(ConstraintData);
-            constraint.lengthSum =math.max(0.1f, cumulativeLength);
+            var constraintData=default(ConstraintData);
+            constraintData.lengthSum =math.max(0.1f, cumulativeLength);
 
             for (int i = 0; i < constraints.Length; i++)
             {
-                var constraintData = constraints[i];
-                if (constraintData==null)
+                var constraintMono = constraints[i];
+                if (constraintMono==null)
                 {
                     continue;
                 }
@@ -116,34 +132,48 @@ namespace MagicMotion.Mono
                 switch (type)
                 {
                     case MMConstraintType.Position:
-                        var positionConstraint = constraintData as MMPositionConstraint;
-                        constraint.positionConstraint= positionConstraint.GetNativeData();
-                  
+                        constraintData.positionConstraint = constraintMono.GetConstriantContainer().positionConstraint;
                         break;
                     case MMConstraintType.Rotation:
+                        constraintData.rotationConstraint = constraintMono.GetConstriantContainer().rotationConstraint;
                         break;
                     case MMConstraintType.LookAt:
-                        var lookAtConstraint = constraintData as MMLookConstraint;
-                        constraint.lookAtConstraint = lookAtConstraint.GetNativeData();
+                        constraintData.lookAtConstraint = constraintMono.GetConstriantContainer().lookAtConstraint;
                         break;
                     case MMConstraintType.Collider:
+                        constraintData.colliderConstraint = constraintMono.GetConstriantContainer().colliderConstraint;
                         break;
                     case MMConstraintType.PositionChange:
-                        constraint.positionChangeConstraint = (constraintData as MMPositionChangeConstraint).GetNativeData();
+                        constraintData.positionChangeConstraint = constraintMono.GetConstriantContainer().positionChangeConstraint;
                         break;
                     case MMConstraintType.DofChange:
-                        constraint.DofChangeConstraint = (constraintData as MMDofChangeConstraint).GetNativeData();
+                        constraintData.DofChangeConstraint = constraintMono.GetConstriantContainer().DofChangeConstraint;
                         break;
                     case MMConstraintType.Direction:
-                        constraint.directionConstraint = (constraintData as MMDirectionConstraint).GetNativeData();
+                        constraintData.directionConstraint = constraintMono.GetConstriantContainer().directionConstraint;
                         break;
                     default:
                         break;
                 }
 
             }
-            return constraint;
+            return constraintData;
         }
+
+        public MMConstraint CreateConstraint(MMConstraintType constraintType)
+        {
+            var oldData = GetConstraint(constraintType);
+            if (oldData != null)
+            {
+                return oldData;
+            }
+            else
+            {
+                return MMConstraint.CreateConstraint(constraintType, this);
+            }
+
+        }
+        #endregion
     }
 
 }

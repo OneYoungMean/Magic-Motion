@@ -29,6 +29,7 @@ namespace MagicMotion
     {
         public float lengthSum;
         public PositionConstraint positionConstraint;
+        public RotationConstraint rotationConstraint;
         public DofConstraint DofConstraint;
         public LookAtConstraint lookAtConstraint;
         public ColliderConstraint colliderConstraint;
@@ -59,7 +60,18 @@ namespace MagicMotion
             get { return !math.all(weight3 == 0); }
         }
     }
+    internal struct RotationConstraint
+    {
+        public quaternion  rotation;
+        public float weight;
+        public float tolerance;
 
+
+        public bool isVaild
+        {
+            get { return weight != 0; }
+        }
+    }
     internal struct DofConstraint
     {
         public float3 tolerance3;
