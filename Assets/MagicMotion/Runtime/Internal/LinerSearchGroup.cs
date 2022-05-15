@@ -13,7 +13,7 @@ namespace MagicMotion.Internal
     /// <summary>
     ///  Single Optimize
     /// </summary>
-    internal unsafe  struct MuscleOptimizer
+    internal unsafe  struct LinerSearchGroup
     {
         #region  Field&Property
 
@@ -24,11 +24,11 @@ namespace MagicMotion.Internal
         /// </summary>
         private NativeArray<JointData> jointDataNativeArray;
         /// <summary>
-        /// muscle data,contain targetJointIndex and target dof
+        /// joint relation muscle data,empty is -1
         /// musclesLength
         /// ReadOnly
         /// </summary>
-        private NativeArray<JointMusclesData> muscleDataNativeArray;
+        private NativeArray<int3> jointMuscleIndexNativeArray;
         /// <summary>
         /// ConstraintData ,contatin positionConstraint lookAtConstraint's data. etc.
         /// ParallelLength
@@ -49,13 +49,13 @@ namespace MagicMotion.Internal
         /// 1
         /// ReadWrite
         /// </summary>
-        private NativeArray<LBFGSSolver> LBFGSNatives;
+        private LBFGSSolver* LBFGSNative;
         /// <summary>
         /// Global data ,contain iterationCount, etc 
         /// 1
         /// ReadWrite
         /// </summary>
-        private NativeArray<GlobalData> globalDataNativeArray;
+        private GlobalData* globalData;
 
         /// <summary>
         /// muscle's Value
@@ -113,22 +113,12 @@ namespace MagicMotion.Internal
         private NativeArray<float> muscleValueAllNativeArray;
 
 
-        /// <summary>
-        /// Transform musles to joint
-        /// </summary>
-        private MuscleToDof3Job muscleToDof3Job;
+
         /// <summary>
         /// clac Dof3 rotaton
         /// </summary>
-        private Dof3ToRotationJob dof3ToRotationJob;
-        /// <summary>
-        /// clac Dof3 epsilion rotation
-        /// </summary>
-        private ClacDof3EpsilionJob clacDof3EpsilionJob;
-        /// <summary>
-        /// Build skelnion
-        /// </summary>
-        private BuildTransformJob buildTransformJob;
+        private MuscleToTransformJob muscleToTransformJob;
+
         /// <summary>
         /// clac loss value
         /// </summary>
@@ -161,7 +151,7 @@ namespace MagicMotion.Internal
         /// <summary>
         /// Optimizer loss
         /// </summary>
-        public float Loss =>(float)LBFGSNatives[0].loss;
+        public float Loss =>(float)LBFGSNative->loss;
         /// <summary>
         /// result as muscle
         /// </summary>
@@ -175,10 +165,10 @@ namespace MagicMotion.Internal
 
         #region LocalFunc
 
-        public MuscleOptimizer(
+        public LinerSearchGroup(
              int parallelDataCount, int jointCount, int muscleCount,int iterationCount,int constraintCount,
              NativeArray<JointData> jointDataNativeArray,
-             NativeArray<JointMusclesData> muscleDataNativeArray,
+/*             NativeArray<MusclesData> muscleDataNativeArray,*/
               NativeArray<ConstraintData> constraintNativeArray,
                NativeArray<JointRelationData> jointRelationDataNativeArray,
 NativeArray<int3> jointMusclesIndexNativeArray, 
@@ -203,17 +193,16 @@ NativeArray<float> muscleValueNativeArray,
             this.parallelDataCount = parallelDataCount;
             this.iterationCount = iterationCount;
 
-
+            this.jointMuscleIndexNativeArray = jointMusclesIndexNativeArray;
             this.jointDataNativeArray = jointDataNativeArray;
-            this.muscleDataNativeArray = muscleDataNativeArray;
             this.constraintNativeArray = constraintNativeArray;
             this.jointRelationDataNativeArray = jointRelationDataNativeArray;
             this.muscleValueNativeArray = muscleValueNativeArray;
             #endregion
 
             #region CreateNativeArray
-            this.LBFGSNatives = CreateNativeData<LBFGSSolver>(1);
-            this.globalDataNativeArray = CreateNativeData<GlobalData>(1);
+            this.LBFGSNative =(LBFGSSolver*) CreateNativeData<LBFGSSolver>(1).GetUnsafePtr();
+            this.globalData = (GlobalData*)CreateNativeData<GlobalData>(1).GetUnsafePtr();
             this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
             this.muscleGradientRotationArray = CreateNativeData<quaternion>(muscleCount);
@@ -231,39 +220,17 @@ NativeArray<float> muscleValueNativeArray,
 
             #region CreateJob
 
-            muscleToDof3Job = new MuscleToDof3Job()
+            muscleToTransformJob = new MuscleToTransformJob
             {
-                Dof3s = (float3*)Dof3NativeArray.GetUnsafePtr(),
-                muscleDatas = (JointMusclesData*)muscleDataNativeArray.GetUnsafeReadOnlyPtr(),
-                muscleValues =(float*) muscleValueNativeArray.GetUnsafeReadOnlyPtr(),
-            };
-
-            dof3ToRotationJob = new Dof3ToRotationJob
-            {
-                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
-                jointDatas =(JointData*) jointDataNativeArray.GetUnsafeReadOnlyPtr(),
-                Dof3Quaternions =(quaternion*) Dof3QuaternionNativeArray.GetUnsafePtr(),
-                jointMuscleIndexs =(int3*) jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
-                muscleGradientRotations = (quaternion*)muscleGradientRotationArray.GetUnsafePtr(),
-                muscleValues = (float*)muscleValueNativeArray.GetUnsafeReadOnlyPtr(), 
-            };
-
-            clacDof3EpsilionJob = new ClacDof3EpsilionJob
-            {
-                Dof3Quaternions = (quaternion*)Dof3QuaternionNativeArray.GetUnsafeReadOnlyPtr(),
-/*                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
-                jointDatas = (JointData*)jointDataNativeArray.GetUnsafeReadOnlyPtr(),*/
-                jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
-/*                muscleDatas = (JointMusclesData*)muscleDataNativeArray.GetUnsafeReadOnlyPtr(),*/
-                muscleGradientRotations =(quaternion*) muscleGradientRotationArray.GetUnsafePtr(),
+                muscleValues = (float*)muscleValueNativeArray.GetUnsafeReadOnlyPtr(),
                 jointMuscleIndexs = (int3*)jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
-            };
+                jointDatas =(JointData*) jointDataNativeArray.GetUnsafeReadOnlyPtr(),
 
-            buildTransformJob = new BuildTransformJob()
-            {
+                Dof3s = (float3*)Dof3NativeArray.GetUnsafePtr(),
+                muscleCurrentRotations =(quaternion*) Dof3QuaternionNativeArray.GetUnsafePtr(),
+                muscleGradientRotations = (quaternion*)muscleGradientRotationArray.GetUnsafePtr(),
                 jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
-                jointDatas = (JointData*)jointDataNativeArray.GetUnsafeReadOnlyPtr(),
-                Dof3Quaternions = (quaternion*)Dof3QuaternionNativeArray.GetUnsafePtr(),
+                
             };
 
             caclulatelossJob = new CaclulatelossJob()
@@ -279,8 +246,8 @@ NativeArray<float> muscleValueNativeArray,
 
             mainControllerJob = new MainControllerJob()
             {
-                LBFGSSolver = (LBFGSSolver*)LBFGSNatives.GetUnsafePtr(),
-                globalData= (GlobalData*)globalDataNativeArray.GetUnsafePtr(),
+                LBFGSSolver = LBFGSNative,
+                globalData= globalData,
 
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
@@ -289,11 +256,12 @@ NativeArray<float> muscleValueNativeArray,
                 muscleValues = (float*)muscleValueNativeArray.GetUnsafePtr(),
                 relationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafePtr(),
                 constraintLength=constraintCount,
-/*                muscleAlls = muscleValueAllNativeArray,
-                gradientAlls = gradientAllNativeArray,*/
                 parallelLength = parallelDataCount,
                 muscleLength = muscleCount,
                 jointLength = jointCount,
+
+                /*                muscleAlls = muscleValueAllNativeArray,
+                gradientAlls = gradientAllNativeArray,*/
             };
             #endregion
 
@@ -301,7 +269,7 @@ NativeArray<float> muscleValueNativeArray,
             //OYM：Set LBFGSSolver
             var lBFGSSolver = LBFGSSolver.identity;
             lBFGSSolver.numberOfVariables = muscleCount;
-            LBFGSNatives[0] = lBFGSSolver;
+            LBFGSNative[0] = lBFGSSolver;
 
             #endregion
         }
@@ -313,10 +281,7 @@ NativeArray<float> muscleValueNativeArray,
                 Reset(rootPosition, rootRotation);
                 for (int j = 0; j < iterationCount + 1; j++)
                 {
-                   /* muscleToDof3Job.Run(muscleCount);*/
-                    dof3ToRotationJob.Run(jointCount);
-                    buildTransformJob.Run(jointCount);
-                    clacDof3EpsilionJob.Run(jointCount);
+                    muscleToTransformJob.Run(jointCount);
                     caclulatelossJob.Run(parallelDataCount);
                     mainControllerJob.Run();
                 }
@@ -332,17 +297,17 @@ NativeArray<float> muscleValueNativeArray,
         private void Reset(Vector3 rootPosition, Quaternion rootRotation)
         {
             //OYM：reset globalData
-            var globalData = globalDataNativeArray[0];
+            var globalData = this.globalData[0];
             globalData.leastLoopCount = iterationCount;
-            globalDataNativeArray[0] = globalData;
+            this.globalData[0] = globalData;
             //OYM：reset solver
-            var solver = LBFGSNatives[0];
+            var solver = LBFGSNative[0];
             solver.state = LBFGSState.Initialize;
-            LBFGSNatives[0] = solver;
+            LBFGSNative[0] = solver;
             //OYM：reset root trasnform
 
-            buildTransformJob.rootPosition = rootPosition;
-            buildTransformJob.rootRotation = rootRotation; 
+            muscleToTransformJob.rootPosition = rootPosition;
+            muscleToTransformJob.rootRotation = rootRotation; 
         }
 
         internal Keyframe[] GetmusclesKey(int index)
@@ -376,3 +341,41 @@ NativeArray<float> muscleValueNativeArray,
     }
 
 }
+
+/*        /// <summary>
+        /// Transform musles to joint
+        /// </summary>
+        private MuscleToDof3Job muscleToDof3Job;*/
+/*        /// <summary>
+        /// clac Dof3 epsilion rotation
+        /// </summary>
+        private ClacDof3EpsilionJob clacDof3EpsilionJob;
+        /// <summary>
+        /// Build skelnion
+        /// </summary>
+        private BuildTransformJob buildTransformJob;*/
+
+/*            muscleToDof3Job = new MuscleToDof3Job()
+{
+    Dof3s = (float3*)Dof3NativeArray.GetUnsafePtr(),
+    muscleDatas = (MusclesData*)muscleDataNativeArray.GetUnsafeReadOnlyPtr(),
+    muscleValues =(float*) muscleValueNativeArray.GetUnsafeReadOnlyPtr(),
+};
+clacDof3EpsilionJob = new ClacDof3EpsilionJob
+{
+    muscleCurrentRotation = (quaternion*)Dof3QuaternionNativeArray.GetUnsafeReadOnlyPtr(),
+    jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
+    muscleGradientRotations =(quaternion*) muscleGradientRotationArray.GetUnsafePtr(),
+    jointMuscleIndexs = (int3*)jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
+};
+
+buildTransformJob = new BuildTransformJob()
+{
+    jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
+    jointDatas = (JointData*)jointDataNativeArray.GetUnsafeReadOnlyPtr(),
+    muscleCurrentRotation = (quaternion*)Dof3QuaternionNativeArray.GetUnsafePtr(),
+};*/
+
+/* muscleToDof3Job.Run(muscleCount);*/
+/*                    buildTransformJob.Run(jointCount);
+ clacDof3EpsilionJob.Run(jointCount);*/

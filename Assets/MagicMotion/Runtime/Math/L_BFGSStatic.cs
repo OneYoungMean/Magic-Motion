@@ -96,10 +96,11 @@ namespace MagicMotion.Extern
 
                 // Store the search direction
                 matrixPoint = point * numberOfVariables;
-                for (int i = 0; i < numberOfVariables; i++)
+                UnsafeUtility.MemCpy(steps + matrixPoint, gradientStore, numberOfVariables * UnsafeUtility.SizeOf<double>());
+/*                for (int i = 0; i < numberOfVariables; i++)
                 {
                     steps[matrixPoint + i] = gradientStore[i];
-                }
+                }*/
                 innerLoopStep = 1;
             }
 
@@ -127,7 +128,7 @@ namespace MagicMotion.Extern
             preloss = loss;
             for (int i = 0; i < numberOfVariables; i++)
             {
-                diagonal[i] = currentSolution[i];
+                diagonal[i] =(double) currentSolution[i];
             }
 
             // The variables stx, fx, dgx contain the values of the
@@ -182,7 +183,7 @@ namespace MagicMotion.Extern
             // We return to main program to obtain F and G.
             for (int j = 0; j < numberOfVariables; j++)
             {
-                currentSolution[j] = (float)(diagonal[j] + innerLoopStep * steps[matrixPoint + j]);
+                currentSolution[j] = (float)(math.mad( innerLoopStep , steps[matrixPoint + j], diagonal[j]));
                 currentSolution[j] = math.clamp(currentSolution[j], RANGLE_MIN, RANGE_MAX);
             }
             return true;
@@ -326,7 +327,8 @@ namespace MagicMotion.Extern
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void OutsideLoopTail(
              ref double innerLoopStep, ref double gradientTolerance,
-               ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables, ref int leastLoopCount,
+ref double preloss, ref double lossLocal, 
+ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables, ref int leastLoopCount,
                ref bool isLoopOutside,
                ref double* gradient, ref double* steps, ref double* delta, ref double* gradientStore, ref double* diagonal, ref float* currentSolution
             )
@@ -337,6 +339,7 @@ namespace MagicMotion.Extern
                 {
                     currentSolution[i] = (float)diagonal[i];
                 }
+                lossLocal = preloss;
                 return;
             }
 
@@ -411,14 +414,14 @@ namespace MagicMotion.Extern
                 double lastSum = 0;
                 for (int j = 0; j < numberOfVariables; j++)
                 {
-                    lastSum += steps[prePointLoop * numberOfVariables + j] * gradientStore[j];
+                    lastSum =math.mad( steps[prePointLoop * numberOfVariables + j] , gradientStore[j], lastSum);
                 }
 
 
                 alpha[prePointLoop] = rho[prePointLoop] * lastSum;
                 for (int j = 0; j < numberOfVariables; j++)
                 {
-                    gradientStore[j] -= alpha[prePointLoop] * delta[prePointLoop * numberOfVariables + j];
+                    gradientStore[j] = math.mad(alpha[prePointLoop] ,-delta[prePointLoop * numberOfVariables + j], gradientStore[j]);
                 }
             }
 
@@ -433,14 +436,14 @@ namespace MagicMotion.Extern
                 double yr = 0;
                 for (int j = 0; j < numberOfVariables; j++)
                 {
-                    yr += delta[prePointLoop * numberOfVariables + j] * gradientStore[j];
+                    yr = math.mad(delta[prePointLoop * numberOfVariables + j], gradientStore[j], yr);
                 }
 
 
                 double beta = alpha[prePointLoop] - rho[prePointLoop] * yr;
                 for (int j = 0; j < numberOfVariables; j++)
                 {
-                    gradientStore[j] += beta * steps[prePointLoop * numberOfVariables + j];
+                    gradientStore[j] =math.mad( beta , steps[prePointLoop * numberOfVariables + j], gradientStore[j]);
                 }
 
                 prePointLoop++;
@@ -673,7 +676,9 @@ namespace MagicMotion.Extern
         {
             double sum = 0;
             for (int i = 0; i < length; i++)
-                sum += a[i] * a[i];
+            {
+                sum = math.mad(a[i], a[i], sum);
+            }
             return sum;
 
         }
@@ -683,20 +688,20 @@ namespace MagicMotion.Extern
             double gradientTemp = 0;
             for (int j = 0; j < numberOfVariables; j++)
             {
-                gradientTemp = gradientTemp + gradient[j] * steps[matrixPoint + j];
+                gradientTemp =math.mad(  gradient[j] , steps[matrixPoint + j], gradientTemp);
             }
             return gradientTemp;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void ComputeDiagonal(double* diagonal, double* delta, int nowPoint, int numberOfVariables, double sumY)
         {
-            double sqrY = 0;
-            for (int i = 0; i < numberOfVariables; i++)
+            double sqrY = SquareEuclidean(delta + nowPoint, numberOfVariables);
+/*            for (int i = 0; i < numberOfVariables; i++)
             {
-                sqrY += delta[nowPoint + i] * delta[nowPoint + i];
-            }
+                sqrY =math.mad( delta[nowPoint + i] , delta[nowPoint + i], sqrY);
+            }*/
 
-            double diagonalValue = (double)(sumY / sqrY);
+            double diagonalValue = sumY / sqrY;
 
             for (int i = 0; i < numberOfVariables; i++)
             {
@@ -709,7 +714,7 @@ namespace MagicMotion.Extern
             double sumY = 0;
             for (int i = 0; i < numberOfVariables; i++)
             {
-                sumY += delta[nowPoint + i] * steps[nowPoint + i];
+                sumY = math.mad( delta[nowPoint + i] , steps[nowPoint + i], sumY);
             }
 
             return sumY;

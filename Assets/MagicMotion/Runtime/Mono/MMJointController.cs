@@ -288,9 +288,9 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)4,21,3);
+            kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
-            JointMusclesData[] muscleDatas = new JointMusclesData[motionMuscles.Length];
+            MusclesData[] muscleDatas = new MusclesData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {
                 muscleDatas[i] = motionMuscles[i].GetNativeData(motionJoints);

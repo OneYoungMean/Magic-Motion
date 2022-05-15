@@ -218,10 +218,19 @@ namespace MagicMotion
         {
             state = LBFGSState.Initialize;
         }
-
-        public void Optimize(double loss, ref int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
+        /// <summary>
+        /// OOOOOOOOOOh You shouldn't open this, 
+        /// it's ag GIANT HUGE SHIT method. I don't understand how it works,but look like it work really good.
+        /// you shouldn't open this, please leave as soon as possible
+        /// </summary>
+        /// <param name="mloss"></param>
+        /// <param name="leastLoopCount"></param>
+        /// <param name="dataStore"></param>
+        /// <param name="currentSolution"></param>
+        /// <param name="gradient"></param>
+        public void Optimize(double mloss, ref int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
         {
-            this.loss = loss;
+            this.loss = mloss;
             UnpackData(dataStore,numberOfVariables, out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta);
             while (true)
             {
@@ -287,7 +296,7 @@ namespace MagicMotion
                         }
                         break;
                     case LBFGSState.OutsideLoopTail:
-                        OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,
+                        OutsideLoopTail(ref innerLoopStep, ref gradientTolerance,ref preloss,ref loss,
     ref loopCount, ref matrixPoint, ref point, ref numberOfVariables,ref leastLoopCount,
     ref isLoopOutside,
     ref gradient, ref steps, ref delta, ref gradientStore, ref diagonal, ref currentSolution);
