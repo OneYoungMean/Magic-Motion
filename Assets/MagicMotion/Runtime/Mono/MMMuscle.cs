@@ -28,9 +28,9 @@ namespace MagicMotion.Mono
         [Range(-1,1)]
         public float value;
 
-        internal MuscleData GetNativeData(MMJoint[] group)
+        internal JointMusclesData GetNativeData(MMJoint[] group)
         {
-            return new MuscleData()
+            return new JointMusclesData()
             {
                 jointIndex = Array.IndexOf(group,joint),
                 dof = dof,

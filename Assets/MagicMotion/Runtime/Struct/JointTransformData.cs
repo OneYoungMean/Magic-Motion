@@ -6,9 +6,9 @@ namespace MagicMotion
     /// Transform to ConstraintData
     /// </summary>
 
-    public struct TransformToConstraintData
+    public struct JointTransformData
     {
-        public int jointIndex;
-        public  MMConstraintType constraintType;
+        RigidTransform transform;
+        RigidTransform parentTransform;
     }
 }

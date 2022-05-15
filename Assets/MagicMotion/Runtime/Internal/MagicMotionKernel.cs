@@ -31,12 +31,13 @@ namespace MagicMotion
         #region  NativeArrayData
         //OYM： Base data (read only)
         private NativeArray<JointData> jointDataNativeArray;//OYM：所有jointData的存放位置,长度为parallelLength
-        private NativeArray<MuscleData> muscleDataNativeArray;
+        private NativeArray<JointMusclesData> muscleDataNativeArray;
         private NativeArray<ConstraintData> constraintDataNativeArray;
 
         //OYM：Relative data(readonly)
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
         private NativeArray<int> muscleRelativeCountNativeArray;
+        private NativeArray<int3> jointMusclesIndexNativeArray;
         //OYM： muslceData
         private NativeArray<float>[] muscleValueNativeArrays;
 
@@ -52,10 +53,8 @@ namespace MagicMotion
         #endregion
 
         #region DefaultData
-
-        private InitializeMuscleJob initializeMuscleJob;
         private JointData[] joints;
-        private MuscleData[] muscles;
+        private JointMusclesData[] muscles;
 /*        private TransformToConstraintData[] transformToConstraints;*/
         private ConstraintData[] constraints;
         private JointRelationData[] jointMapDatas;
@@ -107,7 +106,7 @@ namespace MagicMotion
             this.joints = joints;
             jointCount = joints.Length;
         }
-        internal void SetMuscleSata(MuscleData[] muscles)
+        internal void SetMuscleSata(JointMusclesData[] muscles)
         {
             this.muscles = muscles;
             muscleCount = muscles.Length;
@@ -151,6 +150,7 @@ namespace MagicMotion
             this.worldPosition = worldPosition;
             this.worldRotation = worldRotation;
             NativeArray<ConstraintData>.Copy(constraints, constraintDataNativeArray, constraints.Length);
+
             copyConstraintDataJob.Run(parallelDataCount);
 
             #endregion
@@ -187,7 +187,7 @@ namespace MagicMotion
                     muscleValueNativeArrays[0].CopyFrom(muscleValueNativeArrays[bestOptimizerIndex]);
                 }
             }
-            Debug.Log(bestOptimizerIndex+" - "+optimizes[bestOptimizerIndex].Loss);
+            Debug.Log(bestOptimizerIndex + " - " + optimizes[bestOptimizerIndex].Loss);
 
             #endregion
 
@@ -315,16 +315,8 @@ namespace MagicMotion
             jointRelationDataNativeArray = CreateNativeData(jointMapDatas, Allocator.Persistent);
 
             constraintDataNativeArray = CreateNativeData<ConstraintData>(parallelDataCount, Allocator.Persistent);
-            for (int i = 0; i < parallelDataCount; i++)
-            {
-                constraintDataNativeArray[i] = constraints[jointMapDatas[i].jointIndex];
-            }
 
-            jointDataNativeArray = CreateNativeData<JointData>(parallelDataCount, Allocator.Persistent);
-            for (int i = 0; i < parallelDataCount; i++)
-            {
-                jointDataNativeArray[i] = joints[jointMapDatas[i].jointIndex];
-            }
+            jointDataNativeArray = CreateNativeData<JointData>(joints, Allocator.Persistent);
 
             muscleDataNativeArray = CreateNativeData(muscles, Allocator.Persistent);
 
@@ -336,11 +328,24 @@ namespace MagicMotion
             {
                 muscleValueNativeArrays[i] = CreateNativeData<float>(muscleCount);
             }
+
+            jointMusclesIndexNativeArray = CreateNativeData<int3>(jointCount);
+            for (int i = 0; i < jointCount; i++)
+            {
+                jointMusclesIndexNativeArray[i] = new int3(-1);
+            }
+            for (int i = 0; i < muscleCount; i++)
+            {
+                var muscle =muscles[i];
+                int3 data = jointMusclesIndexNativeArray[muscle.jointIndex];
+                data[muscle.dof] = i;
+                jointMusclesIndexNativeArray[muscle.jointIndex] = data;
+            }
         }
         /// <summary>
         /// Build all job data 
         /// </summary>
-        private void BuildJobDataInternal()
+        private unsafe void BuildJobDataInternal()
         {
 /*            getConstraintTransformJob = new TransformToConstraintJob()
             {
@@ -349,8 +354,11 @@ namespace MagicMotion
 
             copyConstraintDataJob = new CopyConstraintDataJob()
             {
-                jointRelationDatas = jointRelationDataNativeArray,
-                constraintDatas = constraintDataNativeArray,
+                                jointRelationDatas =(JointRelationData*) jointRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
+                                constraintDatas = (ConstraintData*)constraintDataNativeArray.GetUnsafePtr(),
+                                jointLength=jointCount,
+/*                jointRelationDatas =jointRelationDataNativeArray,
+                constraintDatas =constraintDataNativeArray,*/
             };
 
             int loopActionLength = searchLevel / batchCount + (searchLevel % batchCount == 0 ? 0 : 1);
@@ -374,11 +382,12 @@ namespace MagicMotion
                 optimizes[i] = new MuscleOptimizer
                 (
                 parallelDataCount, jointCount, muscleCount, insideIteration,
-                muscleRelativeCountNativeArray,
+                muscleRelativeCountNativeArray[0],
                 jointDataNativeArray,
                 muscleDataNativeArray,
                 constraintDataNativeArray,
                 jointRelationDataNativeArray,
+                jointMusclesIndexNativeArray,
                 muscleValueNativeArrays[i],
                 disposeList
                 );

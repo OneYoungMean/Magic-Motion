@@ -219,11 +219,10 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
 
-        public void Optimize(double loss, ref int leastLoopCount, //OYM：innerloop里面可以判断leastloopCount，避免性能浪费，或者更好一点，每次开始都重设一下
-NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta, NativeArray<float> currentSolution, NativeArray<double> gradient
-            )
+        public void Optimize(double loss, ref int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
         {
             this.loss = loss;
+            UnpackData(dataStore,numberOfVariables, out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta);
             while (true)
             {
                 switch (state)
@@ -235,8 +234,8 @@ NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<dou
                         }
                     case LBFGSState.Refresh:
                         {
-                            ClearData(diagonal, gradientStore, rho, alpha, steps, delta);
-                            InitializeLoop(ref innerLoopStep, ref iterations, ref evaluations, ref loopCount, ref point, ref matrixPoint, ref isLoopOutside, ref gradient, ref diagonal, ref steps);
+                            //ClearData(dataStore,numberOfVariables);
+                            InitializeLoop(ref innerLoopStep, ref iterations, ref evaluations, ref loopCount, ref point, ref matrixPoint,ref numberOfVariables, ref isLoopOutside, ref gradient, ref diagonal, ref steps);
                             state = LBFGSState.OutsideLoopHead;
                         }
                         break;

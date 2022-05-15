@@ -228,15 +228,15 @@ namespace MagicMotion.Mono
             rootMotionJoint.dof3Axis = float3x3.identity;
             for (int i = 0; i < 2; i++)
             {
-                var rootMuscle= rootMotionJoint.gameObject.AddComponent<MMMuscle>();
+                var rootMuscle = rootMotionJoint.gameObject.AddComponent<MMMuscle>();
                 rootMuscle.dof = i;
-                rootMuscle.muscleName = "rootMuscle " +i;
+                rootMuscle.muscleName = "rootMuscle " + i;
                 rootMuscle.joint = rootMotionJoint;
                 rootMotionJoint.muscles[i] = rootMuscle;
                 motionMuscles.Add(rootMuscle);
             }
 
-             motionJoints[0]=rootMotionJoint;
+            motionJoints[0]=rootMotionJoint;
 
             #endregion
 
@@ -278,8 +278,8 @@ namespace MagicMotion.Mono
                         ConstraintAimRoot.transform.parent = transform;
                         ConstraintAimRoot.transform.localPosition = Vector3.zero;
                         ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
-            AddDirectionConstraint();
-            //AddPositionConstraint();
+            //AddDirectionConstraint();
+            AddPositionConstraint();
             //AddConstraint(MMConstraintType.DofChange);
         }
         /// <summary>

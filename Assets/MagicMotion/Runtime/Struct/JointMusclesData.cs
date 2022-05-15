@@ -1,6 +1,6 @@
 ﻿namespace MagicMotion
 {
-    internal struct MuscleData
+    internal struct JointMusclesData
     {
         /// <summary>
         /// muscle to joint index ,range0-55

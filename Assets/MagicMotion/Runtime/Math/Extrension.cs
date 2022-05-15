@@ -15,6 +15,11 @@ namespace MagicMotion.Extern
         {
             UnsafeUtility.MemClear(data.GetUnsafePtr(), data.Length * UnsafeUtility.SizeOf<T>());
         }
+
+        public unsafe static void ClearNativeArrayData<T>(void* data,int Length) where T : struct
+        {
+            UnsafeUtility.MemClear(data, Length * UnsafeUtility.SizeOf<T>());
+        }
     }
 
 }

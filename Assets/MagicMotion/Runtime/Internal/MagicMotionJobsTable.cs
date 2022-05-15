@@ -14,121 +14,30 @@ namespace MagicMotion
     using static Extrension;
     internal static unsafe class MagicMotionJobsTable
     {
-        /// <summary>
-        ///  Initialize Muscle Value
-        /// </summary>
-        public struct InitializeMuscleJob : IJobParallelFor
-        {
-            [ReadOnly]
-            /// <summary>
-            /// muscles value ,containing joint index and dof index.
-            /// </summary>
-            public NativeArray<MuscleData> muscleDatas;
-            /// <summary>
-            /// muscles value ,containing joint index and dof index.
-            /// </summary>
-            public NativeArray<float> musclesValues;
 
-            public void Execute(int index)
-            {
-                musclesValues[index] = math.clamp(musclesValues[index],0,0);
-            }
-        }
-        /// <summary>
-        /// Set joint Transform data before update
-        /// </summary>
-        public struct InitializeJointJob : IJobParallelFor
-        {
-            /// <summary>
-            /// Joint's world transform data
-            /// </summary>
-            public NativeArray<RigidTransform> jointTransformDatas;
-            /// <summary>
-            /// Joint's world transform data
-            /// </summary>
-            public NativeArray<Vector3> jointPositions;
-            /// <summary>
-            /// Joint's world transform data
-            /// </summary>
-            public NativeArray<quaternion> jointRotations;
-            public void Execute(int index)
-            {
-                var rigid = jointTransformDatas[ index];
-                rigid.pos = jointPositions[index];
-                rigid.rot = jointRotations[index];
-                jointTransformDatas[index] = rigid;
-
-            }
-        }
-/*        /// <summary>
-        /// To read constraint data from transform. e.g. position constriant,lookat constraint 
-        /// </summary>
-        [BurstCompile]
-        public struct TransformToConstraintJob : IJobParallelFor
-        {
-            /// <summary>
-            /// constraint Native data
-            /// </summary>
-            [NativeDisableParallelForRestriction]
-            public NativeArray<ConstraintData> constraintDatas;
-            /// <summary>
-            /// TransformToConstrain Data 
-            /// </summary>
-            public NativeArray<TransformToConstraintData> transformToConstrainDatas;
-            /// <summary>
-            ///  constraint positions
-            /// </summary>
-            public NativeArray<Vector3> constraintPositions;
-            /// <summary>
-            /// TransformToConstrain Data 
-            /// </summary>
-            public NativeArray<Quaternion> constraintRotations;
-            public void Execute(int index)
-            {
-                int point = transformToConstrainDatas[index].jointIndex;
-                MMConstraintType type = transformToConstrainDatas[index].constraintType;
-                 var constraintPosition=constraintPositions[index];
-                var constraintRotation=constraintRotations[index];
-
-               var constraint = constraintDatas[ point];
-
-                switch (type)
-                {
-                    case MMConstraintType.Position:
-                        constraint.positionConstraint.position = constraintPosition;
-                        break;
-                    case MMConstraintType.Rotation:
-                        break;
-                    case MMConstraintType.LookAt:
-                        constraint.lookAtConstraint.position = constraintPosition;
-                        break;
-                    default:
-                        break;
-                }
-                constraintDatas[point] = constraint;
-            }
-        }*/
         /// <summary>
         /// Set Constriant data 
         /// </summary>
         [BurstCompile]
         public struct CopyConstraintDataJob : IJobParallelFor
         {
+            [ NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Joint relation data 
             /// </summary>
-            [ReadOnly]
-            public NativeArray<JointRelationData> jointRelationDatas;
+            public JointRelationData* jointRelationDatas;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// constraint data 
             /// </summary>
-            [NativeDisableParallelForRestriction]
-            public NativeArray<ConstraintData> constraintDatas;
+            public ConstraintData* constraintDatas;
+
+            public int jointLength;
             public void Execute(int index)
             {
-                var jointRelation = jointRelationDatas[index];
-                var originConstraint = constraintDatas[jointRelation.jointIndex];
-                constraintDatas[index] = originConstraint;
+                JointRelationData* jointRelation = jointRelationDatas+index;
+                constraintDatas[index] = constraintDatas[jointRelation->jointIndex];
             }
         }
         /// <summary>
@@ -137,29 +46,27 @@ namespace MagicMotion
         [BurstCompile]
         public struct MuscleToDof3Job : IJobParallelFor
         {
-            [ReadOnly]
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            public NativeArray<MuscleData> muscleDatas;
+            public JointMusclesData* muscleDatas;
 
-            [NativeDisableParallelForRestriction]
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint muscles value 
             /// </summary>
-            public NativeArray<float3> Dof3s;
-            [NativeDisableParallelForRestriction, ReadOnly]
+            public float3* Dof3s;
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            public NativeArray<float> muscleValues;
+            public float* muscleValues;
             public void Execute(int index)
             {
-                var muscleData = muscleDatas[index];
-                var muscleValue = muscleValues[index];
-                float3 targetDof3 = Dof3s[muscleData.jointIndex];
-                targetDof3[muscleData.dof] = muscleValue;
-                Dof3s[muscleData.jointIndex] = targetDof3;
+                JointMusclesData* muscleData = muscleDatas+index;
+                Dof3s[muscleData->jointIndex][muscleData->dof] = muscleValues[ index];
             }
         }
         /// <summary>
@@ -169,45 +76,124 @@ namespace MagicMotion
         
         public struct Dof3ToRotationJob : IJobParallelFor
         {
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Dof3 value 
             /// </summary>
-            [ReadOnly]
-            public NativeArray<float3> Dof3s;
+            public float3* Dof3s;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Dof3 to rotation value
             /// </summary>
-            public NativeArray<quaternion> Dof3Quaternions;
-            [ReadOnly]
+            public quaternion* Dof3Quaternions;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            public NativeArray<JointData> jointDatas;
+            public JointData* jointDatas;
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
+            /// <summary>
+            /// joint relative muscle's index
+            /// </summary>
+            internal int3* jointMuscleIndexs;
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
+            /// <summary>
+            /// muscles value ,containing joint index and dof index.
+            /// </summary>
+            public float* muscleValues;
+
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            ///Epsilion to rotation
+            /// </summary>
+            public quaternion* muscleGradientRotations;
             public void Execute(int index)
             {
-                JointData currentJoint = jointDatas[index];
+                JointData* currentJoint = jointDatas +index;
+                float3* Dof3 = Dof3s + index;
+                quaternion* Dof3Quaternion = Dof3Quaternions + index;
+                int3* jointMuscleIndex = jointMuscleIndexs+index;
 
-                float3 Dof3 = Dof3s[index];
-
-                float3 Dof3toRadian = math.radians(
-                    math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0))
-                + math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1))
+/*                float3 Dof3toRadian = math.radians(
+                    math.lerp(0, currentJoint->minRange, -math.clamp(*Dof3, -1, 0))
+                + math.lerp(0, currentJoint->maxRange, math.clamp(*Dof3, 0, 1))
                 );
-                quaternion eulerAngle = quaternion.identity;
-                if (Dof3[0] != 0)
+*/
+
+                float4x3 axisRotations=float4x3.zero;
+                float4x3 axisRotationsEpsilion = float4x3.zero;
+                for (int i = 0; i < 3; i++)
                 {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), eulerAngle);
+                    if ((*jointMuscleIndex)[i]!=-1)
+                    {
+                        
+                        float muscleValue = muscleValues[(*jointMuscleIndex)[i]];
+                        Dof3[i] = muscleValue;
+                        float dofRadian = 0;
+                        if (muscleValue < 0)
+                        {
+                            dofRadian=math.radians( math.lerp(0, currentJoint->minRange[i], -muscleValue));
+                        }
+                        else
+                        {
+                            dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
+                        }
+                        axisRotations[i]= quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
+
+                        muscleValue += L_BFGSStatic.EPSILION;
+                        if (muscleValue < 0)
+                        {
+                            dofRadian = math.radians(math.lerp(0, currentJoint->minRange[i], -muscleValue));
+                        }
+                        else
+                        {
+                            dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
+                        }
+                        axisRotationsEpsilion[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
+                    }
                 }
-                if (Dof3[1] != 0)
+                *Dof3Quaternion = quaternion.identity;
+                for (int i = 0; i < 3; i++)
                 {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), eulerAngle);
-                }
-                if (Dof3[2] != 0)
-                {
-                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), eulerAngle);
+                    if ((*jointMuscleIndex) [i] != -1)
+                    {
+                        *Dof3Quaternion = math.mul(new quaternion(axisRotations[i]), *Dof3Quaternion);
+
+                        quaternion* muscleGradientRotation = muscleGradientRotations + (*jointMuscleIndex)[i];
+                        *muscleGradientRotation = quaternion.identity;
+                        for (int ii = 0; ii < 3; ii++)
+                        {
+                            if ((*jointMuscleIndex)[ii] != -1)
+                            {
+                                if (i == ii)
+                                {
+                                    *muscleGradientRotation = math.mul(new quaternion(axisRotationsEpsilion[ii]), *muscleGradientRotation);
+                                }
+                                else
+                                {
+                                    *muscleGradientRotation = math.mul(new quaternion(axisRotations[ii]), *muscleGradientRotation);
+                                }
+                            }
+                        }
+                    }
                 }
 
-                Dof3Quaternions[index] = eulerAngle;
+/*                if ((*Dof3)[0] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[0], Dof3toRadian[0]), eulerAngle);
+                }
+                if ((*Dof3)[1] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[1], Dof3toRadian[1]), eulerAngle);
+                }
+                if ((*Dof3)[2] != 0)
+                {
+                    eulerAngle = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[2], Dof3toRadian[2]), eulerAngle);
+                }*/
             }
         }
         /// <summary>
@@ -219,73 +205,90 @@ namespace MagicMotion
         [BurstCompile]
         public struct ClacDof3EpsilionJob : IJobParallelFor
         {
-            [ReadOnly]
+            /*            [ReadOnly,NativeDisableUnsafePtrRestriction]
+                        /// <summary>
+                        /// muscles value ,containing joint index and dof index.
+                        /// </summary>
+                        public JointMusclesData* muscleDatas;*/
+
+            /*            [ReadOnly, NativeDisableUnsafePtrRestriction]
+                        /// <summary>
+                        /// joint muscles value 
+                        /// </summary>
+                        public float3* Dof3s;*/
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
             /// <summary>
-            /// muscles value ,containing joint index and dof index.
+            /// joint relative muscle's index
             /// </summary>
-            public NativeArray<MuscleData> muscleDatas;
-            /// <summary>
-            /// joint muscles value 
-            /// </summary>
-            [ReadOnly,NativeDisableParallelForRestriction]
-            public NativeArray<float3> Dof3s;
+            internal int3* jointMuscleIndexs;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint muscles value's rotation 
             /// </summary>
-            [ReadOnly,NativeDisableParallelForRestriction]
-            public NativeArray<quaternion> Dof3Quaternions;
+            public quaternion* Dof3Quaternions;
+
+/*            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
-            /// joint data 
+            /// containing muscles value ,containing joint index and dof index.
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            /// <summary>
-            /// muscles value ,containing joint index and dof index.
-            /// </summary>
-            public NativeArray<JointData> jointDatas;
-            /// <summary>
-            /// joint transform value 
-            /// </summary>
-            [ReadOnly,NativeDisableParallelForRestriction]
-            public NativeArray<RigidTransform> jointTransformNatives;
+            public JointData* jointDatas;*/
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint transform value 
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<GlobalData> globalDatas;
+            public RigidTransform* jointTransformNatives;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             ///Epsilion to rotation
             /// </summary>
-            public NativeArray<quaternion> muscleGradientRotations;
+            public quaternion* muscleGradientRotations;
+
             public void Execute(int index)
             {
-                var muscleData = muscleDatas[index];
-                var currentJoint = jointDatas[muscleData.jointIndex];
+                /*                JointMusclesData* muscleData = muscleDatas+index;
+                                JointData* currentJoint = jointDatas+muscleData->jointIndex;
 
-                float3 Dof3 = Dof3s[muscleData.jointIndex];
+                                float3 Dof3 = Dof3s[muscleData->jointIndex];
 
-                Dof3[muscleData.dof] +=L_BFGSStatic.EPSILION;
-                quaternion before = Dof3Quaternions[muscleData.jointIndex];
-                quaternion after = quaternion.identity;
-                float3 Dof3toRadian = math.radians(
-                    math.lerp(0, currentJoint.minRange, -math.clamp(Dof3, -1, 0)) +
-                    math.lerp(0, currentJoint.maxRange, math.clamp(Dof3, 0, 1)));
-                if (Dof3[0]!=0)
+                                Dof3[muscleData->dof] +=L_BFGSStatic.EPSILION;
+                */
+/*                int3* jointMuscleIndex = jointMuscleIndexs + index;
+                quaternion* before = Dof3Quaternions + index ;
+                RigidTransform* relationTransform = jointTransformNatives + index ;
+                for (int i = 0; i < 3; i++)
                 {
-                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), after);
+                    if ((*jointMuscleIndex)[i] != -1)
+                    {
+                        quaternion* after = muscleGradientRotations + (*jointMuscleIndex)[i];
+                        *after = math.mul(relationTransform->rot, math.mul(math.mul(*after, math.inverse(*before)), math.inverse(relationTransform->rot)));
+                    }
+                }*/
+
+
+/*                quaternion* after = muscleGradientRotations + index;
+                *after = quaternion.identity;
+                Dof3 = math.radians(
+                    math.lerp(0, currentJoint->minRange, -math.clamp(Dof3, -1, 0)) +
+                    math.lerp(0, currentJoint->maxRange, math.clamp(Dof3, 0, 1)));
+                if (Dof3[0] != 0)
+                {
+                    *after = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[0], Dof3[0]), *after);
                 }
                 if (Dof3[1] != 0)
                 {
-                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[1], Dof3toRadian[1]), after);
+                    *after = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[1], Dof3[1]), *after);
                 }
                 if (Dof3[2] != 0)
                 {
-                    after = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[2], Dof3toRadian[2]), after);
+                    *after = math.mul(quaternion.AxisAngle(currentJoint->dof3Axis[2], Dof3[2]), *after);
                 }
 
+                RigidTransform* relationTransform = jointTransformNatives + muscleData->jointIndex;*/
 
-                quaternion worldRot = jointTransformNatives[muscleData.jointIndex].rot;
-                quaternion change = math.mul(worldRot, math.mul(math.mul(after, math.inverse(before)), math.inverse(worldRot)));
-                muscleGradientRotations[index] = change;
             }
         }
         /// <summary>
@@ -294,46 +297,46 @@ namespace MagicMotion
         [BurstCompile]
         public struct BuildTransformJob : IJobFor
         {
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint world transform
             /// </summary>
-            [NativeDisableParallelForRestriction]
-            public NativeArray<RigidTransform> jointTransformNatives;
+            public RigidTransform* jointTransformNatives;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint datas 
             /// </summary>
-            [ReadOnly]
-            public NativeSlice<JointData> jointDatas;
+            public JointData* jointDatas;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint muscle value's rotation 
             /// </summary>
-            [ReadOnly]
-            public NativeArray<quaternion> Dof3Quaternions;
+            public quaternion* Dof3Quaternions;
 
             public float3 rootPosition;
             public quaternion rootRotation;
 
             public void Execute(int index)
             {
-                JointData currentJoint = jointDatas[index];
-                RigidTransform currentTransform = jointTransformNatives[index];
-                quaternion eulerAngle = Dof3Quaternions[index];
+                JointData* currentJoint = jointDatas+index;
+                RigidTransform* currentTransform = jointTransformNatives+index;
+                quaternion* dof3Quaternion = Dof3Quaternions+index;
 
-                if (currentJoint.parentIndex == -1)
+                if (currentJoint->parentIndex == -1)
                 {
-                    currentTransform.pos = rootPosition;
-                    currentTransform.rot = math.mul(rootRotation, eulerAngle);
+                    currentTransform->pos = rootPosition;
+                    currentTransform->rot = math.mul(rootRotation, *dof3Quaternion);
                 }
                 else
                 {
-                    RigidTransform parentTransform = jointTransformNatives[currentJoint.parentIndex];
-                    float3 parentPosition = parentTransform.pos;
-                    quaternion parentRotation = parentTransform.rot;
-                    currentTransform.pos = parentPosition + math.mul(parentRotation, currentJoint.localPosition);
-                    currentTransform.rot = math.mul(parentRotation, math.mul(currentJoint.localRotation, eulerAngle));
+                    RigidTransform* parentTransform = jointTransformNatives+currentJoint->parentIndex;
+
+                    currentTransform->pos = parentTransform->pos + math.mul(parentTransform->rot, currentJoint->localPosition);
+                    currentTransform->rot = math.mul(parentTransform->rot, math.mul(currentJoint->localRotation, *dof3Quaternion));
 
                 }
-                jointTransformNatives[index] = currentTransform;
             }
         }
         /// <summary>
@@ -344,63 +347,70 @@ namespace MagicMotion
         [BurstCompile]
         public struct CaclulatelossJob : IJobParallelFor
         {
+            [ReadOnly,NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Constriant data 
             /// </summary>
-            [ReadOnly]
-            public NativeArray<ConstraintData> constraintDatas;
+            public ConstraintData* constraintDatas;
 
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Joint relation data ,for claculate the new world transf
             /// </summary>
-            [ReadOnly]
-            public NativeArray<JointRelationData> jointRelationDatas;
+            public JointRelationData* jointRelationDatas;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint world transform
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<RigidTransform> jointTransformNatives;
+            public RigidTransform* jointTransformNatives;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint muscles value 
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<float3> Dof3s;
+            public float3* Dof3s;
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Gradient's rotation
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<quaternion> muscleGradientRotations;
+            public quaternion* muscleGradientRotations;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Loss data 
             /// </summary>
-            public NativeArray<JoinLoss> jointlossNatives;
+            public double* jointlossNatives;
 
             public void Execute(int index)
             {
 
-                JointRelationData jointRelationData = jointRelationDatas[index];    
-                ConstraintData constraintNative = constraintDatas[index];
-                JoinLoss jointloss = jointlossNatives[index];
+                JointRelationData* jointRelationData = jointRelationDatas+index;    
+                ConstraintData* constraintNative = constraintDatas+index;
+                double* jointloss = jointlossNatives+index;
 
 
-                RigidTransform jointTransform = jointTransformNatives[jointRelationData.jointIndex];
-                if (jointRelationData.relatedJointIndex!=-1)
+                RigidTransform jointTransform = jointTransformNatives[jointRelationData->jointIndex];
+                RigidTransform* pJointTransform = &jointTransform;
+
+                if (jointRelationData->relatedJointIndex!=-1)
                 {
-                    RigidTransform relatedTransform = jointTransformNatives[jointRelationData.relatedJointIndex];
-                    quaternion muscleGradientRotation = muscleGradientRotations[jointRelationData.relatedMuscleIndex];
-                    RebuildJointTransform(ref jointTransform, ref relatedTransform, ref muscleGradientRotation);
+                    RigidTransform* relatedTransform = jointTransformNatives+jointRelationData->relatedJointIndex;
+                    quaternion* muscleGradientRotation = muscleGradientRotations+jointRelationData->relatedMuscleIndex;
+                    RebuildJointTransform(pJointTransform,  relatedTransform, muscleGradientRotation);
                 }
-              float3 Dof3 = Dof3s[jointRelationData.jointIndex];
+              float3* Dof3 = Dof3s+jointRelationData->jointIndex;
 
-                jointloss.lossSum = 0;
-                if (constraintNative.positionConstraint.isVaild)
+                *jointloss = 0;
+                if (constraintNative->positionConstraint.isVaild)
+                {
+                    UpdatePositionloss(jointloss, pJointTransform, constraintNative);
+                }
+/*                if (constraintNative.directionConstraint.isVaild)
                 {
                     UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
-                }
-                if (constraintNative.directionConstraint.isVaild)
-                {
-                    UpdatePositionloss(ref jointloss, ref jointTransform, ref constraintNative);
-                }
+                }*/
 
                 /*                if (constraintNative.DofConstraint.isVaild)
                                 {
@@ -422,25 +432,24 @@ namespace MagicMotion
                                 {
                                     UpdateMuscleChangeloss(ref jointloss, ref Dof3, ref constraintNative);
                                 }*/
-               jointlossNatives[index] = jointloss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static void RebuildJointTransform(ref RigidTransform jointTransform, ref RigidTransform relatedTransform, ref quaternion muscleGradientRotation)
+            private static void RebuildJointTransform( RigidTransform* jointTransform, RigidTransform* relatedTransform, quaternion* muscleGradientRotation)
             {
-                float3 direction = jointTransform.pos - relatedTransform.pos;
-                jointTransform.pos = math.mul(muscleGradientRotation,direction)+ relatedTransform.pos;
-                jointTransform.rot = math.mul( muscleGradientRotation, jointTransform.rot);
+                float3 direction = jointTransform->pos - relatedTransform->pos;
+                jointTransform->pos = math.mul(*muscleGradientRotation,direction)+ relatedTransform->pos;
+                jointTransform->rot = math.mul( *muscleGradientRotation, jointTransform->rot);
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static void UpdatePositionloss(ref JoinLoss jointloss, ref RigidTransform jointTransform, ref ConstraintData constraintNative)
+            private static void UpdatePositionloss(double* jointloss,RigidTransform* jointTransform,ConstraintData* constraintNative)
             {
-                PositionConstraint positionConstraint = constraintNative.positionConstraint;
-                float3 jointPosition = jointTransform.pos;
-                float lengthSum = constraintNative.lengthSum;
+                float3 jointPosition = jointTransform->pos;
+                float lengthSum = constraintNative->lengthSum;
 
-                float3 weight3 = positionConstraint.weight3;
-                float3 constraintPosition = positionConstraint.position;
+                float3 weight3 = constraintNative->positionConstraint.weight3;
+                float3 constraintPosition = constraintNative->positionConstraint.position;
                 float3 direction = constraintPosition - jointPosition;
+
                 if (math.all(direction==0))
                 {
                     return;
@@ -449,7 +458,7 @@ namespace MagicMotion
                 float lossCos = math.csum(direction* direction* weight3);
                 lossCos /= ( lengthSum* lengthSum);
                 lossCos *= math.PI * math.PI;
-                jointloss.lossSum += lossCos;
+                *jointloss += lossCos;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private static void UpdateMuscleloss(ref JoinLoss jointloss, ref float3 Dof3, ref ConstraintData constraintNative)
@@ -542,60 +551,62 @@ namespace MagicMotion
             //OYM：等我回来在写注释
             //OYM：趁着现在灵感还在
 
-            #region LBFGS Data
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// BFGS 求解应用到的变量
             /// </summary>
-            public NativeArray<LBFGSSolver> LBFGSSolvers;
+            public LBFGSSolver* LBFGSSolver;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// global data ,to control loop's work
             /// </summary>
-            internal NativeArray<GlobalData> globalDataNative;
+            internal GlobalData* globalData;
+
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Gradient 
             /// </summary>
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> gradients;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> diagonal;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> gradientStore;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> rho;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> alpha;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> steps;
-            [NativeDisableParallelForRestriction]
-            public NativeArray<double> delta;
-            [NativeDisableParallelForRestriction]
-            internal NativeArray<double> losses;
-/*            [NativeDisableParallelForRestriction]
-            internal NativeArray<double> gradientAlls;
-            [NativeDisableParallelForRestriction]
-            internal NativeArray<float> muscleAlls;*/
-            #endregion
+            public double* gradients;
 
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// LBFGS data Store 
+            /// </summary>
+            public double* dataStore;
+
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// loss value store
+            /// </summary>
+            internal double* losses;
+            /*            [NativeDisableParallelForRestriction]
+                        internal double* gradientAlls;
+                        [NativeDisableParallelForRestriction]
+                        internal float* muscleAlls;*/
+
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint loss
             /// </summary>
-            [ReadOnly, NativeDisableParallelForRestriction]
-            public NativeArray<JoinLoss> jointlossNatives;
+            public double* jointlossNatives;
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
             /// <summary>
             /// relative data
             /// </summary>
-            [NativeDisableParallelForRestriction, ReadOnly]
-            public NativeArray<JointRelationData> relationDatas;
-            /// <summary>
-            /// muscle relative constraint count;
-            /// </summary>
-            [NativeDisableParallelForRestriction, ReadOnly]
-            public NativeArray<int> jointRelativedCounts;
+            public JointRelationData* relationDatas;
+            
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            [NativeDisableParallelForRestriction]
-            public NativeArray<float> muscleValues;
+            public float* muscleValues;
+
+            /// <summary>
+            /// constraint length
+            /// </summary>
+            public int constraintLength;
             /// <summary>
             ///  parallel's data count
             /// </summary>
@@ -611,17 +622,12 @@ namespace MagicMotion
 
             public void Execute()
             {
-                int index = 0;
-                var globalData = globalDataNative[index];
 
-                 double loss = Collectloss(jointlossNatives, 0, jointRelativedCounts[0], jointLength);
-                CollectGradient(jointlossNatives, relationDatas, globalData, jointRelativedCounts, muscleLength, jointLength, parallelLength, gradients);
+                 double loss = Collectloss(jointlossNatives, 0, constraintLength, jointLength);
+                CollectGradient(jointlossNatives, relationDatas, muscleLength, jointLength, parallelLength, gradients);
                // CollectTestData(globalData);
-                losses[globalData.leastLoopCount] = loss;
-                var LBFGSSolver = LBFGSSolvers[index];
-                LBFGSSolver.Optimize(loss, ref globalData.leastLoopCount, diagonal, gradientStore, rho, alpha, steps, delta, muscleValues, gradients);
-                LBFGSSolvers[index] = LBFGSSolver;
-                globalDataNative[index] = globalData;
+                losses[globalData->leastLoopCount] = loss;
+                LBFGSSolver->Optimize(loss,  ref globalData->leastLoopCount, dataStore, muscleValues, gradients);
             }
 
 /*            private void CollectTestData(GlobalData globalData)
@@ -631,47 +637,35 @@ namespace MagicMotion
             }*/
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static double Collectloss(NativeArray<JoinLoss> losses, int offset, int constraintlength,int jointLength)
+            private static double Collectloss(double* losses, int offset, int constraintlength,int jointLength)
             {
                 double loss = 0;
                 if (constraintlength!=0)
                 {
                     for (int i = 0; i < jointLength; i++)
                     {
-                        loss +=losses[i + offset].lossSum/ constraintlength;
+                        loss +=losses[i + offset]/ constraintlength;
                     }
                 }
 
                 return loss;
             }
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private static void CollectGradient(NativeArray<JoinLoss> losses,NativeArray<JointRelationData> relationDatas ,GlobalData globalData, NativeArray<int> jointRelativedCounts, int muscleLength, int jointLength, int parallelLength,NativeArray<double>gradients)
+            private static void CollectGradient(double* losses,JointRelationData* relationDatas , int muscleLength, int jointLength, int parallelLength,double*gradients)
             {
-                ClearNativeArrayData(gradients);
+                ClearNativeArrayData<double>(gradients,muscleLength);
                 for (int i = jointLength; i < parallelLength; i++)
                 {
-                    JointRelationData relationData = relationDatas[i];
-                    double gradientTemp = (double)losses[i].lossSum - (double)losses[relationData.jointIndex].lossSum;
+                    JointRelationData* relationData = relationDatas+i;
+                    double gradientTemp = (double)losses[i] - (double)losses[relationData->jointIndex];
                     //gradientTemp = gradientTemp /jointRelativedCounts[relationData.relatedJointIndex] *jointRelativedCounts[0];
                     gradientTemp /= L_BFGSStatic.EPSILION;
                     
 
-                    gradients[relationData.relatedMuscleIndex] += gradientTemp;
+                    gradients[relationData->relatedMuscleIndex] += gradientTemp;
                     //gradients[relationData.relatedMuscleIndex] += gradientTemp;
                 }
 
-            }
-        }
-
-        public struct JointToTransformJob : IJobParallelForTransform
-        {
-
-            [ReadOnly]
-            public NativeArray<RigidTransform> jointTransformNatives;
-            public void Execute(int index, TransformAccess transform)
-            {
-                transform.position = jointTransformNatives[index].pos;
-                transform.rotation=jointTransformNatives[index].rot;
             }
         }
 
@@ -694,11 +688,11 @@ namespace MagicMotion
 public struct RigHipPositionJob : IJobParallelFor
 {
     [ReadOnly,NativeDisableParallelForRestriction]
-    public NativeArray<JointData> jointDatas;
+    public JointData* jointDatas;
     [ReadOnly, NativeDisableParallelForRestriction]
-    public NativeArray<ConstraintData> constraintNatives;
+    public ConstraintData* constraintNatives;
     [NativeDisableParallelForRestriction]
-    public NativeArray<RigidTransform> jointTransformNatives;
+    public RigidTransform* jointTransformNatives;
 
     public int loopCount;
     public int jointLength;
@@ -758,19 +752,19 @@ public struct RigHipPositionJob : IJobParallelFor
             /// global data ,to control loop's work
             /// </summary>
             [ReadOnly, NativeDisableParallelForRestriction]
-            internal NativeArray<MMGlobalData> globalDataNative;
+            internal MMGlobalData* globalDataNative;
             [NativeDisableParallelForRestriction]
-            public NativeArray<float3> Dof3s;
+            public float3* Dof3s;
             [ReadOnly]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            public NativeArray<MMMuscleData> muscleDatas;
+            public MMMuscleData* muscleDatas;
             [ReadOnly]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
-            public NativeArray<float> musclesValues;
+            public float* musclesValues;
             public int jointCount;
 
             public int muscleCount;
@@ -801,3 +795,111 @@ public struct RigHipPositionJob : IJobParallelFor
                 }
             }
         }*/
+
+/*     
+/// <summary>
+///  Initialize Muscle Value
+/// </summary>
+public struct InitializeMuscleJob : IJobParallelFor
+{
+    [ReadOnly]
+    /// <summary>
+    /// muscles value ,containing joint index and dof index.
+    /// </summary>
+    public MuscleData* muscleDatas;
+    /// <summary>
+    /// muscles value ,containing joint index and dof index.
+    /// </summary>
+    public float* musclesValues;
+
+    public void Execute(int index)
+    {
+        musclesValues[index] = math.clamp(musclesValues[index],0,0);
+    }
+}
+/// <summary>
+/// Set joint Transform data before update
+/// </summary>
+public struct InitializeJointJob : IJobParallelFor
+{
+    /// <summary>
+    /// Joint's world transform data
+    /// </summary>
+    public RigidTransform* jointTransformDatas;
+    /// <summary>
+    /// Joint's world transform data
+    /// </summary>
+    public Vector3* jointPositions;
+    /// <summary>
+    /// Joint's world transform data
+    /// </summary>
+    public quaternion* jointRotations;
+    public void Execute(int index)
+    {
+        var rigid = jointTransformDatas[ index];
+        rigid.pos = jointPositions[index];
+        rigid.rot = jointRotations[index];
+        jointTransformDatas[index] = rigid;
+
+    }
+}
+/// <summary>
+/// To read constraint data from transform. e.g. position constriant,lookat constraint 
+/// </summary>
+[BurstCompile]
+public struct TransformToConstraintJob : IJobParallelFor
+{
+    /// <summary>
+    /// constraint Native data
+    /// </summary>
+    [NativeDisableParallelForRestriction]
+    public ConstraintData* constraintDatas;
+    /// <summary>
+    /// TransformToConstrain Data 
+    /// </summary>
+    public TransformToConstraintData* transformToConstrainDatas;
+    /// <summary>
+    ///  constraint positions
+    /// </summary>
+    public Vector3* constraintPositions;
+    /// <summary>
+    /// TransformToConstrain Data 
+    /// </summary>
+    public Quaternion* constraintRotations;
+    public void Execute(int index)
+    {
+        int point = transformToConstrainDatas[index].jointIndex;
+        MMConstraintType type = transformToConstrainDatas[index].constraintType;
+         var constraintPosition=constraintPositions[index];
+        var constraintRotation=constraintRotations[index];
+
+       var constraint = constraintDatas[ point];
+
+        switch (type)
+        {
+            case MMConstraintType.Position:
+                constraint.positionConstraint.position = constraintPosition;
+                break;
+            case MMConstraintType.Rotation:
+                break;
+            case MMConstraintType.LookAt:
+                constraint.lookAtConstraint.position = constraintPosition;
+                break;
+            default:
+                break;
+        }
+        constraintDatas[point] = constraint;
+    }
+}
+        public struct JointToTransformJob : IJobParallelForTransform
+        {
+
+            [ReadOnly]
+            public RigidTransform* jointTransformNatives;
+            public void Execute(int index, TransformAccess transform)
+            {
+                transform.position = jointTransformNatives[index].pos;
+                transform.rotation=jointTransformNatives[index].rot;
+            }
+        }
+ */

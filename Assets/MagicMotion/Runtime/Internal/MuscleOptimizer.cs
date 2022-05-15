@@ -13,7 +13,7 @@ namespace MagicMotion.Internal
     /// <summary>
     ///  Single Optimize
     /// </summary>
-    internal  struct MuscleOptimizer
+    internal unsafe  struct MuscleOptimizer
     {
         #region  Field&Property
 
@@ -28,7 +28,7 @@ namespace MagicMotion.Internal
         /// musclesLength
         /// ReadOnly
         /// </summary>
-        private NativeArray<MuscleData> muscleDataNativeArray;
+        private NativeArray<JointMusclesData> muscleDataNativeArray;
         /// <summary>
         /// ConstraintData ,contatin positionConstraint lookAtConstraint's data. etc.
         /// ParallelLength
@@ -42,10 +42,6 @@ namespace MagicMotion.Internal
         ///  Readonly
         /// </summary>
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
-        /// <summary>
-        /// how many constraint influence by this muscle
-        /// </summary>
-        private NativeArray<int> muscleRelativeCountNativeArray;
 
         //OYM：base data (readwrite)
         /// <summary>
@@ -96,7 +92,7 @@ namespace MagicMotion.Internal
         /// parallelLength
         /// ReadWrite
         /// </summary>
-        private NativeArray<JoinLoss> jointlossNativeArray;
+        private NativeArray<double> jointlossNativeArray;
         //OYM：LBFGS data(readwrite)
         /// <summary>
         /// gradient data,use to LBFGS optimie.
@@ -105,41 +101,11 @@ namespace MagicMotion.Internal
         /// </summary>
         private NativeArray<double> gradients;
         /// <summary>
-        /// LBFGS's gradientStore
-        /// muscleLength 
+        /// LBFGS's array data stroe
         /// ReadWrite
         /// </summary>
-        private NativeArray<double> gradientStore;
-        /// <summary>
-        /// LBFGS's diagonal data ,is equal for search muscle 
-        /// muscleLength
-        /// ReadWrite
-        /// </summary>
-        private NativeArray<double> diagonal;
-        /// <summary>
-        /// alpha Data
-        /// Controll by LBFGSStatic
-        /// ReadWrite
-        /// </summary>
-        private NativeArray<double> alpha;
-        /// <summary>
-        /// steps Data
-        /// Controll by LBFGSStatic
-        /// ReadWrite
-        /// </summary>
-        private NativeArray<double> steps;
-        /// <summary>
-        /// delta Data
-        /// Controll by LBFGSStatic
-        /// ReadWrite
-        /// </summary>
-        private NativeArray<double> delta;
-        /// <summary>
-        /// rho Data
-        /// Controll by LBFGSStatic
-        /// ReadWrite
-        /// </summary>
-        private NativeArray<double> rho;
+        private NativeArray<double> dataStore;
+
         //OYM：test data
 
         private NativeArray<double> lossNativeArray;
@@ -180,6 +146,11 @@ namespace MagicMotion.Internal
         /// </summary>
         private readonly int parallelDataCount;
         /// <summary>
+        /// constriant Count
+        /// </summary>
+        private readonly int constraintCount;
+
+        /// <summary>
         /// joint count 
         /// </summary>
         private readonly int jointCount;
@@ -205,12 +176,13 @@ namespace MagicMotion.Internal
         #region LocalFunc
 
         public MuscleOptimizer(
-             int parallelDataCount, int jointCount, int muscleCount,int iterationCount,NativeArray<int> muscleRelativeCountNativeArray,
+             int parallelDataCount, int jointCount, int muscleCount,int iterationCount,int constraintCount,
              NativeArray<JointData> jointDataNativeArray,
-             NativeArray<MuscleData> muscleDataNativeArray,
+             NativeArray<JointMusclesData> muscleDataNativeArray,
               NativeArray<ConstraintData> constraintNativeArray,
                NativeArray<JointRelationData> jointRelationDataNativeArray,
-               NativeArray<float> muscleValueNativeArray,
+NativeArray<int3> jointMusclesIndexNativeArray, 
+NativeArray<float> muscleValueNativeArray,
              List<IDisposable> disposeList
             )
         {
@@ -225,17 +197,17 @@ namespace MagicMotion.Internal
 
             #region SetValue
 
-            this.iterationCount = 0;
+            this.constraintCount = constraintCount;
             this.jointCount = jointCount;
             this.muscleCount = muscleCount;
             this.parallelDataCount = parallelDataCount;
             this.iterationCount = iterationCount;
 
+
             this.jointDataNativeArray = jointDataNativeArray;
             this.muscleDataNativeArray = muscleDataNativeArray;
             this.constraintNativeArray = constraintNativeArray;
             this.jointRelationDataNativeArray = jointRelationDataNativeArray;
-            this.muscleRelativeCountNativeArray = muscleRelativeCountNativeArray;
             this.muscleValueNativeArray = muscleValueNativeArray;
             #endregion
 
@@ -245,15 +217,10 @@ namespace MagicMotion.Internal
             this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
             this.muscleGradientRotationArray = CreateNativeData<quaternion>(muscleCount);
-            this.jointlossNativeArray = CreateNativeData<JoinLoss>(parallelDataCount);
+            this.jointlossNativeArray = CreateNativeData<double>(parallelDataCount);
             this.jointTransformNativeArray = CreateNativeData<RigidTransform>(jointCount);
             this.gradients = CreateNativeData<double>(muscleCount);
-            this.gradientStore = CreateNativeData<double>(muscleCount);
-            this.diagonal = CreateNativeData<double>(muscleCount, Allocator.Persistent);
-            this.rho = CreateNativeData<double>(L_BFGSStatic.CORRECTION, Allocator.Persistent);    
-            this.alpha = CreateNativeData<double>(L_BFGSStatic.CORRECTION, Allocator.Persistent);            
-            this.steps = CreateNativeData<double>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);        
-            this.delta = CreateNativeData<double>(muscleCount * L_BFGSStatic.CORRECTION, Allocator.Persistent);
+            this.dataStore = CreateNativeData<double>(L_BFGSStatic.GetDataStoreLength(muscleCount), Allocator.Persistent);
 
             this.lossNativeArray = CreateNativeData<double>(iterationCount + 1, Allocator.Persistent);
             this.gradientAllNativeArray = CreateNativeData<double>((iterationCount + 1) * muscleCount, Allocator.Persistent);
@@ -266,64 +233,62 @@ namespace MagicMotion.Internal
 
             muscleToDof3Job = new MuscleToDof3Job()
             {
-                Dof3s = Dof3NativeArray,
-                muscleDatas = muscleDataNativeArray,
-                muscleValues = muscleValueNativeArray,
+                Dof3s = (float3*)Dof3NativeArray.GetUnsafePtr(),
+                muscleDatas = (JointMusclesData*)muscleDataNativeArray.GetUnsafeReadOnlyPtr(),
+                muscleValues =(float*) muscleValueNativeArray.GetUnsafeReadOnlyPtr(),
             };
 
             dof3ToRotationJob = new Dof3ToRotationJob
             {
-                Dof3s = Dof3NativeArray,
-                jointDatas = jointDataNativeArray,
-                Dof3Quaternions = Dof3QuaternionNativeArray,
+                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
+                jointDatas =(JointData*) jointDataNativeArray.GetUnsafeReadOnlyPtr(),
+                Dof3Quaternions =(quaternion*) Dof3QuaternionNativeArray.GetUnsafePtr(),
+                jointMuscleIndexs =(int3*) jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
+                muscleGradientRotations = (quaternion*)muscleGradientRotationArray.GetUnsafePtr(),
+                muscleValues = (float*)muscleValueNativeArray.GetUnsafeReadOnlyPtr(), 
             };
 
             clacDof3EpsilionJob = new ClacDof3EpsilionJob
             {
-                Dof3Quaternions = Dof3QuaternionNativeArray,
-                Dof3s = Dof3NativeArray,
-                jointDatas = jointDataNativeArray,
-                jointTransformNatives = jointTransformNativeArray,
-                muscleDatas = muscleDataNativeArray,
-                muscleGradientRotations = muscleGradientRotationArray,
-                globalDatas = globalDataNativeArray,
+                Dof3Quaternions = (quaternion*)Dof3QuaternionNativeArray.GetUnsafeReadOnlyPtr(),
+/*                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
+                jointDatas = (JointData*)jointDataNativeArray.GetUnsafeReadOnlyPtr(),*/
+                jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
+/*                muscleDatas = (JointMusclesData*)muscleDataNativeArray.GetUnsafeReadOnlyPtr(),*/
+                muscleGradientRotations =(quaternion*) muscleGradientRotationArray.GetUnsafePtr(),
+                jointMuscleIndexs = (int3*)jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
             };
 
             buildTransformJob = new BuildTransformJob()
             {
-                jointTransformNatives = jointTransformNativeArray,
-                jointDatas = jointDataNativeArray.Slice(0, jointCount),
-                Dof3Quaternions = Dof3QuaternionNativeArray,
+                jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
+                jointDatas = (JointData*)jointDataNativeArray.GetUnsafeReadOnlyPtr(),
+                Dof3Quaternions = (quaternion*)Dof3QuaternionNativeArray.GetUnsafePtr(),
             };
 
             caclulatelossJob = new CaclulatelossJob()
             {
-                constraintDatas = constraintNativeArray,
-                jointRelationDatas = jointRelationDataNativeArray,
+                constraintDatas = (ConstraintData*)constraintNativeArray.GetUnsafeReadOnlyPtr(),
+                jointRelationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
  
-                jointTransformNatives = jointTransformNativeArray,
-                Dof3s = Dof3NativeArray,
-                muscleGradientRotations = muscleGradientRotationArray,
-                jointlossNatives = jointlossNativeArray,
+                jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
+                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
+                muscleGradientRotations = (quaternion *) muscleGradientRotationArray.GetUnsafeReadOnlyPtr(),
+                jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
             };
 
             mainControllerJob = new MainControllerJob()
             {
-                LBFGSSolvers = LBFGSNatives,
-                globalDataNative = globalDataNativeArray,
+                LBFGSSolver = (LBFGSSolver*)LBFGSNatives.GetUnsafePtr(),
+                globalData= (GlobalData*)globalDataNativeArray.GetUnsafePtr(),
 
-                gradients = gradients,
-                diagonal = diagonal,
-                gradientStore = gradientStore,
-                rho = rho,
-                alpha = alpha,
-                steps = steps,
-                delta = delta,
-                losses = lossNativeArray,
-                jointlossNatives = jointlossNativeArray,
-                muscleValues = muscleValueNativeArray,
-                relationDatas = jointRelationDataNativeArray,
-                jointRelativedCounts=muscleRelativeCountNativeArray,
+                gradients = (double*)gradients.GetUnsafePtr(),
+                dataStore = (double*)dataStore.GetUnsafePtr(),
+                losses = (double*)lossNativeArray.GetUnsafePtr(),
+                jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
+                muscleValues = (float*)muscleValueNativeArray.GetUnsafePtr(),
+                relationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafePtr(),
+                constraintLength=constraintCount,
 /*                muscleAlls = muscleValueAllNativeArray,
                 gradientAlls = gradientAllNativeArray,*/
                 parallelLength = parallelDataCount,
@@ -348,10 +313,10 @@ namespace MagicMotion.Internal
                 Reset(rootPosition, rootRotation);
                 for (int j = 0; j < iterationCount + 1; j++)
                 {
-                    muscleToDof3Job.Run(muscleCount);
+                   /* muscleToDof3Job.Run(muscleCount);*/
                     dof3ToRotationJob.Run(jointCount);
                     buildTransformJob.Run(jointCount);
-                    clacDof3EpsilionJob.Run(muscleCount);
+                    clacDof3EpsilionJob.Run(jointCount);
                     caclulatelossJob.Run(parallelDataCount);
                     mainControllerJob.Run();
                 }

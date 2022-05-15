@@ -37,28 +37,28 @@ namespace MagicMotion.Extern
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static void InitializeLoop(
     ref double innerLoopStep,
-    ref int iterations, ref int evaluations, ref int loopCount, ref int point, ref int matrixPoint,
+    ref int iterations, ref int evaluations, ref int loopCount, ref int point, ref int matrixPoint, ref int numberOfVariables,
     ref bool isLoopOutside,
-    ref NativeArray<double> gradient, ref NativeArray<double> diagonal, ref NativeArray<double> steps
+    ref double* gradient, ref double* diagonal, ref double* steps
     )
         {
             // Initialization
             InitializeBeforeLoop(ref innerLoopStep, ref iterations, ref loopCount, ref point, ref matrixPoint, ref isLoopOutside);
 
             // Obtain initial Hessian
-            for (int i = 0; i < diagonal.Length; i++)
+            for (int i = 0; i < numberOfVariables; i++)
             {
                 diagonal[i] = 1.0f;
             }
 
             // Initialize work vector
-            for (int i = 0; i < gradient.Length; i++)
+            for (int i = 0; i < numberOfVariables; i++)
             {
                 steps[i] = -gradient[i] * diagonal[i];
             }
 
             // Initialize statistics
-            double gnormInit = Euclidean(gradient);
+            double gnormInit = Euclidean(gradient,numberOfVariables);
             innerLoopStep = 1.0f / gnormInit;
         }
 
@@ -67,8 +67,8 @@ namespace MagicMotion.Extern
     ref double width, ref double width1, ref double stepBoundX, ref double stepBoundY, ref double preGradientSum, ref double innerLoopStep, ref double preloss, ref double loss, ref double lossX, ref double lossY, ref double gradientInitialX, ref double gradientInitialY,
     ref int funcState, ref int iterations, ref int matrixPoint, ref int numberOfVariables, ref int point,
     ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
-    ref NativeArray<double> delta, ref NativeArray<double> steps, ref NativeArray<double> diagonal, ref NativeArray<double> gradientStore, ref NativeArray<double> gradient, ref NativeArray<double> rho, ref NativeArray<double> alpha,
-    ref NativeArray<float> currentSolution)
+    ref double* delta, ref double* steps, ref double* diagonal, ref double* gradientStore, ref double* gradient, ref double* rho, ref double* alpha,
+    ref float* currentSolution)
         {
             InitializeOutsideLoop(ref width, ref width1, ref stepBoundX, ref stepBoundY, ref preGradientSum, ref funcState, ref isLoopInside, ref isInBracket, ref stage1);
             iterations++;
@@ -104,7 +104,7 @@ namespace MagicMotion.Extern
             }
 
             // Save original gradient
-            UnsafeUtility.MemCpy(gradientStore.GetUnsafePtr(), gradient.GetUnsafePtr(), gradient.Length * UnsafeUtility.SizeOf<double>());
+            UnsafeUtility.MemCpy(gradientStore, gradient, numberOfVariables * UnsafeUtility.SizeOf<double>());
 
             if (innerLoopStep <= 0)
             {
@@ -145,7 +145,7 @@ namespace MagicMotion.Extern
         ref double stepBoundMin, ref double stepBoundMax, ref double stepBoundX, ref double stepBoundY, ref double innerLoopStep,
         ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint, ref int leastLoopCount,
         ref bool isInBracket,
-        ref NativeArray<float> currentSolution, ref NativeArray<double> diagonal, ref NativeArray<double> steps
+        ref float* currentSolution, ref double* diagonal, ref double* steps
         )
         {
             // Set the minimum and maximum steps to correspond
@@ -192,7 +192,7 @@ namespace MagicMotion.Extern
             ref double preGradientSum, ref double preloss, ref double innerLoopStep, ref double stepBoundMin, ref double stepBoundMax, ref double loss, ref double lossTolerance, ref double lossX, ref double lossY, ref double stepBoundX, ref double stepBoundY, ref double gradientInitialX, ref double gradientInitialY, ref double width, ref double width1,
             ref int loopCount, ref int numberOfVariables, ref int funcState, ref int matrixPoint, ref int leastLoopCount,
             ref bool isLoopOutside, ref bool isLoopInside, ref bool isInBracket, ref bool stage1,
-    ref NativeArray<double> gradient, ref NativeArray<double> steps
+    ref double* gradient, ref double* steps
             )
         {
             loopCount++;
@@ -328,7 +328,7 @@ namespace MagicMotion.Extern
              ref double innerLoopStep, ref double gradientTolerance,
                ref int loopCount, ref int matrixPoint, ref int point, ref int numberOfVariables, ref int leastLoopCount,
                ref bool isLoopOutside,
-               ref NativeArray<double> gradient, ref NativeArray<double> steps, ref NativeArray<double> delta, ref NativeArray<double> gradientStore, ref NativeArray<double> diagonal, ref NativeArray<float> currentSolution
+               ref double* gradient, ref double* steps, ref double* delta, ref double* gradientStore, ref double* diagonal, ref float* currentSolution
             )
         {
             if (!isLoopOutside)
@@ -356,7 +356,7 @@ namespace MagicMotion.Extern
             }
 
             // Check for termination
-            double gnorm = Euclidean(gradient);
+            double gnorm = Euclidean(gradient,numberOfVariables);
 
 
             // isSuccessful
@@ -367,36 +367,26 @@ namespace MagicMotion.Extern
 
         }
 
-        public static void CreateWorkVector(int numberOfVariables,
-        out NativeArray<double> diagonal, out NativeArray<double> gradientStore, out NativeArray<double> rho, out NativeArray<double> alpha, out NativeArray<double> steps, out NativeArray<double> delta
-        )
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static void ClearData(double* dataStore,int numberOfVariables)
         {
-            diagonal = new NativeArray<double>(numberOfVariables, Allocator.Persistent);
-            gradientStore = new NativeArray<double>(numberOfVariables, Allocator.Persistent);
-            rho = new NativeArray<double>(CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
-            alpha = new NativeArray<double>(CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
-            steps = new NativeArray<double>(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
-            delta = new NativeArray<double>(numberOfVariables * CORRECTION, Allocator.Persistent);
+            ClearNativeArrayData<double>(dataStore, GetDataStoreLength(numberOfVariables));
         }
 
-        public static void Disposed(NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta)
-        {
-            diagonal.Dispose();
-            gradientStore.Dispose();
-            rho.Dispose();
-            alpha.Dispose();
-            steps.Dispose();
-            delta.Dispose();
-        }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static void ClearData(NativeArray<double> diagonal, NativeArray<double> gradientStore, NativeArray<double> rho, NativeArray<double> alpha, NativeArray<double> steps, NativeArray<double> delta)
+        public static void UnpackData(double*dataStore, int numberOfVariables, out double* diagonal,out double* gradientStore,out double* rho,out double* alpha,out double* steps,out double* delta)
         {
-            ClearNativeArrayData(diagonal);
-            ClearNativeArrayData(gradientStore);
-            ClearNativeArrayData(rho);
-            ClearNativeArrayData(alpha);
-            ClearNativeArrayData(steps);
-            ClearNativeArrayData(delta);
+            diagonal = dataStore;
+            gradientStore = dataStore + numberOfVariables;
+            rho = dataStore + numberOfVariables + numberOfVariables;
+            alpha = dataStore + numberOfVariables + numberOfVariables + CORRECTION;
+            steps = dataStore + numberOfVariables + numberOfVariables + CORRECTION+CORRECTION;
+            delta = dataStore + numberOfVariables + numberOfVariables + CORRECTION + CORRECTION + numberOfVariables * CORRECTION;
+        }
+
+        public static int GetDataStoreLength(int numberOfVariable)
+        {
+            return numberOfVariable * 2 + CORRECTION * 2 + numberOfVariable * CORRECTION * 2;
         }
         #endregion
 
@@ -404,7 +394,7 @@ namespace MagicMotion.Extern
         #region Line Search (mcsrch)
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void UpdatingQuasi_Newton(
-     NativeArray<double> diagonal, NativeArray<double> rho, NativeArray<double> gradientStore, NativeArray<double> steps, NativeArray<double> alpha, NativeArray<double> delta,
+     double* diagonal, double* rho, double* gradientStore, double* steps, double* alpha, double* delta,
         int numberOfVariables, int corrections, int point, int bound, double sumY)
         {
             int prePointLoop = ((point == 0) ? corrections : point) - 1;
@@ -432,7 +422,7 @@ namespace MagicMotion.Extern
                 }
             }
 
-            for (int i = 0; i < diagonal.Length; i++)
+            for (int i = 0; i < numberOfVariables; i++)
             {
                 gradientStore[i] *= diagonal[i];
             }
@@ -674,21 +664,21 @@ namespace MagicMotion.Extern
             isLoopOutside = true;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double Euclidean(NativeArray<double> a)
+        private static double Euclidean(double* a,int length)
         {
-            return math.sqrt(SquareEuclidean(a));
+            return math.sqrt(SquareEuclidean(a, length));
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double SquareEuclidean(NativeArray<double> a)
+        private static double SquareEuclidean(double* a,int length)
         {
             double sum = 0;
-            for (int i = 0; i < a.Length; i++)
+            for (int i = 0; i < length; i++)
                 sum += a[i] * a[i];
             return sum;
 
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double GetGreadientSum(NativeArray<double> gradient, NativeArray<double> steps, int matrixPoint, int numberOfVariables)
+        private static double GetGreadientSum(double* gradient, double* steps, int matrixPoint, int numberOfVariables)
         {
             double gradientTemp = 0;
             for (int j = 0; j < numberOfVariables; j++)
@@ -698,7 +688,7 @@ namespace MagicMotion.Extern
             return gradientTemp;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void ComputeDiagonal(NativeArray<double> diagonal, NativeArray<double> delta, int nowPoint, int numberOfVariables, double sumY)
+        private static void ComputeDiagonal(double* diagonal, double* delta, int nowPoint, int numberOfVariables, double sumY)
         {
             double sqrY = 0;
             for (int i = 0; i < numberOfVariables; i++)
@@ -714,7 +704,7 @@ namespace MagicMotion.Extern
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static double GetSumY(NativeArray<double> delta, NativeArray<double> steps, int nowPoint, int numberOfVariables)
+        private static double GetSumY(double* delta, double* steps, int nowPoint, int numberOfVariables)
         {
             double sumY = 0;
             for (int i = 0; i < numberOfVariables; i++)
@@ -727,3 +717,25 @@ namespace MagicMotion.Extern
         #endregion
     }
 }
+
+/*        public static void CreateWorkVector(int numberOfVariables,
+        out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta
+        )
+        {
+            diagonal = new double*(numberOfVariables, Allocator.Persistent);
+            gradientStore = new double*(numberOfVariables, Allocator.Persistent);
+            rho = new double*(CORRECTION, Allocator.Persistent);                  // Stores the scalars rho.
+            alpha = new double*(CORRECTION, Allocator.Persistent);               // Stores the alphas in computation of H*g.
+            steps = new double*(numberOfVariables * CORRECTION, Allocator.Persistent);          // Stores the last M search steps.
+            delta = new double*(numberOfVariables * CORRECTION, Allocator.Persistent);
+        }
+
+        public static void Disposed(double* diagonal, double* gradientStore, double* rho, double* alpha, double* steps, double* delta)
+        {
+            diagonal.Dispose();
+            gradientStore.Dispose();
+            rho.Dispose();
+            alpha.Dispose();
+            steps.Dispose();
+            delta.Dispose();
+        }*/

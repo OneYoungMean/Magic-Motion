@@ -7,6 +7,8 @@
     {
         public int relatedJointIndex;
         public int relatedMuscleIndex;
+
+        public int parentJointIndex;
         public int jointIndex;
     }
 }
