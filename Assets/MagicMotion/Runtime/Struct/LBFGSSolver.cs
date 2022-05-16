@@ -228,7 +228,7 @@ namespace MagicMotion
         /// <param name="dataStore"></param>
         /// <param name="currentSolution"></param>
         /// <param name="gradient"></param>
-        public void Optimize(double mloss, ref int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
+        public void Optimize(double mloss, int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
         {
             this.loss = mloss;
             UnpackData(dataStore,numberOfVariables, out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta);
@@ -260,7 +260,6 @@ namespace MagicMotion
                             else
                             {
                                 state =LBFGSState.Finish;
-                                leastLoopCount--;
                                 return;
                             }
 
@@ -276,7 +275,6 @@ namespace MagicMotion
 
                             InsideLoopHead(ref stepBoundMin, ref stepBoundMax, ref stepBoundX, ref stepBoundY, ref innerLoopStep, ref loopCount, ref numberOfVariables, ref funcState, ref matrixPoint, ref leastLoopCount, ref isInBracket, ref currentSolution, ref diagonal, ref steps);
                             state = LBFGSState.InsideLoopTail;
-                            leastLoopCount--;
                             return;
                         }
                         else

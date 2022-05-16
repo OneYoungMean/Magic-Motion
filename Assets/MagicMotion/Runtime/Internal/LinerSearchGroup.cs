@@ -117,16 +117,7 @@ namespace MagicMotion.Internal
         /// <summary>
         /// clac Dof3 rotaton
         /// </summary>
-        private MuscleToTransformJob muscleToTransformJob;
-
-        /// <summary>
-        /// clac loss value
-        /// </summary>
-        private CaclulatelossJob caclulatelossJob;
-        /// <summary>
-        /// CollectGradient and loss value;
-        /// </summary>
-        private MainControllerJob mainControllerJob;
+        private LinerSearchJob linerSearchJob;
         /// <summary>
         /// iterationCount;
         /// </summary>
@@ -220,48 +211,32 @@ NativeArray<float> muscleValueNativeArray,
 
             #region CreateJob
 
-            muscleToTransformJob = new MuscleToTransformJob
+            linerSearchJob = new LinerSearchJob
             {
-                muscleValues = (float*)muscleValueNativeArray.GetUnsafeReadOnlyPtr(),
+                constraintDatas = (ConstraintData*)constraintNativeArray.GetUnsafeReadOnlyPtr(),
                 jointMuscleIndexs = (int3*)jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
                 jointDatas =(JointData*) jointDataNativeArray.GetUnsafeReadOnlyPtr(),
+                jointRelationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
 
+                muscleValues = (float*)muscleValueNativeArray.GetUnsafePtr(),
                 Dof3s = (float3*)Dof3NativeArray.GetUnsafePtr(),
                 muscleCurrentRotations =(quaternion*) Dof3QuaternionNativeArray.GetUnsafePtr(),
                 muscleGradientRotations = (quaternion*)muscleGradientRotationArray.GetUnsafePtr(),
                 jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
-                
-            };
 
-            caclulatelossJob = new CaclulatelossJob()
-            {
-                constraintDatas = (ConstraintData*)constraintNativeArray.GetUnsafeReadOnlyPtr(),
-                jointRelationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
- 
-                jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
-                Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
-                muscleGradientRotations = (quaternion *) muscleGradientRotationArray.GetUnsafeReadOnlyPtr(),
-                jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
-            };
-
-            mainControllerJob = new MainControllerJob()
-            {
                 LBFGSSolver = LBFGSNative,
-                globalData= globalData,
 
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
-                losses = (double*)lossNativeArray.GetUnsafePtr(),
-                jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
-                muscleValues = (float*)muscleValueNativeArray.GetUnsafePtr(),
-                relationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafePtr(),
-                constraintLength=constraintCount,
+                lossesRecorder = (double*)lossNativeArray.GetUnsafePtr(),
+                jointlosses = (double*)jointlossNativeArray.GetUnsafePtr(),
+   
+                constraintLength = constraintCount,
                 parallelLength = parallelDataCount,
                 muscleLength = muscleCount,
                 jointLength = jointCount,
+                iterationCount= iterationCount+1
 
-                /*                muscleAlls = muscleValueAllNativeArray,
-                gradientAlls = gradientAllNativeArray,*/
             };
             #endregion
 
@@ -279,12 +254,7 @@ NativeArray<float> muscleValueNativeArray,
             try
             {
                 Reset(rootPosition, rootRotation);
-                for (int j = 0; j < iterationCount + 1; j++)
-                {
-                    muscleToTransformJob.Run(jointCount);
-                    caclulatelossJob.Run(parallelDataCount);
-                    mainControllerJob.Run();
-                }
+                linerSearchJob.Run(iterationCount+1);
             }
             catch (Exception e)
             {
@@ -297,17 +267,13 @@ NativeArray<float> muscleValueNativeArray,
         private void Reset(Vector3 rootPosition, Quaternion rootRotation)
         {
             //OYM：reset globalData
-            var globalData = this.globalData[0];
-            globalData.leastLoopCount = iterationCount;
-            this.globalData[0] = globalData;
+            globalData->leastLoopCount = iterationCount;
             //OYM：reset solver
-            var solver = LBFGSNative[0];
-            solver.state = LBFGSState.Initialize;
-            LBFGSNative[0] = solver;
+            LBFGSNative->Reset();
             //OYM：reset root trasnform
 
-            muscleToTransformJob.rootPosition = rootPosition;
-            muscleToTransformJob.rootRotation = rootRotation; 
+            linerSearchJob.rootPosition = rootPosition;
+            linerSearchJob.rootRotation = rootRotation; 
         }
 
         internal Keyframe[] GetmusclesKey(int index)
@@ -379,3 +345,42 @@ buildTransformJob = new BuildTransformJob()
 /* muscleToDof3Job.Run(muscleCount);*/
 /*                    buildTransformJob.Run(jointCount);
  clacDof3EpsilionJob.Run(jointCount);*/
+/*caclulatelossJob = new CaclulatelossJob()
+{
+    constraintDatas = (ConstraintData*)constraintNativeArray.GetUnsafeReadOnlyPtr(),
+    jointRelationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
+
+    jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafeReadOnlyPtr(),
+    Dof3s = (float3*)Dof3NativeArray.GetUnsafeReadOnlyPtr(),
+    muscleGradientRotations = (quaternion*)muscleGradientRotationArray.GetUnsafeReadOnlyPtr(),
+    jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
+};
+
+mainControllerJob = new MainControllerJob()
+{
+    LBFGSSolver = LBFGSNative,
+    globalData = globalData,
+
+    gradients = (double*)gradients.GetUnsafePtr(),
+    dataStore = (double*)dataStore.GetUnsafePtr(),
+    losses = (double*)lossNativeArray.GetUnsafePtr(),
+    jointlossNatives = (double*)jointlossNativeArray.GetUnsafePtr(),
+    muscleValues = (float*)muscleValueNativeArray.GetUnsafePtr(),
+    relationDatas = (JointRelationData*)jointRelationDataNativeArray.GetUnsafePtr(),
+    constraintLength = constraintCount,
+    parallelLength = parallelDataCount,
+    muscleLength = muscleCount,
+    jointLength = jointCount,
+
+    muscleAlls = muscleValueAllNativeArray,
+    gradientAlls = gradientAllNativeArray,
+};*/
+
+/*        /// <summary>
+        /// clac loss value
+        /// </summary>
+        private CaclulatelossJob caclulatelossJob;
+        /// <summary>
+        /// CollectGradient and loss value;
+        /// </summary>
+        private MainControllerJob mainControllerJob;*/
