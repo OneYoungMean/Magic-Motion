@@ -68,21 +68,34 @@ namespace MagicMotion
                 //OYM：后面会想办法接入遗传算法或者粒子群算法什么的吧(大概)
                 //OYM：可以利用梯度获取比较优的梯度值,可以依据loss进行杂交,可以依梯度正交矩阵计算正交线上的值
                 //OYM：有很多很棒的想法,不过先一笔带过,先拿最稳定的结果来计算
-
+                for (int i = 0; i < groupLength; i++)
+                {
+                    var loss = groupLoss[i];
+                    loss.index= i;  
+                    groupLoss[i]= loss;
+                }
                 groupLoss.Sort();
 
                 int offset = groupLoss[0].index * muscleLength;
                 float bestLoss =(float)groupLoss[0].loss;
 
-                for (int i = 0; i < groupLength * muscleLength; i++)
+                for (int groupIndex = 0; groupIndex < groupLength; groupIndex++)
                 {
-                    musclesValue[i] = GetValueByGroup(i / muscleLength, musclesValue[i % muscleLength + offset], bestLoss);
+                    for (int ii = 0; ii < muscleLength; ii++)
+                    {
+                        float bestMusles = musclesValue[ii + offset];
+                        int muscleIndex = ii + groupIndex * muscleLength;
+                        float result = GetValueByGroup(groupIndex, bestMusles, 0);
+                        musclesValue[muscleIndex] = result;
+                    }
                 }
+
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static float GetValueByGroup(int groupIndex, float refValue, float lastLoss)
             {
+                lastLoss = math.clamp(lastLoss, 0.1f,10f);
                 switch (groupIndex)
                 {
                     case 0:
@@ -478,7 +491,7 @@ namespace MagicMotion
                 currentGroupLoss ->loss= loss;
 
                 //OYM：for test,must be removed in environments other than develop
-                lossesRecorder[leastLoopCount] = loss;
+                lossesRecorder[loopIndex] = loss;
 
                 #endregion
             }

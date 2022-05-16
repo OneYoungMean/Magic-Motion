@@ -311,7 +311,7 @@ NativeArray<float> muscleValueNativeArray,
             Keyframe[] results = new Keyframe[iterationCount + 1];
             for (int i = 0; i < iterationCount + 1; i++)
             {
-                results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount,math.log( (float) lossNativeArray[i]));
+                results[i] = new Keyframe( i / (float)iterationCount,math.log( (float) lossNativeArray[i]));
             }
             return results;
         }

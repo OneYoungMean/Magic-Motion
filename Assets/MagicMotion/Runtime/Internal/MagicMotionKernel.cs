@@ -77,7 +77,7 @@ namespace MagicMotion
         public int insideIteration;
         public int outsideIteration;
         private bool isInitialize;
-
+        private bool isInMainThread;
 
         public bool IsCreated { get { return isInitialize; } }
 
@@ -153,17 +153,33 @@ namespace MagicMotion
             #endregion
 
             #region Optimize
-            NativeArray<JobHandle> tempHandles = new NativeArray<JobHandle>(linerSearchGroupCount, Allocator.Temp);
-            for (int i = 0; i < outsideIteration; i++)
+            isInMainThread=true;
+            if (isInMainThread)
             {
-                for (int ii = 0; ii < linerSearchGroupCount; ii++)
+                for (int i = 0; i < outsideIteration; i++)
                 {
-                    tempHandles[ii] = optimizes[ii].GetHandle(worldPosition, worldRotation, mainHandle);
+                    for (int ii = 0; ii < linerSearchGroupCount; ii++)
+                    {
+                       optimizes[ii].GetHandle(worldPosition, worldRotation, mainHandle).Complete();
+                    }
+                   sortingFactoryJob.Schedule(mainHandle).Complete();
                 }
-                mainHandle = JobHandle.CombineDependencies(tempHandles);
-                mainHandle = sortingFactoryJob.Schedule(mainHandle);
             }
-            tempHandles.Dispose();
+            else
+            {
+                NativeArray<JobHandle> tempHandles = new NativeArray<JobHandle>(linerSearchGroupCount, Allocator.Temp);
+                for (int i = 0; i < outsideIteration; i++)
+                {
+                    for (int ii = 0; ii < linerSearchGroupCount; ii++)
+                    {
+                        tempHandles[ii] = optimizes[ii].GetHandle(worldPosition, worldRotation, mainHandle);
+                    }
+                    mainHandle = JobHandle.CombineDependencies(tempHandles);
+                    mainHandle = sortingFactoryJob.Schedule(mainHandle);
+                }
+                tempHandles.Dispose();
+            }
+
             #endregion
         }
         public  void Dispose()
