@@ -57,6 +57,9 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
+            kernel = new MagicMotionKernel((SearchLevel)1);
+            //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
+            //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
             RegisterData(); 
         }
 
@@ -68,7 +71,7 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation);
+            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation,1,1);
             Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点
@@ -290,9 +293,7 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)8);
-            //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
-            //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
+
             muscleDatas = new MusclesData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {

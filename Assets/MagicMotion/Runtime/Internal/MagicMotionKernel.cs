@@ -180,10 +180,12 @@ namespace MagicMotion
         public  void Dispose()
         {
             mainHandle.Complete();
+            if (groupDataDisposeList!=null)
+            {
+                DisposeGroupData();
+            }
 
-            DisposeGroupData();
-
-            for (int i = 0; i < shareDataDisposeList.Count; i++)
+            for (int i = 0; i < shareDataDisposeList?.Count; i++)
             {
                 shareDataDisposeList[i].Dispose();
             }
