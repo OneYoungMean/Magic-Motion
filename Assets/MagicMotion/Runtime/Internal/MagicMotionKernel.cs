@@ -153,7 +153,6 @@ namespace MagicMotion
             #endregion
 
             #region Optimize
-            isInMainThread=true;
             if (isInMainThread)
             {
                 for (int i = 0; i < outsideIteration; i++)
