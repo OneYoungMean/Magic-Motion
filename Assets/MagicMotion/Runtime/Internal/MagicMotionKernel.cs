@@ -124,13 +124,7 @@ namespace MagicMotion
                 return;
             }
 
-            if (!mainHandle.IsCompleted)
-            {
-                mainHandle.Complete();
-                return;
-            }
             mainHandle.Complete();
-            mainHandle = new JobHandle();
 
             bestOptimizerIndex = groupLossNativeArray[0].index;
             bestOptimizerLoss = (float)groupLossNativeArray[0].loss;
@@ -177,7 +171,7 @@ namespace MagicMotion
                     mainHandle = JobHandle.CombineDependencies(tempHandles);
                     mainHandle = sortingFactoryJob.Schedule(mainHandle);
                 }
-                mainHandle.Complete();
+
                 tempHandles.Dispose();
             }
 
@@ -185,10 +179,8 @@ namespace MagicMotion
         }
         public  void Dispose()
         {
-            if (!mainHandle.IsCompleted)
-            {
-                mainHandle.Complete();
-            }
+            mainHandle.Complete();
+
             for (int i = 0; i < disposeList.Count; i++)
             {
                 disposeList[i].Dispose();

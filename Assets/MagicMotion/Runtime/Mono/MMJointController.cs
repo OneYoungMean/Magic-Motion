@@ -289,7 +289,7 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)4, 64,16);
+            kernel = new MagicMotionKernel((SearchLevel)8, 24,16);
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
             MusclesData[] muscleDatas = new MusclesData[motionMuscles.Length];
