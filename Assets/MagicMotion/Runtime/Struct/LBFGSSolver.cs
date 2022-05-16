@@ -206,7 +206,6 @@ namespace MagicMotion
 
         private bool isInBracket;
         private bool stage1;
-        public double loss;
         public static readonly LBFGSSolver identity = new LBFGSSolver()
         {
             lossTolerance =1f,
@@ -223,14 +222,13 @@ namespace MagicMotion
         /// it's ag GIANT HUGE SHIT method. I don't understand how it works,but look like it work really good.
         /// you shouldn't open this, please leave as soon as possible
         /// </summary>
-        /// <param name="mloss"></param>
+        /// <param name="loss"></param>
         /// <param name="leastLoopCount"></param>
         /// <param name="dataStore"></param>
         /// <param name="currentSolution"></param>
         /// <param name="gradient"></param>
-        public void Optimize(double mloss, int leastLoopCount, double* dataStore, float* currentSolution, double* gradient)
+        public void Optimize( int leastLoopCount,ref double loss,double* dataStore, float* currentSolution, double* gradient)
         {
-            this.loss = mloss;
             UnpackData(dataStore,numberOfVariables, out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta);
             while (true)
             {

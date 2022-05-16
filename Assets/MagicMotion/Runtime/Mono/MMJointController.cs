@@ -68,6 +68,7 @@ namespace MagicMotion.Mono
             UpdateData();
 
             kernel.Optimize(Time.deltaTime, worldPosition, worldRotation);
+            Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点
             //OYM：异步赋值再访问感觉怪怪的.
@@ -288,7 +289,7 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)8, 64, 1, 8);
+            kernel = new MagicMotionKernel((SearchLevel)4, 64, 1);
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
             MusclesData[] muscleDatas = new MusclesData[motionMuscles.Length];

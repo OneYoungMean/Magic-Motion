@@ -19,58 +19,70 @@ namespace MagicMotion
         /// Set Constriant data 
         /// </summary>
         [BurstCompile]
-        public struct CopyConstraintDataJob : IJobParallelFor
+        public struct CopyConstraintDataJob : IJobFor
         {
             [ NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Joint relation data 
             /// </summary>
-            public JointRelationData* jointRelationDatas;
+            public NativeArray<JointRelationData> jointRelationDatas;
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// constraint data 
             /// </summary>
-            public ConstraintData* constraintDatas;
+            public NativeArray<ConstraintData> constraintDatas;
 
             public int jointLength;
             public void Execute(int index)
             {
-                JointRelationData* jointRelation = jointRelationDatas+index;
-                constraintDatas[index] = constraintDatas[jointRelation->jointIndex];
+                constraintDatas[index] = constraintDatas[jointRelationDatas[index].jointIndex];
             }
         }
+
 
         /// <summary>
         /// Set muscles data 
         /// </summary>
         [BurstCompile]
-        public struct CopyMuscleValueJob : IJobParallelFor
+        public struct SortingFactoryJob : IJob
         {
-            [NativeDisableUnsafePtrRestriction]
             /// <summary>
-            /// muscle values data 
+            /// all group's loss
             /// </summary>
-            public float* muscleValues;
-
+            public NativeArray<GroupLossData> groupLoss;
+            /// <summary>
+            /// all group's muscle value
+            /// </summary>
+            public NativeArray<float> musclesValue;
             /// <summary>
             /// muscle count
             /// </summary>
             public int muscleLength;
-
             /// <summary>
-            /// last Loss value
+            /// groupCount
             /// </summary>
-            public float lastLoss;
-             
-            public void Execute(int index)
+            public int groupLength;
+            public void Execute()
             {
-                muscleValues[index] = GetValueByGroup(index / muscleLength, muscleValues[index% muscleLength], lastLoss);
+                //OYM：后面会想办法接入遗传算法或者粒子群算法什么的吧(大概)
+                //OYM：可以利用梯度获取比较优的梯度值,可以依据loss进行杂交,可以依梯度正交矩阵计算正交线上的值
+                //OYM：有很多很棒的想法,不过先一笔带过,先拿最稳定的结果来计算
+
+                groupLoss.Sort();
+
+                int offset = groupLoss[0].index * muscleLength;
+                float bestLoss =(float)groupLoss[0].loss;
+
+                for (int i = 0; i < groupLength * muscleLength; i++)
+                {
+                    musclesValue[i] = GetValueByGroup(i / muscleLength, musclesValue[i % muscleLength + offset], bestLoss);
+                }
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static float GetValueByGroup(int groupIndex, float refValue,float lastLoss)
-            { 
+            public static float GetValueByGroup(int groupIndex, float refValue, float lastLoss)
+            {
                 switch (groupIndex)
                 {
                     case 0:
@@ -79,15 +91,15 @@ namespace MagicMotion
                         refValue = 0;
                         break;
                     case 2:
-                        refValue = math.lerp(refValue, -1, 1e-4f* lastLoss);
+                        refValue = math.lerp(refValue, -1, 1e-4f * lastLoss);
 
                         break;
                     case 3:
-                        refValue = math.lerp(refValue, 1, 1e-4f* lastLoss);
+                        refValue = math.lerp(refValue, 1, 1e-4f * lastLoss);
 
                         break;
                     case 4:
-                        refValue = math.lerp(refValue, -1, 1e-3f* lastLoss);
+                        refValue = math.lerp(refValue, -1, 1e-3f * lastLoss);
                         break;
                     case 5:
                         refValue = math.lerp(refValue, 1, 1e-3f * lastLoss);
@@ -147,7 +159,7 @@ namespace MagicMotion
         /// </summary>
         [BurstCompile]
         
-        public struct LinerSearchJob : IJobParallelFor
+        public struct LinerSearchJob : IJobFor
         {
             [NativeDisableUnsafePtrRestriction, ReadOnly]
             /// <summary>
@@ -227,11 +239,17 @@ namespace MagicMotion
             /// </summary>
             internal double* lossesRecorder;
 
-            [ReadOnly, NativeDisableUnsafePtrRestriction]
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// joint loss
             /// </summary>
             public double* jointlosses;
+
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// joint loss
+            /// </summary>
+            public GroupLossData* currentGroupLoss;
 
             /// <summary>
             /// constraint length
@@ -455,8 +473,12 @@ namespace MagicMotion
                 #region LBFGS-Optimize
                 // CollectTestData(globalData);
                 int leastLoopCount = iterationCount - loopIndex; 
-                LBFGSSolver->Optimize(loss, leastLoopCount, dataStore, muscleValues, gradients);
-                lossesRecorder[leastLoopCount] = LBFGSSolver->loss;
+                LBFGSSolver->Optimize(leastLoopCount,ref loss, dataStore, muscleValues, gradients);
+
+                currentGroupLoss ->loss= loss;
+
+                //OYM：for test,must be removed in environments other than develop
+                lossesRecorder[leastLoopCount] = loss;
 
                 #endregion
             }

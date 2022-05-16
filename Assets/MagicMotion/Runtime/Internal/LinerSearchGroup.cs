@@ -13,7 +13,7 @@ namespace MagicMotion.Internal
     /// <summary>
     ///  Single Optimize
     /// </summary>
-    internal unsafe  struct LinerSearchGroup
+    internal unsafe struct LinerSearchGroup
     {
         #region  Field&Property
 
@@ -56,6 +56,12 @@ namespace MagicMotion.Internal
         /// ReadWrite
         /// </summary>
         private GlobalData* globalData;
+        /// <summary>
+        /// current loss value
+        /// 1
+        /// Read write
+        /// </summary>
+        private GroupLossData* currentGroupLoss;
 
         /// <summary>
         /// muscle's Value
@@ -142,7 +148,7 @@ namespace MagicMotion.Internal
         /// <summary>
         /// Optimizer loss
         /// </summary>
-        public float Loss =>(float)LBFGSNative->loss;
+        public double Loss => currentGroupLoss->loss;
         /// <summary>
         /// result as muscle
         /// </summary>
@@ -157,9 +163,10 @@ namespace MagicMotion.Internal
         #region LocalFunc
 
         public LinerSearchGroup(
-             int parallelDataCount, int jointCount, int muscleCount,int iterationCount,int constraintCount,
+             int parallelDataCount, int jointCount, int muscleCount, int iterationCount, int constraintCount,
              NativeArray<JointData> jointDataNativeArray,
-/*             NativeArray<MusclesData> muscleDataNativeArray,*/
+             NativeArray<GroupLossData> lineSearcherLoss,
+              /*             NativeArray<MusclesData> muscleDataNativeArray,*/
               NativeArray<ConstraintData> constraintNativeArray,
                NativeArray<JointRelationData> jointRelationDataNativeArray,
 NativeArray<int3> jointMusclesIndexNativeArray, 
@@ -194,6 +201,8 @@ NativeArray<float> muscleValueNativeArray,
             #region CreateNativeArray
             this.LBFGSNative =(LBFGSSolver*) CreateNativeData<LBFGSSolver>(1).GetUnsafePtr();
             this.globalData = (GlobalData*)CreateNativeData<GlobalData>(1).GetUnsafePtr();
+            this.currentGroupLoss = (GroupLossData*)lineSearcherLoss.GetUnsafePtr();
+
             this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
             this.muscleGradientRotationArray = CreateNativeData<quaternion>(muscleCount);
@@ -205,8 +214,6 @@ NativeArray<float> muscleValueNativeArray,
             this.lossNativeArray = CreateNativeData<double>(iterationCount + 1, Allocator.Persistent);
             this.gradientAllNativeArray = CreateNativeData<double>((iterationCount + 1) * muscleCount, Allocator.Persistent);
             this.muscleValueAllNativeArray = CreateNativeData<float>((iterationCount + 1) * muscleCount, Allocator.Persistent);
-
-
             #endregion
 
             #region CreateJob
@@ -229,6 +236,7 @@ NativeArray<float> muscleValueNativeArray,
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
                 lossesRecorder = (double*)lossNativeArray.GetUnsafePtr(),
+                currentGroupLoss= currentGroupLoss,
                 jointlosses = (double*)jointlossNativeArray.GetUnsafePtr(),
    
                 constraintLength = constraintCount,
@@ -248,7 +256,11 @@ NativeArray<float> muscleValueNativeArray,
 
             #endregion
         }
-
+        public JobHandle GetHandle(Vector3 rootPosition, Quaternion rootRotation,JobHandle handle)
+        {
+            Reset(rootPosition, rootRotation);
+            return linerSearchJob.Schedule(iterationCount + 1, handle);
+        }
         public void Run(Vector3 rootPosition, Quaternion rootRotation)
         {
             try
