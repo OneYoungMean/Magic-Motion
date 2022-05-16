@@ -230,9 +230,16 @@ namespace MagicMotion
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
-            /// BFGS 求解应用到的变量
+            /// BFGS 求解应用到变量
             /// </summary>
             public LBFGSSolver* LBFGSSolver;
+
+
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// Root Transform 
+            /// </summary>
+            public RigidTransform* rootTransfrom;
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
@@ -284,15 +291,6 @@ namespace MagicMotion
             /// iterationCount
             /// </summary>
             internal int iterationCount;
-            /// <summary>
-            /// rootPosition
-            /// </summary>
-            public float3 rootPosition;
-            /// <summary>
-            /// rootRotation
-            /// </summary>
-            public quaternion rootRotation;
-
 
             public void Execute(int loopIndex)
             {
@@ -381,9 +379,9 @@ namespace MagicMotion
                 if (currentJoint->parentIndex == -1)
                 {
                     //OYM： build root position
-                    currentTransform->pos = rootPosition;
+                    currentTransform->pos = rootTransfrom->pos;
                     //OYM：build root rotation
-                    currentTransform->rot = math.mul(rootRotation, *currentRotation);
+                    currentTransform->rot = math.mul(rootTransfrom->rot, *currentRotation);
                 }
                 else
                 {
@@ -485,7 +483,12 @@ namespace MagicMotion
 
                 #region LBFGS-Optimize
                 // CollectTestData(globalData);
-                int leastLoopCount = iterationCount - loopIndex; 
+
+                int leastLoopCount = iterationCount - loopIndex;
+                if (loopIndex==0)
+                {
+                    LBFGSSolver->Reset();
+                }
                 LBFGSSolver->Optimize(leastLoopCount,ref loss, dataStore, muscleValues, gradients);
 
                 currentGroupLoss ->loss= loss;

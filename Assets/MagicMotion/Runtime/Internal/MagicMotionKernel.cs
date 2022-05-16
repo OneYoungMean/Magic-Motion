@@ -36,7 +36,7 @@ namespace MagicMotion
         private NativeArray<ConstraintData> constraintDataNativeArray;
         private NativeArray<JointRelationData> jointRelationDataNativeArray;
         private NativeArray<int3> jointMusclesIndexNativeArray;
-
+        private NativeArray<RigidTransform> rootTransforms;
         //OYM£º share data (read write)
         private NativeArray<GroupLossData> groupLossNativeArray;
         private NativeArray<float> muscleValueNativeArray;
@@ -56,8 +56,6 @@ namespace MagicMotion
         private MusclesData[] muscles;
         private ConstraintData[] constraints;
         private JointRelationData[] jointMapDatas;
-        private float3 worldPosition;
-        private quaternion worldRotation;
         private JobHandle mainHandle;
 
         private Action<float[]> SetMuscleCall;
@@ -143,39 +141,43 @@ namespace MagicMotion
             #endregion
 
             #region Build Question
-            this.worldPosition = worldPosition;
-            this.worldRotation = worldRotation;
-            mainHandle = new JobHandle();
+            var rootTransform = new RigidTransform(worldRotation, worldPosition);
+            rootTransforms[0] = rootTransform;
 
             NativeArray<ConstraintData>.Copy(constraints, constraintDataNativeArray, constraints.Length);
 
-            mainHandle=copyConstraintDataJob.Schedule(parallelDataCount, mainHandle);
+            mainHandle = new JobHandle();
+            mainHandle =copyConstraintDataJob.Schedule(parallelDataCount, mainHandle);
             #endregion
 
             #region Optimize
             if (isInMainThread)
             {
+                copyConstraintDataJob.Schedule(parallelDataCount, mainHandle).Complete();
                 for (int i = 0; i < outsideIteration; i++)
                 {
                     for (int ii = 0; ii < linerSearchGroupCount; ii++)
                     {
-                       optimizes[ii].GetHandle(worldPosition, worldRotation, mainHandle).Complete();
+                        optimizes[ii].Run();
                     }
                    sortingFactoryJob.Schedule(mainHandle).Complete();
                 }
             }
             else
             {
+                mainHandle = copyConstraintDataJob.Schedule(parallelDataCount, mainHandle);
+
                 NativeArray<JobHandle> tempHandles = new NativeArray<JobHandle>(linerSearchGroupCount, Allocator.Temp);
                 for (int i = 0; i < outsideIteration; i++)
                 {
                     for (int ii = 0; ii < linerSearchGroupCount; ii++)
                     {
-                        tempHandles[ii] = optimizes[ii].GetHandle(worldPosition, worldRotation, mainHandle);
+                        tempHandles[ii] = optimizes[ii].GetHandle(mainHandle);
                     }
                     mainHandle = JobHandle.CombineDependencies(tempHandles);
                     mainHandle = sortingFactoryJob.Schedule(mainHandle);
                 }
+                mainHandle.Complete();
                 tempHandles.Dispose();
             }
 
@@ -301,6 +303,8 @@ namespace MagicMotion
 
             jointDataNativeArray = CreateNativeData<JointData>(joints, Allocator.Persistent);
 
+            rootTransforms = CreateNativeData<RigidTransform>(1, Allocator.Persistent);
+
             groupLossNativeArray = CreateNativeData<GroupLossData>(linerSearchGroupCount);
 
             for (int i = 0; i < linerSearchGroupCount; i++)
@@ -360,6 +364,7 @@ namespace MagicMotion
                 (
                 parallelDataCount, jointCount, muscleCount, insideIteration,
                 jointRelativedCounts[0],
+                rootTransforms,
                 jointDataNativeArray,
                 groupLossNativeArray.GetSubArray(i, 1),
                 constraintDataNativeArray,

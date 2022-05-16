@@ -62,6 +62,10 @@ namespace MagicMotion.Internal
         /// Read write
         /// </summary>
         private GroupLossData* currentGroupLoss;
+        /// <summary>
+        /// rootTransform
+        /// </summary>
+        private RigidTransform* rootTransfrom;
 
         /// <summary>
         /// muscle's Value
@@ -164,8 +168,9 @@ namespace MagicMotion.Internal
 
         public LinerSearchGroup(
              int parallelDataCount, int jointCount, int muscleCount, int iterationCount, int constraintCount,
+             NativeArray<RigidTransform> rootTransformNativeArray,
              NativeArray<JointData> jointDataNativeArray,
-             NativeArray<GroupLossData> lineSearcherLoss,
+             NativeArray<GroupLossData> lineSearcherLossNativeArray,
               /*             NativeArray<MusclesData> muscleDataNativeArray,*/
               NativeArray<ConstraintData> constraintNativeArray,
                NativeArray<JointRelationData> jointRelationDataNativeArray,
@@ -201,7 +206,8 @@ NativeArray<float> muscleValueNativeArray,
             #region CreateNativeArray
             this.LBFGSNative =(LBFGSSolver*) CreateNativeData<LBFGSSolver>(1).GetUnsafePtr();
             this.globalData = (GlobalData*)CreateNativeData<GlobalData>(1).GetUnsafePtr();
-            this.currentGroupLoss = (GroupLossData*)lineSearcherLoss.GetUnsafePtr();
+            this.currentGroupLoss = (GroupLossData*)lineSearcherLossNativeArray.GetUnsafePtr();
+            this.rootTransfrom=(RigidTransform*)rootTransformNativeArray.GetUnsafePtr() ;
 
             this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
@@ -232,6 +238,7 @@ NativeArray<float> muscleValueNativeArray,
                 jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
 
                 LBFGSSolver = LBFGSNative,
+                rootTransfrom=rootTransfrom,
 
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
@@ -256,36 +263,28 @@ NativeArray<float> muscleValueNativeArray,
 
             #endregion
         }
-        public JobHandle GetHandle(Vector3 rootPosition, Quaternion rootRotation,JobHandle handle)
+        public JobHandle GetHandle(JobHandle handle)
         {
-            Reset(rootPosition, rootRotation);
             return linerSearchJob.Schedule(iterationCount + 1, handle);
         }
-        public void Run(Vector3 rootPosition, Quaternion rootRotation)
+        public void Run()
         {
             try
             {
-                Reset(rootPosition, rootRotation);
                 linerSearchJob.Run(iterationCount+1);
             }
             catch (Exception e)
             {
-
                 Debug.LogError(e);
             }
 
         }
 
-        private void Reset(Vector3 rootPosition, Quaternion rootRotation)
+        private void Reset()
         {
-            //OYM：reset globalData
-            globalData->leastLoopCount = iterationCount;
             //OYM：reset solver
             LBFGSNative->Reset();
             //OYM：reset root trasnform
-
-            linerSearchJob.rootPosition = rootPosition;
-            linerSearchJob.rootRotation = rootRotation; 
         }
 
         internal Keyframe[] GetmusclesKey(int index)
