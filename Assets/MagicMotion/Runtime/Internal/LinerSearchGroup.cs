@@ -13,7 +13,7 @@ namespace MagicMotion.Internal
     /// <summary>
     ///  Single Optimize
     /// </summary>
-    internal unsafe struct LinerSearchGroup
+    internal unsafe struct LinerSearchGroup:IDisposable
     {
         #region  Field&Property
 
@@ -63,9 +63,9 @@ namespace MagicMotion.Internal
         /// </summary>
         private GroupLossData* currentGroupLoss;
         /// <summary>
-        /// rootTransform
+        /// groupSettingData,include count and root transform
         /// </summary>
-        private RigidTransform* rootTransfrom;
+        private GroupSettingData* groupSettingData;
 
         /// <summary>
         /// muscle's Value
@@ -118,9 +118,9 @@ namespace MagicMotion.Internal
 
         //OYM：test data
 
-        private NativeArray<double> lossNativeArray;
-        private NativeArray<double> gradientAllNativeArray;
-        private NativeArray<float> muscleValueAllNativeArray;
+        private NativeArray<double> lossRecorderNativeArray;
+/*        private NativeArray<double> gradientAllNativeArray;
+        private NativeArray<float> muscleValueAllNativeArray;*/
 
 
 
@@ -128,27 +128,6 @@ namespace MagicMotion.Internal
         /// clac Dof3 rotaton
         /// </summary>
         private LinerSearchJob linerSearchJob;
-        /// <summary>
-        /// iterationCount;
-        /// </summary>
-        private int iterationCount;
-        /// <summary>
-        /// parallelDataCount,is base for joint relation 
-        /// </summary>
-        private readonly int parallelDataCount;
-        /// <summary>
-        /// constriant Count
-        /// </summary>
-        private readonly int constraintCount;
-
-        /// <summary>
-        /// joint count 
-        /// </summary>
-        private readonly int jointCount;
-        /// <summary>
-        /// muscle count
-        /// </summary>
-        private readonly int muscleCount;
         /// <summary>
         /// Optimizer loss
         /// </summary>
@@ -167,8 +146,7 @@ namespace MagicMotion.Internal
         #region LocalFunc
 
         public LinerSearchGroup(
-             int parallelDataCount, int jointCount, int muscleCount, int iterationCount, int constraintCount,
-             NativeArray<RigidTransform> rootTransformNativeArray,
+             NativeArray<GroupSettingData> groupSettingNativeArray,
              NativeArray<JointData> jointDataNativeArray,
              NativeArray<GroupLossData> lineSearcherLossNativeArray,
               /*             NativeArray<MusclesData> muscleDataNativeArray,*/
@@ -190,12 +168,6 @@ NativeArray<float> muscleValueNativeArray,
 
             #region SetValue
 
-            this.constraintCount = constraintCount;
-            this.jointCount = jointCount;
-            this.muscleCount = muscleCount;
-            this.parallelDataCount = parallelDataCount;
-            this.iterationCount = iterationCount;
-
             this.jointMuscleIndexNativeArray = jointMusclesIndexNativeArray;
             this.jointDataNativeArray = jointDataNativeArray;
             this.constraintNativeArray = constraintNativeArray;
@@ -207,19 +179,19 @@ NativeArray<float> muscleValueNativeArray,
             this.LBFGSNative =(LBFGSSolver*) CreateNativeData<LBFGSSolver>(1).GetUnsafePtr();
             this.globalData = (GlobalData*)CreateNativeData<GlobalData>(1).GetUnsafePtr();
             this.currentGroupLoss = (GroupLossData*)lineSearcherLossNativeArray.GetUnsafePtr();
-            this.rootTransfrom=(RigidTransform*)rootTransformNativeArray.GetUnsafePtr() ;
+            this.groupSettingData=(GroupSettingData*)groupSettingNativeArray.GetUnsafePtr() ;
 
-            this.Dof3NativeArray = CreateNativeData<float3>(jointCount);
-            this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(jointCount);
-            this.muscleGradientRotationArray = CreateNativeData<quaternion>(muscleCount);
-            this.jointlossNativeArray = CreateNativeData<double>(parallelDataCount);
-            this.jointTransformNativeArray = CreateNativeData<RigidTransform>(jointCount);
-            this.gradients = CreateNativeData<double>(muscleCount);
-            this.dataStore = CreateNativeData<double>(L_BFGSStatic.GetDataStoreLength(muscleCount), Allocator.Persistent);
+            this.Dof3NativeArray = CreateNativeData<float3>(groupSettingData->jointLength);
+            this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(groupSettingData->jointLength);
+            this.muscleGradientRotationArray = CreateNativeData<quaternion>(groupSettingData->muscleLength);
+            this.jointlossNativeArray = CreateNativeData<double>(groupSettingData->parallelLength);
+            this.jointTransformNativeArray = CreateNativeData<RigidTransform>(groupSettingData->jointLength);
+            this.gradients = CreateNativeData<double>(groupSettingData->muscleLength);
+            this.dataStore = CreateNativeData<double>(L_BFGSStatic.GetDataStoreLength(groupSettingData->muscleLength), Allocator.Persistent);
+/*            this.gradientAllNativeArray = CreateNativeData<double>((iterationCount + 1) * muscleCount, Allocator.Persistent);
+            this.muscleValueAllNativeArray = CreateNativeData<float>((iterationCount + 1) * muscleCount, Allocator.Persistent);*/
 
-            this.lossNativeArray = CreateNativeData<double>(iterationCount + 1, Allocator.Persistent);
-            this.gradientAllNativeArray = CreateNativeData<double>((iterationCount + 1) * muscleCount, Allocator.Persistent);
-            this.muscleValueAllNativeArray = CreateNativeData<float>((iterationCount + 1) * muscleCount, Allocator.Persistent);
+            this.lossRecorderNativeArray = new NativeArray<double>(groupSettingData->LoopSum, Allocator.Persistent);//OYM：keep empty on initialize 
             #endregion
 
             #region CreateJob
@@ -238,19 +210,13 @@ NativeArray<float> muscleValueNativeArray,
                 jointTransformNatives = (RigidTransform*)jointTransformNativeArray.GetUnsafePtr(),
 
                 LBFGSSolver = LBFGSNative,
-                rootTransfrom=rootTransfrom,
+                settingData=groupSettingData,
 
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
-                lossesRecorder = (double*)lossNativeArray.GetUnsafePtr(),
+                lossesRecorder = (double*)lossRecorderNativeArray.GetUnsafePtr(),
                 currentGroupLoss= currentGroupLoss,
                 jointlosses = (double*)jointlossNativeArray.GetUnsafePtr(),
-   
-                constraintLength = constraintCount,
-                parallelLength = parallelDataCount,
-                muscleLength = muscleCount,
-                jointLength = jointCount,
-                iterationCount= iterationCount+1
 
             };
             #endregion
@@ -258,20 +224,22 @@ NativeArray<float> muscleValueNativeArray,
             #region PostInitialize
             //OYM：Set LBFGSSolver
             var lBFGSSolver = LBFGSSolver.identity;
-            lBFGSSolver.numberOfVariables = muscleCount;
+            lBFGSSolver.numberOfVariables = groupSettingData->muscleLength;
             LBFGSNative[0] = lBFGSSolver;
 
             #endregion
         }
         public JobHandle GetHandle(JobHandle handle)
         {
-            return linerSearchJob.Schedule(iterationCount + 1, handle);
+            Reset();
+            return linerSearchJob.Schedule(groupSettingData->insideLoopCount, handle);
         }
         public void Run()
         {
+            Reset();
             try
             {
-                linerSearchJob.Run(iterationCount+1);
+                linerSearchJob.Run(groupSettingData->insideLoopCount);
             }
             catch (Exception e)
             {
@@ -287,10 +255,10 @@ NativeArray<float> muscleValueNativeArray,
             //OYM：reset root trasnform
         }
 
-        internal Keyframe[] GetmusclesKey(int index)
+/*        internal Keyframe[] GetmusclesKey(int index)
         {
-            Keyframe[] results = new Keyframe[iterationCount + 1];
-            for (int i = 0; i < iterationCount + 1; i++)
+            Keyframe[] results = new Keyframe[groupSettingData->insideLoopCount* groupSettingData->outsideLoopCount];
+            for (int i = 0; i < groupSettingData->insideLoopCount * groupSettingData->outsideLoopCount; i++)
             {
                 results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount, muscleValueAllNativeArray[index + i * muscleCount]);
             }
@@ -304,15 +272,21 @@ NativeArray<float> muscleValueNativeArray,
                 results[iterationCount - i] = new Keyframe(1 - i / (float)iterationCount, (float)gradientAllNativeArray[index + i * muscleCount]);
             }
             return results;
-        }
+        }*/
         internal Keyframe[] GetLossKey()
         {
-            Keyframe[] results = new Keyframe[iterationCount + 1];
-            for (int i = 0; i < iterationCount + 1; i++)
+            int loopSum = groupSettingData->insideLoopCount * groupSettingData->outsideLoopCount;
+            Keyframe[] results = new Keyframe[loopSum];
+            for (int i = 0; i < loopSum; i++)
             {
-                results[i] = new Keyframe( i / (float)iterationCount,math.log( (float) lossNativeArray[i]));
+                results[i] = new Keyframe( i / (float)groupSettingData->insideLoopCount * groupSettingData->outsideLoopCount, math.log( (float) lossRecorderNativeArray[i]));
             }
             return results;
+        }
+
+        public void Dispose()
+        {
+            lossRecorderNativeArray.Dispose();
         }
         #endregion
     }

@@ -218,8 +218,8 @@ namespace MagicMotion
             state = LBFGSState.Initialize;
         }
         /// <summary>
-        /// OOOOOOOOOOh You shouldn't open this, 
-        /// it's ag GIANT HUGE SHIT method. I don't understand how it works,but look like it work really good.
+        /// OOOOOOOOOOh You shouldn't be here, 
+        /// it's ag GIANT HUGE SHIT MUNTIAN. I don't understand how it works,but look like it work really good.
         /// you shouldn't open this, please leave as soon as possible
         /// </summary>
         /// <param name="loss"></param>
@@ -260,7 +260,6 @@ namespace MagicMotion
                                 state =LBFGSState.Finish;
                                 return;
                             }
-
                         }
                         else
                         {

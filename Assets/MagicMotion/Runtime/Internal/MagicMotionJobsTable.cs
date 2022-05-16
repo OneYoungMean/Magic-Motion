@@ -48,6 +48,10 @@ namespace MagicMotion
         public struct SortingFactoryJob : IJob
         {
             /// <summary>
+            /// all group's setting
+            /// </summary>
+            public NativeArray<GroupSettingData> settingData;
+            /// <summary>
             /// all group's loss
             /// </summary>
             public NativeArray<GroupLossData> groupLoss;
@@ -65,6 +69,10 @@ namespace MagicMotion
             public int groupLength;
             public void Execute()
             {
+                var setting = settingData[0];
+                setting.outsideLoopIndex++;
+                settingData[0] = setting;
+
                 //OYM：后面会想办法接入遗传算法或者粒子群算法什么的吧(大概)
                 //OYM：可以利用梯度获取比较优的梯度值,可以依据loss进行杂交,可以依梯度正交矩阵计算正交线上的值
                 //OYM：有很多很棒的想法,不过先一笔带过,先拿最稳定的结果来计算
@@ -165,7 +173,7 @@ namespace MagicMotion
                     }
                 }*/
         /// <summary>
-        ///  Convert muscle to transform value 
+        /// Optimize Function
         ///  It's been optimized many times, 
         ///  so it seems a little hard to understand,
         ///  I'm sorry, my naming skills are not good enough to handle it :(
@@ -174,6 +182,14 @@ namespace MagicMotion
         
         public struct LinerSearchJob : IJobFor
         {
+            #region ReadOnly
+            [ReadOnly, NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// Group Setting data
+            /// Only one
+            /// </summary>
+            public GroupSettingData* settingData;
+
             [NativeDisableUnsafePtrRestriction, ReadOnly]
             /// <summary>
             /// relative data
@@ -197,14 +213,16 @@ namespace MagicMotion
             /// joint relative muscle's index
             /// </summary>
             internal int3* jointMuscleIndexs;
+            #endregion
 
+            #region ReadWrite
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// muscles value ,containing joint index and dof index.
             /// </summary>
             public float* muscleValues;
 
-            [ReadOnly, NativeDisableUnsafePtrRestriction]
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Dof3 value 
             /// </summary>
@@ -230,16 +248,17 @@ namespace MagicMotion
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
-            /// BFGS 求解应用到变量
+            /// BFGS-Solver containing bfgs temp data
+            /// Only 1
             /// </summary>
             public LBFGSSolver* LBFGSSolver;
 
-
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
-            /// Root Transform 
+            /// This group's loss
+            /// Only 1
             /// </summary>
-            public RigidTransform* rootTransfrom;
+            public GroupLossData* currentGroupLoss;
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
@@ -264,38 +283,12 @@ namespace MagicMotion
             /// joint loss
             /// </summary>
             public double* jointlosses;
-
-            [NativeDisableUnsafePtrRestriction]
-            /// <summary>
-            /// joint loss
-            /// </summary>
-            public GroupLossData* currentGroupLoss;
-
-            /// <summary>
-            /// constraint length
-            /// </summary>
-            public int constraintLength;
-            /// <summary>
-            ///  parallel's data count
-            /// </summary>
-            public int parallelLength;
-            /// <summary>
-            ///  variable's count ,is the same as muscle's count.
-            /// </summary>
-            public int muscleLength;
-            /// <summary>
-            /// joint count ,
-            /// </summary>
-            public int jointLength;
-            /// <summary>
-            /// iterationCount
-            /// </summary>
-            internal int iterationCount;
+            #endregion
 
             public void Execute(int loopIndex)
             {
                 #region Muscle To Transform
-                for (int index = 0; index < jointLength; index++)
+                for (int index = 0; index < settingData->jointLength; index++)
                 {
 
                 JointData* currentJoint = jointDatas +index;
@@ -379,9 +372,9 @@ namespace MagicMotion
                 if (currentJoint->parentIndex == -1)
                 {
                     //OYM： build root position
-                    currentTransform->pos = rootTransfrom->pos;
+                    currentTransform->pos =settingData->rootTransform.pos;
                     //OYM：build root rotation
-                    currentTransform->rot = math.mul(rootTransfrom->rot, *currentRotation);
+                    currentTransform->rot = math.mul(settingData->rootTransform.rot, *currentRotation);
                 }
                 else
                 {
@@ -417,7 +410,7 @@ namespace MagicMotion
                 #endregion
 
                 #region Clac Loss And Gradient 
-                for (int index = 0; index < parallelLength; index++)
+                for (int index = 0; index < settingData->parallelLength; index++)
                 {
                     JointRelationData* jointRelationData = jointRelationDatas + index;
                     ConstraintData* constraintNative = constraintDatas + index;
@@ -466,37 +459,32 @@ namespace MagicMotion
                 #region Collect Loss And Gradient
 
                 double loss = 0;
-                for (int i = 0; i < jointLength; i++)
+                for (int i = 0; i < settingData->jointLength; i++)
                 {
-                    loss += jointlosses[i] / constraintLength;
+                    loss += jointlosses[i] / settingData->constraintLength;
                 }
-                ClearNativeArrayData<double>(gradients, muscleLength);
-                for (int i = jointLength; i < parallelLength; i++)
+                ClearNativeArrayData<double>(gradients, settingData->muscleLength);
+                for (int i = settingData->jointLength; i < settingData->parallelLength; i++)
                 {
                     JointRelationData* relationData = jointRelationDatas + i;
                     double gradientTemp = jointlosses[i] - jointlosses[relationData->jointIndex];
 
                     gradientTemp /= L_BFGSStatic.EPSILION;
-                    gradients[relationData->relatedMuscleIndex] += gradientTemp; ;
+                    gradients[relationData->relatedMuscleIndex] += gradientTemp; 
                 }
                 #endregion
 
                 #region LBFGS-Optimize
                 // CollectTestData(globalData);
 
-                int leastLoopCount = iterationCount - loopIndex;
-                if (loopIndex==0)
-                {
-                    LBFGSSolver->Reset();
-                }
+                int leastLoopCount = settingData->insideLoopCount - loopIndex;
                 LBFGSSolver->Optimize(leastLoopCount,ref loss, dataStore, muscleValues, gradients);
-
                 currentGroupLoss ->loss= loss;
 
-                //OYM：for test,must be removed in environments other than develop
-                lossesRecorder[loopIndex] = loss;
-
                 #endregion
+                //OYM：for test,must be removed in environments other than develop
+                lossesRecorder[loopIndex + settingData->outsideLoopIndex * settingData->insideLoopCount] = loss;
+
             }
         }
     }

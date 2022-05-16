@@ -31,6 +31,8 @@ namespace MagicMotion.Mono
         ///  optimize kernel
         /// </summary>
         internal MagicMotionKernel kernel;
+        private MusclesData[] muscleDatas;
+
         /// <summary>
         /// isInitialize
         /// </summary>
@@ -48,6 +50,7 @@ namespace MagicMotion.Mono
         private float3 worldPosition;
         private quaternion worldRotation;
         private ConstraintData[] constraintDatas;
+        private JointData[] jointData;
         #endregion
 
         #region UnityFunc
@@ -56,8 +59,6 @@ namespace MagicMotion.Mono
             Initialize();
             RegisterData(); 
         }
-
-
 
         private void Update()
         {
@@ -289,24 +290,22 @@ namespace MagicMotion.Mono
             {
                 kernel.Dispose();
             }
-            kernel = new MagicMotionKernel((SearchLevel)8, 24,16);
+            kernel = new MagicMotionKernel((SearchLevel)8);
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
-            MusclesData[] muscleDatas = new MusclesData[motionMuscles.Length];
+            muscleDatas = new MusclesData[motionMuscles.Length];
             for (int i = 0; i < motionMuscles.Length; i++)
             {
                 muscleDatas[i] = motionMuscles[i].GetNativeData(motionJoints);
             }
-            kernel.SetMuscleSata(muscleDatas);
 
 
-            JointData[] jointData = new JointData[motionJoints.Length];
+            jointData = new JointData[motionJoints.Length];
 
             for (int i = 0; i < motionJoints.Length; i++)
             {
                 jointData[i] = motionJoints[i].GetNativeJointData(motionJoints);
             }
-            kernel.SetJointData(jointData);
 
             constraintDatas = new ConstraintData[motionJoints.Length];
 
@@ -315,8 +314,8 @@ namespace MagicMotion.Mono
                 var constraint= motionJoints[i].GetNativeConstraintData();
                 constraintDatas[i] = constraint;
             }
-            kernel.SetConstraintData(constraintDatas);
-            kernel.SetOutDataFunc(SetMuscle);
+
+            kernel.SetData(constraintDatas, muscleDatas , jointData,SetMuscle);
             kernel.Initialize();
         }
         private void UpdateData()
