@@ -491,7 +491,7 @@ namespace MagicMotion
                         {
                             double* gradient = gradients + (*jointMuscleIndex)[ii];
                             *gradient  /= constraintCount;
-                            *gradient *=math.pow(10,8/settingData->insideLoopCount);
+                            *gradient *= settingData->loopConvergence;
                         }
                     }
                 }

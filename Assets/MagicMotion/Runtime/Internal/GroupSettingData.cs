@@ -38,6 +38,9 @@ namespace MagicMotion
         public RigidTransform rootTransform;
 
         public int LoopSum => insideLoopCount * outsideLoopCount;
+
+        public double loopConvergence;
+
         public GroupSettingData(int constraintLength, int parallelLength, int muscleLength, int jointLength)
         {
             this.jointLength = jointLength; 
@@ -49,6 +52,7 @@ namespace MagicMotion
             outsideLoopIndex = 0;
             outsideLoopCount= 0;
             rootTransform = RigidTransform.identity;
+            loopConvergence = 1;
         }
 
     }

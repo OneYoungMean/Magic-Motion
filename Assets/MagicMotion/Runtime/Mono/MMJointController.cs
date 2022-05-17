@@ -27,7 +27,8 @@ namespace MagicMotion.Mono
         /// generate constraint
         /// </summary>
         public List<MMConstraint> motionConstraints;
-
+        [Range(0, 2)]
+        public float speed = 1;
         [Range(1,16)]
         public int outsideLoopCount=1;
         [Range(1, 64)]
@@ -77,7 +78,7 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation,  insideLoopCount, outsideLoopCount);
+            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation, speed, insideLoopCount, outsideLoopCount);
             //Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点

@@ -107,7 +107,7 @@ namespace MagicMotion
             BuildJobDataInternal();
             isInitialize = true;
         }
-        public void Optimize(float deltatime, float3 worldPosition, quaternion worldRotation,int innerLoopCount=64,int outsideLoopCount =1)
+        public void Optimize(float deltatime, float3 worldPosition, quaternion worldRotation,float convergence=1, int innerLoopCount=64,int outsideLoopCount =1)
         {
             if (!isInitialize)
             {
@@ -133,6 +133,7 @@ namespace MagicMotion
             settingData.insideLoopCount= innerLoopCount+1;
             settingData.outsideLoopCount= outsideLoopCount;
             settingData.outsideLoopIndex = 0; 
+            settingData.loopConvergence = math.pow(10, convergence*8 / settingData.insideLoopCount);
             SettingData = settingData;
 
             if (isRebuildGroup)
