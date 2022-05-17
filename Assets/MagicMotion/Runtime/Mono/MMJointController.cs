@@ -63,7 +63,7 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
-            kernel = new MagicMotionKernel((SearchLevel)8);
+            kernel = new MagicMotionKernel((SearchLevel)1);
             kernel.isInMainThread = true;
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);

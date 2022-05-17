@@ -110,7 +110,7 @@ namespace MagicMotion.Internal
         /// parallelLength
         /// ReadWrite
         /// </summary>
-        private NativeArray<JointLoss> jointlossNativeArray;
+        private NativeArray<double> jointlossNativeArray;
         //OYM：LBFGS data(readwrite)
         /// <summary>
         /// gradient data,use to LBFGS optimie.
@@ -196,7 +196,7 @@ NativeArray<float> muscleValueNativeArray,
             this.Dof3NativeArray = CreateNativeData<float3>(groupSettingData->jointLength);
             this.Dof3QuaternionNativeArray = CreateNativeData<quaternion>(groupSettingData->jointLength);
             this.muscleGradientRotationArray = CreateNativeData<quaternion>(groupSettingData->muscleLength);
-            this.jointlossNativeArray = CreateNativeData<JointLoss>(groupSettingData->jointLength);
+            this.jointlossNativeArray = CreateNativeData<double>(groupSettingData->parallelLength);
             this.jointTransformNativeArray = CreateNativeData<RigidTransform>(groupSettingData->jointLength);
             this.gradients = CreateNativeData<double>(groupSettingData->muscleLength);
             this.dataStore = CreateNativeData<double>(L_BFGSStatic.GetDataStoreLength(groupSettingData->muscleLength));
@@ -230,7 +230,7 @@ NativeArray<float> muscleValueNativeArray,
                 dataStore = (double*)dataStore.GetUnsafePtr(),
                 lossesRecorder = (double*)lossRecorderNativeArray.GetUnsafePtr(),
                 currentGroupLoss = currentGroupLoss,
-                jointlosses = (JointLoss*)jointlossNativeArray.GetUnsafePtr(),
+                jointlosses = (double*)jointlossNativeArray.GetUnsafePtr(),
 
             };
             #endregion

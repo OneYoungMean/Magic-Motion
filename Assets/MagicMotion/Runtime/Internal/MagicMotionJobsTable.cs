@@ -288,7 +288,7 @@ namespace MagicMotion
             /// <summary>
             /// joint loss
             /// </summary>
-            public JointLoss* jointlosses;
+            public double* jointlosses;
 
             #endregion
 
@@ -421,11 +421,11 @@ namespace MagicMotion
                 #endregion
 
                 #region Clac Loss
-                ClearNativeArrayData<JointLoss>(jointlosses, settingData->jointLength);
+                ClearNativeArrayData<double>(jointlosses, settingData->parallelLength);
                 for (int index = 0; index < settingData->jointLength; index++)
                 {
                     ConstraintData* constraintNative = constraintDatas + index;
-                    JointLoss* jointloss = jointlosses + index;
+                    double* jointloss = jointlosses + index;
                     RigidTransform* pJointTransform = jointTransformNatives + index;
                     float3* Dof3 = Dof3s + index;
 
@@ -437,19 +437,16 @@ namespace MagicMotion
                 #endregion
 
                 #region Clac Gradient 
-                ClearNativeArrayData<double>(gradients, settingData->muscleLength);
+
                 for (int index = settingData->jointLength; index < settingData->parallelLength; index++)
                 {
                     ParallelRelationData* parallelRelationData = parallelRelationDatas + index;
                     ConstraintData* constraintNative = constraintDatas + index;
-                    JointLoss* jointlossCmp = jointlosses + parallelRelationData->jointIndex;
+                    double* jointLoss = jointlosses + index;
                     float3* Dof3 = Dof3s + parallelRelationData->jointIndex;
 
                     RigidTransform jointTransform = jointTransformNatives[parallelRelationData->jointIndex];
                     RigidTransform* pJointTransform = &jointTransform;
-
-                    JointLoss jointLoss = new JointLoss();
-                    JointLoss* pjointLoss = &jointLoss;
 
                     #region  ReBuildTransform
 
@@ -462,19 +459,27 @@ namespace MagicMotion
 
                     if ( constraintNative->positionConstraint.isVaild)
                     {
-                        ClacPositionLoss(constraintNative, pJointTransform, &jointLoss);
-                        double* gradient = gradients + parallelRelationData->relatedMuscleIndex;
-                        *gradient += (jointLoss.positionloss - jointlossCmp->positionloss) /L_BFGSStatic.EPSILION;//OYM：SetGradient
+                        ClacPositionLoss(constraintNative, pJointTransform, jointLoss);
                     }
-
                 }
                 #endregion
 
                 #region Collect Loss 
+
+                ClearNativeArrayData<double>(gradients, settingData->muscleLength);
+                for (int i = settingData->jointLength; i < settingData->parallelLength; i++)
+                {
+                    ParallelRelationData* relationData = parallelRelationDatas + i;
+                    double gradientTemp = jointlosses[i] - jointlosses[relationData->jointIndex];
+
+                    gradientTemp /= L_BFGSStatic.EPSILION;
+                    gradientTemp *= settingData->loopConvergence;
+                    gradients[relationData->relatedMuscleIndex] += gradientTemp;
+                }
                 double loss = 0;
                 for (int i = 0; i < settingData->jointLength; i++)
                 {
-                    loss += jointlosses[i].positionloss / settingData->constraintLength;
+                    loss += jointlosses[i] / settingData->constraintLength;
 
                     int3* jointMuscleIndex = jointMuscleIndexs + i;
                     int constraintCount = jointConstraintRelativeCounts[i];
@@ -484,7 +489,6 @@ namespace MagicMotion
                         {
                             double* gradient = gradients + (*jointMuscleIndex)[ii];
                             *gradient  /= constraintCount;
-                            *gradient *= settingData->loopConvergence;
                         }
                     }
                 }
@@ -502,7 +506,7 @@ namespace MagicMotion
 
             }
 
-            private static void ClacPositionLoss(ConstraintData* constraintNative, RigidTransform* pJointTransform, JointLoss* jointloss)
+            private static void ClacPositionLoss(ConstraintData* constraintNative, RigidTransform* pJointTransform, double* jointloss)
             {
                 float3 jointPosition = pJointTransform->pos;
                 float lengthSum = constraintNative->lengthSum;
@@ -516,7 +520,7 @@ namespace MagicMotion
                     double lossCos = math.csum(direction * direction * weight3);
                     lossCos *= (lengthSum * lengthSum);
                     lossCos *= math.PI* math.PI;
-                    jointloss->positionloss = lossCos;
+                    *jointloss+= lossCos;
                 }
             }
         }
