@@ -30,13 +30,14 @@ namespace MagicMotion
     {
         #region  NativeArrayData
         //OYM： Base data (read only)
-        [Obsolete]
-        private NativeArray<MusclesData> muscleDataNativeArray;
+    /*        [Obsolete]
+            private NativeArray<MusclesData> muscleDataNativeArray;*/
         private NativeArray<JointData> jointDataNativeArray;//OYM：所有jointData的存放位置,长度为parallelLength
         private NativeArray<ConstraintData> constraintDataNativeArray;
-        private NativeArray<JointRelationData> jointRelationDataNativeArray;
+        private NativeArray<ParallelRelationData> parallelRelationDataNativeArray;
         private NativeArray<int3> jointMusclesIndexNativeArray;
         private NativeArray<GroupSettingData> groupSettingDataNativeArray;
+        private NativeArray<int> JointConstraintRelativeCountNativeArray;
         //OYM： share data (read write)
         private NativeArray<GroupLossData> groupLossNativeArray;
         private NativeArray<float> muscleValueNativeArray;
@@ -55,7 +56,7 @@ namespace MagicMotion
         private JointData[] joints;
         private MusclesData[] muscles;
         private ConstraintData[] constraints;
-        private JointRelationData[] jointMapDatas;
+        private ParallelRelationData[] jointMapDatas;
         private JobHandle mainHandle;
 
         private Action<float[]> SetMuscleCall;
@@ -63,7 +64,7 @@ namespace MagicMotion
         private List<IDisposable> groupDataDisposeList;
 
         private int[] jointRelativedCounts;
-        private bool[][] jointRelationMap;
+        private bool[][] parallelRelationMap;
 
         private int parallelDataCount;
         private int jointCount;
@@ -74,7 +75,7 @@ namespace MagicMotion
         private float bestOptimizerLoss;
 
         private bool isInitialize;
-        private bool isInMainThread;
+        public bool isInMainThread;
 
         private GroupSettingData SettingData { get => groupSettingDataNativeArray[0]; set =>  groupSettingDataNativeArray[0]= value; } 
         public bool IsCreated { get { return isInitialize; } }
@@ -226,12 +227,12 @@ namespace MagicMotion
         /// </summary>
         private void BuildRelationData()
         {
-            List<JointRelationData> jointMapDataTemp = new List<JointRelationData>();
+            List<ParallelRelationData> jointMapDataTemp = new List<ParallelRelationData>();
 
-            jointRelationMap = new bool[jointCount][];
+            parallelRelationMap = new bool[jointCount][];
             for (int i = 0; i < jointCount; i++)
             {
-                jointRelationMap[i] = new bool[jointCount];
+                parallelRelationMap[i] = new bool[jointCount];
             }
 
             for (int i = 0; i < jointCount; i++)
@@ -239,7 +240,7 @@ namespace MagicMotion
                 int parentIndex = i;
                 while (parentIndex != -1)
                 {
-                    jointRelationMap[parentIndex][i] = true;
+                    parallelRelationMap[parentIndex][i] = true;
                     parentIndex = joints[parentIndex].parentIndex;
                 }
             }
@@ -247,7 +248,7 @@ namespace MagicMotion
             int allConstraintCount = 0;
             for (int i = 0; i < jointCount; i++)
             {
-                jointMapDataTemp.Add(new JointRelationData()
+                jointMapDataTemp.Add(new ParallelRelationData()
                 {
                     jointIndex = i,
                     relatedJointIndex = -1,
@@ -264,9 +265,9 @@ namespace MagicMotion
                 int jointIndex = muscles[i].jointIndex;
                 for (int ii = 0; ii < jointCount; ii++)
                 {
-                    if (jointRelationMap[jointIndex][ii])
+                    if (parallelRelationMap[jointIndex][ii])
                     {
-                        jointMapDataTemp.Add(new JointRelationData()
+                        jointMapDataTemp.Add(new ParallelRelationData()
                         {
                             jointIndex = ii,
                             relatedJointIndex = jointIndex,
@@ -295,11 +296,13 @@ namespace MagicMotion
                 throw new System.Exception("Disposed NativeArray before you create it");
             }
 
-            jointRelationDataNativeArray = CreateNativeData(jointMapDatas, Allocator.Persistent);
+            parallelRelationDataNativeArray = CreateNativeData(jointMapDatas, Allocator.Persistent);
 
             constraintDataNativeArray = CreateNativeData<ConstraintData>(parallelDataCount, Allocator.Persistent);
 
             jointDataNativeArray = CreateNativeData<JointData>(joints, Allocator.Persistent);
+
+            JointConstraintRelativeCountNativeArray = CreateNativeData(jointRelativedCounts, Allocator.Persistent);
 
             groupSettingDataNativeArray = CreateNativeData<GroupSettingData>(1, Allocator.Persistent);
             {
@@ -344,12 +347,17 @@ namespace MagicMotion
         /// </summary>
         private void BuildJobDataInternal()
         {
-            copyConstraintDataJob = new CopyConstraintDataJob()
+            //OYM：啊怎么才能把这个干掉
+            unsafe
             {
-                jointRelationDatas = jointRelationDataNativeArray,
-                constraintDatas = constraintDataNativeArray,
-                jointLength = jointCount,
-            };
+                copyConstraintDataJob = new CopyConstraintDataJob()
+                {
+                    parallelRelationDatas =(ParallelRelationData*) parallelRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
+                    constraintDatas =(ConstraintData*) constraintDataNativeArray.GetUnsafePtr(),
+                    jointLength = jointCount,
+                };
+            }
+
             sortingFactoryJob = new SortingFactoryJob()
             {
                 musclesValue = muscleValueNativeArray,
@@ -357,10 +365,9 @@ namespace MagicMotion
                 muscleLength = muscleCount,
                 groupLength=linerSearchGroupCount,
                 settingData=groupSettingDataNativeArray
-            };
-
-            
+            };   
         }
+
         private void ReBuildGroupData()
         {
             DisposeGroupData();
@@ -374,7 +381,8 @@ namespace MagicMotion
                 jointDataNativeArray,
                 groupLossNativeArray.GetSubArray(i, 1),
                 constraintDataNativeArray,
-                jointRelationDataNativeArray,
+                parallelRelationDataNativeArray,
+                JointConstraintRelativeCountNativeArray,
                 jointMusclesIndexNativeArray,
                 muscleValueSubNativeArrays[i],
                 groupDataDisposeList
@@ -424,7 +432,9 @@ namespace MagicMotion
         }*/
         public Keyframe[] GetLossKey()
         {
-            return optimizes[BestOptimizerIndex].GetLossKey();
+            var result= optimizes[BestOptimizerIndex].GetLossKey();
+            Debug.Log(result[0].value-result[result.Length-1].value);
+            return result;
         }
     }
 }
@@ -554,7 +564,7 @@ muscleToJointJob = new MuscleToJointJob()
             caclulatelossJob = new CaclulatelossJob()
            {
                 constraintNatives = constraintNativeArray,
-                jointRelationDatas = jointRelationDataNativeArray,
+                parallelRelationDatas = parallelRelationDataNativeArray,
                jointTransformNatives= jointTransformNativeArray,
                Dof3s = Dof3NativeArray,
                 muscleGradientRotations=muscleGradientRotationArray,
@@ -576,7 +586,7 @@ muscleToJointJob = new MuscleToJointJob()
                 losses = lossNativeArray,
                 jointlossNatives = jointlossNativeArray,
                 muscleValues= muscleValueNativeArray,
-                relationDatas =jointRelationDataNativeArray,
+                relationDatas =parallelRelationDataNativeArray,
                 muscleAlls= muscleValueAllNativeArray,
                 gradientAlls = gradientAllNativeArray,
                 parallelLength =parallelDataCount,

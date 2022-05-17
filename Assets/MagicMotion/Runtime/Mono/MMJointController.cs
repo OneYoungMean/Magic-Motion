@@ -27,6 +27,11 @@ namespace MagicMotion.Mono
         /// generate constraint
         /// </summary>
         public List<MMConstraint> motionConstraints;
+
+        [Range(1,16)]
+        public int outsideLoopCount=1;
+        [Range(1, 64)]
+        public int insideLoopCount=1;
         /// <summary>
         ///  optimize kernel
         /// </summary>
@@ -58,6 +63,7 @@ namespace MagicMotion.Mono
         {
             Initialize();
             kernel = new MagicMotionKernel((SearchLevel)1);
+            kernel.isInMainThread = true;
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
             RegisterData(); 
@@ -71,8 +77,8 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation,1,1);
-            Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
+            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation,  insideLoopCount, outsideLoopCount);
+            //Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点
             //OYM：异步赋值再访问感觉怪怪的.
@@ -162,7 +168,7 @@ namespace MagicMotion.Mono
             }
             CheckValue();
             AddRootJointInArray();
-            BuildJointRelation();
+            BuildparallelRelation();
             GetMuscleAndConstraintData();
             if (Application.isPlaying)
             {
@@ -200,7 +206,7 @@ namespace MagicMotion.Mono
             }
         }
 
-        private void BuildJointRelation()
+        private void BuildparallelRelation()
         {
             #region Clac localPosition and localRotation
 
@@ -236,7 +242,7 @@ namespace MagicMotion.Mono
                     currentJoint.initiallocalPosition = math.mul(math.inverse(currentJoint.parent.transform.rotation), (float3)(currentJoint.transform.position - currentJoint.parent.transform.position));
 
                     currentJoint.length = math.length(currentJoint.initiallocalPosition);
-                    currentJoint.cumulativeLength = currentJoint.parent.length + currentJoint.length;
+                    currentJoint.cumulativeLength = currentJoint.parent.cumulativeLength + currentJoint.length;
                 }
 
 

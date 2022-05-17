@@ -18,25 +18,25 @@ namespace MagicMotion
         /// <summary>
         /// Set Constriant data 
         /// </summary>
-        [BurstCompile]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance)]
         public struct CopyConstraintDataJob : IJobFor
         {
-            [ NativeDisableUnsafePtrRestriction]
+            [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// Joint relation data 
             /// </summary>
-            public NativeArray<JointRelationData> jointRelationDatas;
+            public ParallelRelationData* parallelRelationDatas;
 
             [NativeDisableUnsafePtrRestriction]
             /// <summary>
             /// constraint data 
             /// </summary>
-            public NativeArray<ConstraintData> constraintDatas;
+            public ConstraintData* constraintDatas;
 
             public int jointLength;
             public void Execute(int index)
             {
-                constraintDatas[index] = constraintDatas[jointRelationDatas[index].jointIndex];
+                *(constraintDatas + index) = *(constraintDatas + (parallelRelationDatas + index)->jointIndex);
             }
         }
 
@@ -44,7 +44,7 @@ namespace MagicMotion
         /// <summary>
         /// Set muscles data 
         /// </summary>
-        [BurstCompile]
+        [BurstCompile(OptimizeFor = OptimizeFor.Performance)]
         public struct SortingFactoryJob : IJob
         {
             /// <summary>
@@ -79,13 +79,13 @@ namespace MagicMotion
                 for (int i = 0; i < groupLength; i++)
                 {
                     var loss = groupLoss[i];
-                    loss.index= i;  
-                    groupLoss[i]= loss;
+                    loss.index = i;
+                    groupLoss[i] = loss;
                 }
                 groupLoss.Sort();
 
                 int offset = groupLoss[0].index * muscleLength;
-                float bestLoss =(float)groupLoss[0].loss;
+                float bestLoss = (float)groupLoss[0].loss;
 
                 for (int groupIndex = 0; groupIndex < groupLength; groupIndex++)
                 {
@@ -103,13 +103,13 @@ namespace MagicMotion
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public static float GetValueByGroup(int groupIndex, float refValue, float lastLoss)
             {
-                lastLoss = math.clamp(lastLoss, 0.1f,10f);
+                lastLoss = math.clamp(lastLoss, 0.1f, 10f);
                 switch (groupIndex)
                 {
                     case 0:
                         break;
                     case 1:
-                        refValue = 0;
+                        refValue = refValue * lastLoss / 10;
                         break;
                     case 2:
                         refValue = math.lerp(refValue, -1, 1e-4f * lastLoss);
@@ -178,8 +178,8 @@ namespace MagicMotion
         ///  so it seems a little hard to understand,
         ///  I'm sorry, my naming skills are not good enough to handle it :(
         /// </summary>
-        [BurstCompile]
-        
+        [BurstCompile(FloatMode = FloatMode.Default, OptimizeFor = OptimizeFor.Performance)]
+
         public struct LinerSearchJob : IJobFor
         {
             #region ReadOnly
@@ -194,7 +194,7 @@ namespace MagicMotion
             /// <summary>
             /// relative data
             /// </summary>
-            public JointRelationData* jointRelationDatas;
+            public ParallelRelationData* parallelRelationDatas;
 
             [ReadOnly, NativeDisableUnsafePtrRestriction]
             /// <summary>
@@ -213,6 +213,12 @@ namespace MagicMotion
             /// joint relative muscle's index
             /// </summary>
             internal int3* jointMuscleIndexs;
+
+            [NativeDisableUnsafePtrRestriction, ReadOnly]
+            /// <summary>
+            /// joint relative constraints count
+            /// </summary>
+            internal int* jointConstraintRelativeCounts;
             #endregion
 
             #region ReadWrite
@@ -282,209 +288,243 @@ namespace MagicMotion
             /// <summary>
             /// joint loss
             /// </summary>
-            public double* jointlosses;
+            public JointLoss* jointlosses;
+            [NativeDisableUnsafePtrRestriction]
+            /// <summary>
+            /// muscle Epsilions value
+            /// </summary>
+            internal double* muscleEpsilions;
             #endregion
 
             public void Execute(int loopIndex)
             {
+                int leastLoopCount = settingData->insideLoopCount - loopIndex - 1;
                 #region Muscle To Transform
                 for (int index = 0; index < settingData->jointLength; index++)
                 {
 
-                JointData* currentJoint = jointDatas +index;
-                int3* jointMuscleIndex = jointMuscleIndexs + index;
+                    JointData* currentJoint = jointDatas + index;
+                    int3* jointMuscleIndex = jointMuscleIndexs + index;
 
-                float3* Dof3 = Dof3s + index;
-                quaternion* currentRotation = muscleCurrentRotations + index;
-                RigidTransform* currentTransform = jointTransformNatives + index;
+                    float3* Dof3 = Dof3s + index;
+                    quaternion* currentRotation = muscleCurrentRotations + index;
+                    RigidTransform* currentTransform = jointTransformNatives + index;
 
-                //Convert muscle value to rotation without and with epsilion at the same time
-                #region Step1: Muslce Tot Rotation
-                float4x3 axisRotations =float4x3.zero;
-                float4x3 axisRotationsEpsilion = float4x3.zero;
-                for (int i = 0; i < 3; i++)
-                {
-                    if ((*jointMuscleIndex)[i]!=-1)
+                    //Convert muscle value to rotation without and with epsilion at the same time
+                    #region Step1: Muslce Tot Rotation
+                    float4x3 axisRotations = float4x3.zero;
+                    float4x3 axisRotationsEpsilion = float4x3.zero;
+                    for (int i = 0; i < 3; i++)
                     {
-                        //OYM：Read Muscle vale
-                        float muscleValue = muscleValues[(*jointMuscleIndex)[i]];
-                        Dof3[i] = muscleValue;
+                        if ((*jointMuscleIndex)[i] != -1)
+                        {
+                            //OYM：Read Muscle vale
+                            int muscleIndex = (*jointMuscleIndex)[i];
+                            float muscleValue = muscleValues[muscleIndex];
+                            Dof3[i] = muscleValue;
 
-                        //OYM：build CurrentRotation
-                        float dofRadian = 0;
-                        if (muscleValue < 0)
-                        {
-                            dofRadian=math.radians( math.lerp(0, currentJoint->minRange[i], -muscleValue));
-                        }
-                        else
-                        {
-                            dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
-                        }
-                        axisRotations[i]= quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
-
-                        //OYM：Build Gradient use rotation
-                        muscleValue += L_BFGSStatic.EPSILION;
-                        if (muscleValue < 0)
-                        {
-                            dofRadian = math.radians(math.lerp(0, currentJoint->minRange[i], -muscleValue));
-                        }
-                        else
-                        {
-                            dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
-                        }
-                        axisRotationsEpsilion[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
-                    }
-                }
-
-                //OYM：Clac current rotation
-                *currentRotation = quaternion.identity;
-                for (int i = 0; i < 3; i++)
-                {
-                    if ((*jointMuscleIndex) [i] != -1)
-                    {
-                        *currentRotation = math.mul(new quaternion(axisRotations[i]), *currentRotation);
-
-                        //OYM：Clac gradient rotation
-                        quaternion* muscleGradientRotation = muscleGradientRotations + (*jointMuscleIndex)[i];
-                        *muscleGradientRotation = quaternion.identity;
-                        for (int ii = 0; ii < 3; ii++)
-                        {
-                            if ((*jointMuscleIndex)[ii] != -1)
+                            //OYM：build CurrentRotation
+                            float dofRadian = 0;
+                            if (muscleValue < 0)
                             {
-                                if (i == ii)
+                                dofRadian = math.radians(math.lerp(0, currentJoint->minRange[i], -muscleValue));
+                            }
+                            else
+                            {
+                                dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
+                            }
+                            axisRotations[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
+                            muscleEpsilions[muscleIndex] = dofRadian;
+                            //OYM：Build Gradient use rotation
+                            muscleValue += L_BFGSStatic.EPSILION;
+                            if (muscleValue < 0)
+                            {
+                                dofRadian = math.radians(math.lerp(0, currentJoint->minRange[i], -muscleValue));
+                            }
+                            else
+                            {
+                                dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
+                            }
+                            muscleEpsilions[muscleIndex] = dofRadian - muscleEpsilions[muscleIndex];
+                            axisRotationsEpsilion[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
+                        }
+                    }
+
+                    //OYM：Clac current rotation
+                    *currentRotation = quaternion.identity;
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if ((*jointMuscleIndex)[i] != -1)
+                        {
+                            int muscleIndex = (*jointMuscleIndex)[i];
+                            *currentRotation = math.mul(new quaternion(axisRotations[i]), *currentRotation);
+
+                            //OYM：Clac gradient rotation
+                            quaternion* muscleGradientRotation = muscleGradientRotations + muscleIndex;
+                            *muscleGradientRotation = quaternion.identity;
+                            for (int ii = 0; ii < 3; ii++)
+                            {
+                                if ((*jointMuscleIndex)[ii] != -1)
                                 {
-                                    *muscleGradientRotation = math.mul(new quaternion(axisRotationsEpsilion[ii]), *muscleGradientRotation);
-                                }
-                                else
-                                {
-                                    *muscleGradientRotation = math.mul(new quaternion(axisRotations[ii]), *muscleGradientRotation);
+                                    if (i == ii)
+                                    {
+                                        *muscleGradientRotation = math.mul(new quaternion(axisRotationsEpsilion[ii]), *muscleGradientRotation);
+                                    }
+                                    else
+                                    {
+                                        *muscleGradientRotation = math.mul(new quaternion(axisRotations[ii]), *muscleGradientRotation);
+                                    }
                                 }
                             }
                         }
                     }
-                }
 
-                #endregion
+                    #endregion
 
-                // Build Joint world transform for muscle value and local transform
-                #region Step2: Rotation To JointTransform
+                    // Build Joint world transform for muscle value and local transform
+                    #region Step2: Rotation To JointTransform
 
-                if (currentJoint->parentIndex == -1)
-                {
-                    //OYM： build root position
-                    currentTransform->pos =settingData->rootTransform.pos;
-                    //OYM：build root rotation
-                    currentTransform->rot = math.mul(settingData->rootTransform.rot, *currentRotation);
-                }
-                else
-                {
-                    //OYM：get parent transform
-                    RigidTransform* parentTransform = jointTransformNatives + currentJoint->parentIndex;
-                    //OYM：build child position
-                    currentTransform->pos = parentTransform->pos + math.mul(parentTransform->rot, currentJoint->localPosition);
-                    //OYM：build child rotation
-                    currentTransform->rot = math.mul(parentTransform->rot, math.mul(currentJoint->localRotation, *currentRotation));
-                }
-                #endregion
-
-                // Clactulate Epsillion value 
-                // for get joint's gradient ,you need add a Epsilion value to the muscle 
-                // and get the loss change  ad gradient.Optimize this process,you will 
-                // get this step.
-                #region Step3: Transform To GradientRotation
-
-                for (int i = 0; i < 3; i++)
-                {
-                    if ((*jointMuscleIndex)[i] != -1)
+                    if (currentJoint->parentIndex == -1)
                     {
-                        //OYM：get rotation after add epsilion
-                        quaternion* after = muscleGradientRotations + (*jointMuscleIndex)[i];
-                        //OYM：get rotation add epsilion's change in joint transform
-                        //OYM：for example ,if you want know how influence for epsilion's change ,you can just get currentTransform->rot*after to clac next;
-                        *after = math.mul(currentTransform->rot, math.mul(math.mul(*after, math.inverse(*currentRotation)), math.inverse(currentTransform->rot)));
+                        //OYM： build root position
+                        currentTransform->pos = settingData->rootTransform.pos;
+                        //OYM：build root rotation
+                        currentTransform->rot = math.mul(settingData->rootTransform.rot, *currentRotation);
                     }
-                }
+                    else
+                    {
+                        //OYM：get parent transform
+                        RigidTransform* parentTransform = jointTransformNatives + currentJoint->parentIndex;
+                        //OYM：build child position
+                        currentTransform->pos = parentTransform->pos + math.mul(parentTransform->rot, currentJoint->localPosition);
+                        //OYM：build child rotation
+                        currentTransform->rot = math.mul(parentTransform->rot, math.mul(currentJoint->localRotation, *currentRotation));
+                    }
+                    #endregion
+
+                    // Clactulate Epsillion value 
+                    // for get joint's gradient ,you need add a Epsilion value to the muscle 
+                    // and get the loss change  ad gradient.Optimize this process,you will 
+                    // get this step.
+                    #region Step3: Transform To GradientRotation
+
+                    for (int i = 0; i < 3; i++)
+                    {
+                        if ((*jointMuscleIndex)[i] != -1)
+                        {
+                            //OYM：get rotation after add epsilion
+                            quaternion* after = muscleGradientRotations + (*jointMuscleIndex)[i];
+                            //OYM：get rotation add epsilion's change in joint transform
+                            //OYM：for example ,if you want know how influence for epsilion's change ,you can just get currentTransform->rot*after to clac next;
+                            *after = math.mul(currentTransform->rot, math.mul(math.mul(*after, math.inverse(*currentRotation)), math.inverse(currentTransform->rot)));
+                        }
+                    }
                     #endregion
 
                 }
                 #endregion
 
-                #region Clac Loss And Gradient 
-                for (int index = 0; index < settingData->parallelLength; index++)
+                #region Clac Loss
+                ClearNativeArrayData<JointLoss>(jointlosses, settingData->jointLength);
+                for (int index = 0; index < settingData->jointLength; index++)
                 {
-                    JointRelationData* jointRelationData = jointRelationDatas + index;
                     ConstraintData* constraintNative = constraintDatas + index;
-                    double* jointloss = this.jointlosses + index;
+                    JointLoss* jointloss = jointlosses + index;
+                    RigidTransform* pJointTransform = jointTransformNatives + index;
+                    float3* Dof3 = Dof3s + index;
 
-
-                    RigidTransform jointTransform = jointTransformNatives[jointRelationData->jointIndex];
-                    RigidTransform* pJointTransform = &jointTransform;
-
-                    if (jointRelationData->relatedJointIndex != -1)
-                    {
-                        RigidTransform* relatedTransform = jointTransformNatives + jointRelationData->relatedJointIndex;
-                        quaternion* muscleGradientRotation = muscleGradientRotations + jointRelationData->relatedMuscleIndex;
-                        float3 direction = pJointTransform->pos - relatedTransform->pos;
-                        pJointTransform->pos = math.mul(*muscleGradientRotation, direction) + relatedTransform->pos;
-                        pJointTransform->rot = math.mul(*muscleGradientRotation, pJointTransform->rot);
-                    }
-                    float3* Dof3 = Dof3s + jointRelationData->jointIndex;
-
-                    *jointloss = 0;
-
-                    #region Clac Position Loss
                     if (constraintNative->positionConstraint.isVaild)
                     {
-                        float3 jointPosition = pJointTransform->pos;
-                        float lengthSum = constraintNative->lengthSum;
-
-                        float3 weight3 = constraintNative->positionConstraint.weight3;
-                        float3 constraintPosition = constraintNative->positionConstraint.position;
-                        double3 direction = constraintPosition - jointPosition;
-
-                        if (math.all(direction == 0))
-                        {
-                            return;
-                        }
-
-                        double lossCos = math.csum(direction * direction * weight3);
-                        lossCos /= (lengthSum * lengthSum);
-                        lossCos *= math.PI * math.PI;
-                        *jointloss += lossCos;
+                        ClacPositionLoss(constraintNative, pJointTransform, jointloss);
                     }
-                    #endregion
                 }
                 #endregion
 
-                #region Collect Loss And Gradient
+                #region Clac Gradient 
+                ClearNativeArrayData<double>(gradients, settingData->muscleLength);
+                for (int index = settingData->jointLength; index < settingData->parallelLength; index++)
+                {
+                    ParallelRelationData* parallelRelationData = parallelRelationDatas + index;
+                    ConstraintData* constraintNative = constraintDatas + index;
+                    JointLoss* jointlossCmp = jointlosses + parallelRelationData->jointIndex;
+                    float3* Dof3 = Dof3s + parallelRelationData->jointIndex;
 
+                    RigidTransform jointTransform = jointTransformNatives[parallelRelationData->jointIndex];
+                    RigidTransform* pJointTransform = &jointTransform;
+
+                    JointLoss jointLoss = new JointLoss();
+                    JointLoss* pjointLoss = &jointLoss;
+
+                    #region  ReBuildTransform
+
+                    RigidTransform* relatedTransform = jointTransformNatives + parallelRelationData->relatedJointIndex;
+                    quaternion* muscleGradientRotation = muscleGradientRotations + parallelRelationData->relatedMuscleIndex;
+                    float3 direction = pJointTransform->pos - relatedTransform->pos;
+                    pJointTransform->pos = math.mul(*muscleGradientRotation, direction) + relatedTransform->pos;
+                    pJointTransform->rot = math.mul(*muscleGradientRotation, pJointTransform->rot);
+                    #endregion
+
+                    float positionEpsilion = math.distance(pJointTransform->pos, jointTransformNatives[parallelRelationData->jointIndex].pos);
+                    double rotationEpsilion = muscleEpsilions[parallelRelationData->relatedMuscleIndex];
+
+                    if (positionEpsilion!=0&& rotationEpsilion != 0 && constraintNative->positionConstraint.isVaild)
+                    {
+                        ClacPositionLoss(constraintNative, pJointTransform, &jointLoss);
+                        double* gradient = gradients + parallelRelationData->relatedMuscleIndex;
+                        *gradient += (jointLoss.positionloss - jointlossCmp->positionloss) /L_BFGSStatic.EPSILION;//OYM：SetGradient
+                    }
+
+                }
+                #endregion
+
+                #region Collect Loss 
                 double loss = 0;
                 for (int i = 0; i < settingData->jointLength; i++)
                 {
-                    loss += jointlosses[i] / settingData->constraintLength;
-                }
-                ClearNativeArrayData<double>(gradients, settingData->muscleLength);
-                for (int i = settingData->jointLength; i < settingData->parallelLength; i++)
-                {
-                    JointRelationData* relationData = jointRelationDatas + i;
-                    double gradientTemp = jointlosses[i] - jointlosses[relationData->jointIndex];
+                    loss += jointlosses[i].positionloss / settingData->constraintLength;
 
-                    gradientTemp /= L_BFGSStatic.EPSILION;
-                    gradients[relationData->relatedMuscleIndex] += gradientTemp; 
+                    int3* jointMuscleIndex = jointMuscleIndexs + i;
+                    int constraintCount = jointConstraintRelativeCounts[i];
+                    for (int ii = 0; ii < 3; ii++)
+                    {
+                        if ((*jointMuscleIndex)[ii] != -1)
+                        {
+                            double* gradient = gradients + (*jointMuscleIndex)[ii];
+                            *gradient  /= constraintCount;
+                            *gradient *=math.pow(10,8/settingData->insideLoopCount);
+                        }
+                    }
                 }
+
                 #endregion
 
                 #region LBFGS-Optimize
                 // CollectTestData(globalData);
-
-                int leastLoopCount = settingData->insideLoopCount - loopIndex;
-                LBFGSSolver->Optimize(leastLoopCount,ref loss, dataStore, muscleValues, gradients);
-                currentGroupLoss ->loss= loss;
+                LBFGSSolver->Optimize(leastLoopCount, ref loss, dataStore, muscleValues, gradients);
+                currentGroupLoss->loss = loss;
 
                 #endregion
                 //OYM：for test,must be removed in environments other than develop
                 lossesRecorder[loopIndex + settingData->outsideLoopIndex * settingData->insideLoopCount] = loss;
 
+            }
+
+            private static void ClacPositionLoss(ConstraintData* constraintNative, RigidTransform* pJointTransform, JointLoss* jointloss)
+            {
+                float3 jointPosition = pJointTransform->pos;
+                float lengthSum = constraintNative->lengthSum;
+
+                float3 weight3 = constraintNative->positionConstraint.weight3;
+                float3 constraintPosition = constraintNative->positionConstraint.position;
+                float3 direction = (constraintPosition - jointPosition);
+
+                if (math.any(direction != 0))
+                {
+                    double lossCos = math.csum(direction * direction * weight3);
+                    lossCos *= (lengthSum * lengthSum);
+                    lossCos *= math.PI* math.PI;
+                    jointloss->positionloss = lossCos;
+                }
             }
         }
     }
@@ -889,7 +929,7 @@ public struct CaclulatelossJob : IJobParallelFor
     /// <summary>
     /// Joint relation data ,for claculate the new world transf
     /// </summary>
-    public JointRelationData* jointRelationDatas;
+    public parallelRelationData* parallelRelationDatas;
 
     [ReadOnly, NativeDisableUnsafePtrRestriction]
     /// <summary>
@@ -917,23 +957,23 @@ public struct CaclulatelossJob : IJobParallelFor
 
     public void Execute(int index)
     {
-        JointRelationData* jointRelationData = jointRelationDatas + index;
+        parallelRelationData* parallelRelationData = parallelRelationDatas + index;
         ConstraintData* constraintNative = constraintDatas + index;
         double* jointloss = jointlossNatives + index;
 
 
-        RigidTransform jointTransform = jointTransformNatives[jointRelationData->jointIndex];
+        RigidTransform jointTransform = jointTransformNatives[parallelRelationData->jointIndex];
         RigidTransform* pJointTransform = &jointTransform;
 
-        if (jointRelationData->relatedJointIndex != -1)
+        if (parallelRelationData->relatedJointIndex != -1)
         {
-            RigidTransform* relatedTransform = jointTransformNatives + jointRelationData->relatedJointIndex;
-            quaternion* muscleGradientRotation = muscleGradientRotations + jointRelationData->relatedMuscleIndex;
+            RigidTransform* relatedTransform = jointTransformNatives + parallelRelationData->relatedJointIndex;
+            quaternion* muscleGradientRotation = muscleGradientRotations + parallelRelationData->relatedMuscleIndex;
             float3 direction = pJointTransform->pos - relatedTransform->pos;
             pJointTransform->pos = math.mul(*muscleGradientRotation, direction) + relatedTransform->pos;
             pJointTransform->rot = math.mul(*muscleGradientRotation, pJointTransform->rot);
         }
-        float3* Dof3 = Dof3s + jointRelationData->jointIndex;
+        float3* Dof3 = Dof3s + parallelRelationData->jointIndex;
 
         *jointloss = 0;
         if (constraintNative->positionConstraint.isVaild)
@@ -1143,7 +1183,7 @@ public struct MainControllerJob : IJob
     /// <summary>
     /// relative data
     /// </summary>
-    public JointRelationData* relationDatas;
+    public parallelRelationData* relationDatas;
 
     [NativeDisableUnsafePtrRestriction]
     /// <summary>
@@ -1179,7 +1219,7 @@ public struct MainControllerJob : IJob
                         ClearNativeArrayData<double>(gradients, muscleLength);
                         for (int i = jointLength; i < parallelLength; i++)
                         {
-                            JointRelationData* relationData = relationDatas + i;
+                            parallelRelationData* relationData = relationDatas + i;
                             double gradientTemp = losses[i] - losses[relationData->jointIndex];
 
                             gradientTemp /= L_BFGSStatic.EPSILION;
@@ -1214,12 +1254,12 @@ public struct MainControllerJob : IJob
     //the one that I have tried many times and concluded that it works best.
     //If you are confident, you can write a better one
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static void CollectGradient(double* losses, JointRelationData* relationDatas, int muscleLength, int jointLength, int parallelLength, double* gradients)
+    private static void CollectGradient(double* losses, parallelRelationData* relationDatas, int muscleLength, int jointLength, int parallelLength, double* gradients)
     {
         ClearNativeArrayData<double>(gradients, muscleLength);
         for (int i = jointLength; i < parallelLength; i++)
         {
-            JointRelationData* relationData = relationDatas + i;
+            parallelRelationData* relationData = relationDatas + i;
             double gradientTemp = losses[i] - losses[relationData->jointIndex];
 
             gradientTemp /= L_BFGSStatic.EPSILION;
@@ -1230,3 +1270,12 @@ public struct MainControllerJob : IJob
 }
 */
 #endregion
+/*                for (int i = settingData->jointLength; i < settingData->parallelLength; i++)
+                {
+                    ParallelRelationData* relationData = parallelRelationDatas + i;
+                    double gradientTemp = jointlosses[i] - jointlosses[relationData->jointIndex];
+
+                    gradientTemp /= L_BFGSStatic.EPSILION;
+                    gradients[relationData->relatedMuscleIndex] += gradientTemp; 
+                }
+*/

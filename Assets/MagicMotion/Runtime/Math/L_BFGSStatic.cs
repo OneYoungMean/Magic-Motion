@@ -59,7 +59,8 @@ namespace MagicMotion.Extern
 
             // Initialize statistics
             double gnormInit = Euclidean(gradient,numberOfVariables);
-            innerLoopStep = 1.0f / gnormInit;
+            innerLoopStep = 1/ gnormInit;
+            //innerLoopStep = 1;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -97,11 +98,11 @@ namespace MagicMotion.Extern
                 // Store the search direction
                 matrixPoint = point * numberOfVariables;
                 UnsafeUtility.MemCpy(steps + matrixPoint, gradientStore, numberOfVariables * UnsafeUtility.SizeOf<double>());
-/*                for (int i = 0; i < numberOfVariables; i++)
-                {
-                    steps[matrixPoint + i] = gradientStore[i];
-                }*/
-                innerLoopStep = 1;
+                /*                for (int i = 0; i < numberOfVariables; i++)
+                                {
+                                    steps[matrixPoint + i] = gradientStore[i];
+                                }*/
+                innerLoopStep = 1; //OYM：这里有个bug(疑似)
             }
 
             // Save original gradient

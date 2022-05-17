@@ -116,7 +116,7 @@ namespace MagicMotion.Mono
             {
                 
               var jointController =   gameObject.AddComponent<MMJointController>();
-                jointController.rootTransform = animator.transform;
+                jointController.rootTransform = animator.GetBoneTransform(HumanBodyBones.Hips);
                 jointController.motionJoints = motionJoints.Where(x => x != null).ToArray();
    
                 jointControllers.Add(jointController);

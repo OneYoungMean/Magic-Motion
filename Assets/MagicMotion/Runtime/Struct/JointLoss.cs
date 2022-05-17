@@ -1,13 +1,13 @@
 ﻿namespace MagicMotion
 {
-    internal struct JoinLoss
+    internal struct JointLoss
     {
-/*        public float positionloss;
-        public float muscleloss;
-        public float lookAtloss;
-        public float colliderloss;
-        public float positionChangeloss;
-        public float muscleChangeloss;*/
+        public double positionloss;
+        public double muscleloss;
+        public double lookAtloss;
+        public double colliderloss;
+        public double positionChangeloss;
+        public double muscleChangeloss;
         internal double lossSum;
 
 /*        public void Clacloss()

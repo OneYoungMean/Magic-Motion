@@ -3,7 +3,7 @@
     /// <summary>
     /// Joint relation data ,containing constraint 's muslce joint and relative joint data
     /// </summary>
-    public struct JointRelationData
+    public struct ParallelRelationData
     {
         public int relatedJointIndex;
         public int relatedMuscleIndex;

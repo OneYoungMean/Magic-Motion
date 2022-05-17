@@ -114,7 +114,7 @@ namespace MagicMotion.Mono
         internal ConstraintData GetNativeConstraintData()
         {
             var constraintData=default(ConstraintData);
-            constraintData.lengthSum =math.max(0.1f, cumulativeLength);
+            constraintData.lengthSum =math.max(0.01f, cumulativeLength);
 
             for (int i = 0; i < constraints.Length; i++)
             {
