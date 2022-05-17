@@ -1271,4 +1271,22 @@ public struct MainControllerJob : IJob
                     gradientTemp /= L_BFGSStatic.EPSILION;
                     gradients[relationData->relatedMuscleIndex] += gradientTemp; 
                 }
+
+                double loss = 0;
+                for (int i = 0; i < settingData->jointLength; i++)
+                {
+                    loss += jointlosses[i].positionloss / settingData->constraintLength;
+
+                    int3* jointMuscleIndex = jointMuscleIndexs + i;
+                    int constraintCount = jointConstraintRelativeCounts[i];
+                    for (int ii = 0; ii < 3; ii++)
+                    {
+                        if ((*jointMuscleIndex)[ii] != -1)
+                        {
+                            double* gradient = gradients + (*jointMuscleIndex)[ii];
+                            *gradient  /= constraintCount;
+                            *gradient *= settingData->loopConvergence;
+                        }
+                    }
+                }
 */
