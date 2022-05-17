@@ -229,7 +229,6 @@ NativeArray<float> muscleValueNativeArray,
                 gradients = (double*)gradients.GetUnsafePtr(),
                 dataStore = (double*)dataStore.GetUnsafePtr(),
                 lossesRecorder = (double*)lossRecorderNativeArray.GetUnsafePtr(),
-                muscleEpsilions=(double*)muscleEpsilionNativeArray.GetUnsafePtr(),
                 currentGroupLoss = currentGroupLoss,
                 jointlosses = (JointLoss*)jointlossNativeArray.GetUnsafePtr(),
 

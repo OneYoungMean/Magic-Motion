@@ -32,7 +32,7 @@ namespace MagicMotion.Mono
         [Range(1,16)]
         public int outsideLoopCount=1;
         [Range(1, 64)]
-        public int insideLoopCount=1;
+        public int insideLoopCount=512;
         /// <summary>
         ///  optimize kernel
         /// </summary>
@@ -63,7 +63,7 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
-            kernel = new MagicMotionKernel((SearchLevel)1);
+            kernel = new MagicMotionKernel((SearchLevel)8);
             kernel.isInMainThread = true;
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);

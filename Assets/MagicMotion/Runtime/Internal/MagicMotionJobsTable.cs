@@ -289,11 +289,7 @@ namespace MagicMotion
             /// joint loss
             /// </summary>
             public JointLoss* jointlosses;
-            [NativeDisableUnsafePtrRestriction]
-            /// <summary>
-            /// muscle Epsilions value
-            /// </summary>
-            internal double* muscleEpsilions;
+
             #endregion
 
             public void Execute(int loopIndex)
@@ -334,7 +330,7 @@ namespace MagicMotion
                                 dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
                             }
                             axisRotations[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
-                            muscleEpsilions[muscleIndex] = dofRadian;
+
                             //OYM：Build Gradient use rotation
                             muscleValue += L_BFGSStatic.EPSILION;
                             if (muscleValue < 0)
@@ -345,7 +341,7 @@ namespace MagicMotion
                             {
                                 dofRadian = math.radians(math.lerp(0, currentJoint->maxRange[i], muscleValue));
                             }
-                            muscleEpsilions[muscleIndex] = dofRadian - muscleEpsilions[muscleIndex];
+ 
                             axisRotationsEpsilion[i] = quaternion.AxisAngle(currentJoint->dof3Axis[i], dofRadian).value;
                         }
                     }
@@ -464,10 +460,7 @@ namespace MagicMotion
                     pJointTransform->rot = math.mul(*muscleGradientRotation, pJointTransform->rot);
                     #endregion
 
-                    float positionEpsilion = math.distance(pJointTransform->pos, jointTransformNatives[parallelRelationData->jointIndex].pos);
-                    double rotationEpsilion = muscleEpsilions[parallelRelationData->relatedMuscleIndex];
-
-                    if (positionEpsilion!=0&& rotationEpsilion != 0 && constraintNative->positionConstraint.isVaild)
+                    if ( constraintNative->positionConstraint.isVaild)
                     {
                         ClacPositionLoss(constraintNative, pJointTransform, &jointLoss);
                         double* gradient = gradients + parallelRelationData->relatedMuscleIndex;
