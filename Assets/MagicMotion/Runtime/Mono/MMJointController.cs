@@ -63,7 +63,7 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
-            kernel = new MagicMotionKernel((SearchLevel)1);
+            kernel = new MagicMotionKernel((SearchLevel)4);
             kernel.isInMainThread = true;
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
@@ -193,6 +193,10 @@ namespace MagicMotion.Mono
             if (motionJoints == null || motionJoints.Length == 0)
             {
                 throw new NullReferenceException("Joint List Length is zero or empty");
+            }
+            for (int i = 0; i < motionJoints.Length; i++)
+            {
+                motionJoints[i].Initialize();
             }
         }
 

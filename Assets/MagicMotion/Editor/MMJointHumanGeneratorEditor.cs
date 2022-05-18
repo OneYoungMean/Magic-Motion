@@ -19,6 +19,7 @@ namespace MagicMotion.UnityEditor
         {
             if (!controller.isInitialize)
             {
+
                 if (GUILayout.Button("Generate"))
                 {
                     controller.Generate();

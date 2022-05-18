@@ -199,9 +199,7 @@ namespace MagicMotion.Mono
                             motionJoint.jointName = jointName;
 
                         }
-                        motionJoint.muscles[dof] = motionMuscle;
                         motionMuscle.joint = motionJoint;
-
                         
                         motionMuscle.axis= axis;
                         motionMuscle.angleRange[0] = minAngle;

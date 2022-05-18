@@ -77,13 +77,18 @@ namespace MagicMotion.Mono
         /// the joint human type
         /// </summary>
         public HumanBodyBones humanBodyBone;
+
+        private bool isInitialize = false;
         #endregion
 
         #region UnityFunc
 
         public void OnValidate()
         {
+            if (!isInitialize) return;
+
             UpdateMotion();
+            transform.hasChanged = true;
         }
 
         #endregion
@@ -154,6 +159,7 @@ namespace MagicMotion.Mono
             {
                 muscles[i]=musclesTemp[i];
                 musclesTemp[i].dof = i;
+                musclesTemp[i].joint = this;
             }
             var constraintsTemp = gameObject.GetComponents<MMConstraint>();
             for (int i = 0; i < constraintsTemp.Length; i++)
@@ -187,6 +193,7 @@ namespace MagicMotion.Mono
             RegisterMuscleAndConstraint();
             ClacInitialLocalTransform();
             UpdateMuscleData();
+            isInitialize=true;  
         }
 
         public MMConstraint GetConstraint(MMConstraintType constraintType)
