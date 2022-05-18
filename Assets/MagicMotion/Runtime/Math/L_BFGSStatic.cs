@@ -26,7 +26,7 @@ namespace MagicMotion.Extern
         public const float EPSILION = STEP_MIN;
 
         private const float loss_TOLERENCE = 0f;
-        private const float xTolerance = 5e-6f; // machine precision
+        private const float xTolerance = 5e-4f; // machine precision
         private const float STEP_MIN = 5e-6f;
         private const float STEP_MAX = 2f;
         private const float RANGLE_MIN = -1f;

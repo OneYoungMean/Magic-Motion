@@ -44,6 +44,7 @@ namespace MagicMotion
                 (lookAtConstraint.isVaild ? 1 : 0) +
                 (colliderConstraint.isVaild ? 1 : 0) +
                 (positionChangeConstraint.isVaild ? 1 : 0) +
+                (directionConstraint.isVaild ? 1 : 0) +
                 (DofChangeConstraint.isVaild ? 1 : 0);
         }
     }
@@ -134,7 +135,7 @@ namespace MagicMotion
         public float weight;
         public bool isVaild
         {
-            get { return weight == 0; }
+            get { return weight != 0; }
         }
     }
 

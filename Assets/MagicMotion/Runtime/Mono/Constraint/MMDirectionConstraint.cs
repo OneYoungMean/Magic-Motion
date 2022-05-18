@@ -42,7 +42,7 @@ namespace MagicMotion.Mono
             this.fromDirection = form;
             this.toDirection = to;
             initialLocalPosition_From = form.localPosition;
-            initialLocalPosition_To = form.localPosition;
+            initialLocalPosition_To = to.localPosition;
         }
         public override void ReSet()
         {

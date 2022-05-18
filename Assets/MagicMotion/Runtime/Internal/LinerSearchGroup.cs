@@ -230,7 +230,7 @@ NativeArray<float> muscleValueNativeArray,
                 dataStore = (double*)dataStore.GetUnsafePtr(),
                 lossesRecorder = (double*)lossRecorderNativeArray.GetUnsafePtr(),
                 currentGroupLoss = currentGroupLoss,
-                jointlosses = (double*)jointlossNativeArray.GetUnsafePtr(),
+                jointLosses = (double*)jointlossNativeArray.GetUnsafePtr(),
 
             };
             #endregion
@@ -293,7 +293,13 @@ NativeArray<float> muscleValueNativeArray,
             Keyframe[] results = new Keyframe[loopSum];
             for (int i = 0; i < loopSum; i++)
             {
-                results[i] = new Keyframe(i / (float)groupSettingData->insideLoopCount * groupSettingData->outsideLoopCount, math.log((float)lossRecorderNativeArray[i]));
+                float value = math.log((float)lossRecorderNativeArray[i] + float.Epsilon);
+                if (float.IsNaN(value))
+                {
+                    throw new Exception("wtf");
+                }
+                results[i] = new Keyframe(i / (float)groupSettingData->insideLoopCount * groupSettingData->outsideLoopCount, value);
+
             }
             return results;
         }

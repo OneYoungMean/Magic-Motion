@@ -29,10 +29,10 @@ namespace MagicMotion.Mono
         public List<MMConstraint> motionConstraints;
         [Range(0, 2)]
         public float speed = 1;
-        [Range(1,16)]
+        [Range(1, 64)]
         public int outsideLoopCount=1;
         [Range(1, 64)]
-        public int insideLoopCount=512;
+        public int insideLoopCount=1;
         /// <summary>
         ///  optimize kernel
         /// </summary>
@@ -114,9 +114,9 @@ namespace MagicMotion.Mono
                 {
                     continue;
                 }
-
-                Transform jointTransform = currentJoint.transform;
-
+                currentJoint.UpdateMotion();
+            }
+/*                Transform jointTransform = currentJoint.transform;
                 //OYM：Dof to euler angle
                 float3 Dof3 = new float3(
                     currentJoint.muscles[0] == null ? 0 : currentJoint.muscles[0].value,
@@ -135,6 +135,7 @@ namespace MagicMotion.Mono
 
                 quaternion eulerAngle = quaternion.identity;
                 if (Dof3[0] != 0)
+
                 {
                     eulerAngle = math.mul(quaternion.AxisAngle(currentJoint.dof3Axis[0], Dof3toRadian[0]), eulerAngle);
                 }
@@ -159,7 +160,7 @@ namespace MagicMotion.Mono
                     jointTransform.rotation = math.mul(parentRotation, math.mul(currentJoint.initiallocalRotation, eulerAngle));
                 }
             }
-
+*/
         }
         public void Initialize()
         {
@@ -218,36 +219,23 @@ namespace MagicMotion.Mono
                 {
                     continue;
                 }
-                currentJoint.controller = this;
-                for (Transform parentTransform = currentJoint.transform.parent;
-                    parentTransform != null;
-                    parentTransform = parentTransform.parent)
-                {
-                    MMJoint parentJoint = motionJoints.FirstOrDefault(x => x.transform == parentTransform);
-                    if (parentJoint != null)
-                    {
-                        currentJoint.parent = parentJoint;
-                        break;
-                    }
-                }
+                currentJoint.Initialize();
+                //currentJoint.RegisterMuscleAndConstraint();
 
-                if (currentJoint.parent == null)
+/*
+                if (currentJoint.parent == null||!motionJoints.Contains( currentJoint.parent))
                 {
-                    currentJoint.initiallocalRotation = currentJoint.transform.localRotation;
-                    currentJoint.initiallocalPosition = currentJoint.transform.localPosition;
+
                     currentJoint.length = currentJoint.cumulativeLength = 0;
                 }
-                else
+                else 
                 {
                     currentJoint.initiallocalRotation = math.mul(math.inverse(currentJoint.parent.transform.rotation), currentJoint.transform.rotation);
                     currentJoint.initiallocalPosition = math.mul(math.inverse(currentJoint.parent.transform.rotation), (float3)(currentJoint.transform.position - currentJoint.parent.transform.position));
 
                     currentJoint.length = math.length(currentJoint.initiallocalPosition);
                     currentJoint.cumulativeLength = currentJoint.parent.cumulativeLength + currentJoint.length;
-                }
-
-
-                motionJoints[i] = currentJoint;
+                }*/
             }
             #endregion
         }

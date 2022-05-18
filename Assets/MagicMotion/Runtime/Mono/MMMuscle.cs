@@ -28,6 +28,16 @@ namespace MagicMotion.Mono
         [Range(-1,1)]
         public float value;
 
+        /// <summary>
+        /// muscle Axis
+        /// </summary>
+        public Vector3 axis;
+        /// <summary>
+        /// angle range
+        /// </summary>
+        public Vector2 angleRange;
+        
+
         internal MusclesData GetNativeData(MMJoint[] group)
         {
             return new MusclesData()

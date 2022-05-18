@@ -254,6 +254,7 @@ namespace MagicMotion
                     jointIndex = i,
                     relatedJointIndex = -1,
                     relatedMuscleIndex = -1,
+                    parentJointIndex = joints[i].parentIndex,
                 });
                 allConstraintCount += constraints[i].GetVaildCount();
             }
@@ -273,6 +274,7 @@ namespace MagicMotion
                             jointIndex = ii,
                             relatedJointIndex = jointIndex,
                             relatedMuscleIndex = i,
+                            parentJointIndex=joints[ii].parentIndex,
                         });
                         relativeCount += constraints[ii].GetVaildCount();
                     }

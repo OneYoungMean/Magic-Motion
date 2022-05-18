@@ -11,13 +11,10 @@ namespace MagicMotion.Mono
     /// <summary>
     /// the Joint form the bone
     /// </summary>
-    public class MMJoint:MonoBehaviour
+    public class MMJoint : MonoBehaviour
     {
         #region  Field&Property
-        /// <summary>
-        /// Controller
-        /// </summary>
-        public MMJointController controller;
+
         /// <summary>
         /// the joint Name
         /// </summary>
@@ -33,47 +30,48 @@ namespace MagicMotion.Mono
         /// <summary>
         ///  the joint's constraint
         /// </summary>
-        public MMConstraint[]constraints = new MMConstraint[sizeof(byte)*8];
+        public MMConstraint[] constraints = new MMConstraint[sizeof(byte) * 8];
 
         /// <summary>
         /// if is Position Joint mode ,it means move Range ,else means euler angle;
         /// </summary>
-        public float3 maxRange;
+        private float3 maxRange;
 
         /// <summary>
         /// if is Position Joint mode ,it means move Range ,else means euler angle;
         /// </summary>
-        public float3 minRange;
-
-        /// <summary>
-        /// initial localPosition from parent,used be clac currentPosition
-        /// </summary>
-        public float3 initiallocalPosition;
-
-        /// <summary>
-        /// initial localRotation from parent,used be clac currentPosition and localRotation
-        /// </summary>
-        public quaternion initiallocalRotation;
+        private float3 minRange;
 
         /// <summary>
         /// the dof3 axis
         /// </summary>
-        public float3x3 dof3Axis;
+        private float3x3 dof3Axis;
 
+        /// <summary>
+        /// initial localPosition from parent,used be clac currentPosition
+        /// </summary>
+        private float3 initiallocalPosition;
+
+        /// <summary>
+        /// initial localRotation from parent,used be clac currentPosition and localRotation
+        /// </summary>
+        private quaternion initiallocalRotation;
+
+        [HideInInspector]
         /// <summary>
         /// the joint dof3 Value;
         /// </summary>
-        public Vector3 dof3Value;
+        internal float3 dof3Value;
 
         /// <summary>
         /// initial localPosition 's Length
         /// </summary>
-        public float length;
+        private float length;
 
         /// <summary>
         /// the direction length to hips joint
         /// </summary>
-        public float cumulativeLength;
+        private float cumulativeLength;
 
         /// <summary>
         /// the joint human type
@@ -85,13 +83,112 @@ namespace MagicMotion.Mono
 
         public void OnValidate()
         {
-            if (controller != null)
-            controller.UpdateMotion();
+            UpdateMotion();
         }
 
         #endregion
 
         #region LocalFunc
+
+        public void UpdateMotion()
+        {
+            UpdateMuscleData();
+
+            float3 Dof3toRadian = math.radians(
+                    math.lerp(0, minRange, -math.clamp(dof3Value, -1, 0))
+                + math.lerp(0, maxRange, math.clamp(dof3Value, 0, 1))
+                );
+
+            quaternion eulerAngle = quaternion.identity;
+            if (dof3Value[0] != 0)
+            {
+                eulerAngle = math.mul(quaternion.AxisAngle(dof3Axis[0], Dof3toRadian[0]), eulerAngle);
+            }
+            if (dof3Value[1] != 0)
+            {
+                eulerAngle = math.mul(quaternion.AxisAngle(dof3Axis[1], Dof3toRadian[1]), eulerAngle);
+            }
+            if (dof3Value[2] != 0)
+            {
+                eulerAngle = math.mul(quaternion.AxisAngle(dof3Axis[2], Dof3toRadian[2]), eulerAngle);
+            }
+
+            if (parent == null)
+            {
+                transform.localRotation = math.mul(initiallocalRotation, eulerAngle);
+            }
+            else
+            {
+                quaternion parentRotation = parent.transform.rotation;
+                float3 parentPosition = parent.transform.position;
+                transform.position = parentPosition + math.mul(parentRotation, initiallocalPosition);
+                transform.rotation = math.mul(parentRotation, math.mul(initiallocalRotation, eulerAngle));
+            }
+        }
+
+        private void UpdateMuscleData()
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                if (muscles[i] == null)
+                {
+                    dof3Value[i] = 0;
+                    minRange[i] = 0;
+                    maxRange[i] = 0;
+                    dof3Axis[i] = 0;
+                }
+                else
+                {
+                    dof3Value[i] = muscles[i].value;
+                    minRange[i] = muscles[i].angleRange[0];
+                    maxRange[i] = muscles[i].angleRange[1];
+                    dof3Axis[i] = muscles[i].axis;
+                }
+            }
+        }
+
+        public void RegisterMuscleAndConstraint()
+        {
+           var musclesTemp = gameObject.GetComponents<MMMuscle>();
+            for (int i = 0; i < musclesTemp.Length; i++)
+            {
+                muscles[i]=musclesTemp[i];
+                musclesTemp[i].dof = i;
+            }
+            var constraintsTemp = gameObject.GetComponents<MMConstraint>();
+            for (int i = 0; i < constraintsTemp.Length; i++)
+            {
+                int index = (int)constraintsTemp[i].ConstraintType;
+                constraints[index]=constraintsTemp[i];
+            }
+        }
+
+        public void ClacInitialLocalTransform()
+        {
+            if (parent == null)
+            {
+                initiallocalRotation = transform.localRotation;
+                initiallocalPosition = transform.localPosition;
+                length = cumulativeLength = 0;
+            }
+            else
+            {
+                initiallocalRotation = math.mul(math.inverse(parent.transform.rotation), transform.rotation);
+                initiallocalPosition = math.mul(math.inverse(parent.transform.rotation), (float3)(transform.position - parent.transform.position));
+
+                length = math.length(initiallocalPosition);
+                cumulativeLength = parent.cumulativeLength + length;
+            }
+
+        }
+
+        public void Initialize()
+        {
+            RegisterMuscleAndConstraint();
+            ClacInitialLocalTransform();
+            UpdateMuscleData();
+        }
+
         public MMConstraint GetConstraint(MMConstraintType constraintType)
         {
             return constraints[(int)constraintType];

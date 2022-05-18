@@ -202,17 +202,10 @@ namespace MagicMotion.Mono
                         motionJoint.muscles[dof] = motionMuscle;
                         motionMuscle.joint = motionJoint;
 
-                        float3x3 dof3Axis = motionJoint.dof3Axis;
-                        dof3Axis[dof] = axis;
-                        motionJoint.dof3Axis = dof3Axis;
-
-                        float3 minRange = motionJoint.minRange;
-                        minRange[dof] = minAngle;
-                        motionJoint.minRange = minRange;
-
-                        float3 maxRange = motionJoint.maxRange;
-                        maxRange[dof] = maxAngle;
-                        motionJoint.maxRange = maxRange;
+                        
+                        motionMuscle.axis= axis;
+                        motionMuscle.angleRange[0] = minAngle;
+                        motionMuscle.angleRange[1] = maxAngle;
 
                         motionJoints[jointIndex] = motionJoint;
                         motionMuscles.Add(motionMuscle);
@@ -223,12 +216,12 @@ namespace MagicMotion.Mono
             var rootMotionJoint = animator.GetBoneTransform(HumanBodyBones.Hips).gameObject.AddComponent<MMJoint>();
             rootMotionJoint.humanBodyBone = HumanBodyBones.Hips;
             rootMotionJoint.jointName = HumanTrait.BoneName[0];
-            rootMotionJoint.maxRange = new float3(20, 20, 20);
-            rootMotionJoint.minRange = new float3(-20, -20, -20);
-            rootMotionJoint.dof3Axis = float3x3.identity;
             for (int i = 0; i < 2; i++)
             {
                 var rootMuscle = rootMotionJoint.gameObject.AddComponent<MMMuscle>();
+                rootMuscle.angleRange = new Vector2(-20, 20);
+                rootMuscle.axis = Vector3.zero;
+                rootMuscle.axis[i] = 1;
                 rootMuscle.dof = i;
                 rootMuscle.muscleName = "rootMuscle " + i;
                 rootMuscle.joint = rootMotionJoint;
@@ -407,7 +400,7 @@ namespace MagicMotion.Mono
             }
             else
             {
-                minAngle = -math.lerp(initMaxAngle, 0, -defaultValue);
+                minAngle = -math.lerp(initMinAngle, 0, -defaultValue);
                 maxAngle = initMinAngle + initMaxAngle + minAngle;
             }
             axis = axis1;
