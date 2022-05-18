@@ -543,12 +543,16 @@ namespace MagicMotion
                 double3 targetDirection = jointPosition - parentPosition;
                 if (math.any(targetDirection != 0))
                 {
-                    double cosA = math.dot(direction, targetDirection) / (math.length(targetDirection));
+                    targetDirection=math.normalize(targetDirection);
+                    double cosA = math.dot(direction, targetDirection);
                     cosA = math.clamp(cosA, -1, 1);
 
                     double loss = math.acos(cosA);
                     loss = math.max(0, math.abs(loss) - tolerance * math.PI);
-                    *jointLoss += loss * loss * weight;
+                    loss = loss * loss * weight;
+                    loss /= constraintData->lengthSum;
+
+                    * jointLoss += loss * loss * weight;
                 }
    
             }
@@ -565,7 +569,7 @@ namespace MagicMotion
                 if (math.any(direction != 0))
                 {
                     double lossCos = math.csum(direction * direction * weight3);
-                    lossCos *= (lengthSum * lengthSum);
+                    lossCos /= (lengthSum * lengthSum);
                     lossCos *= math.PI* math.PI;
                     *jointloss+= lossCos;
                 }

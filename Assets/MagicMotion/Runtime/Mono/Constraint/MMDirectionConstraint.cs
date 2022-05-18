@@ -69,8 +69,12 @@ namespace MagicMotion.Mono
 
         private void OnDrawGizmos()
         {
+            if (TargetTransform==null)
+            {
+                return;
+            }
             Gizmos.color = Color.green;
-            Gizmos.DrawSphere(TargetTransform.position, 0.01f);
+            Gizmos.DrawSphere(TargetTransform.position, 0.1f);
         }
         #endregion
 

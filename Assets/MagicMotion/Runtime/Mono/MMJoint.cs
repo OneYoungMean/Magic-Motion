@@ -152,8 +152,13 @@ namespace MagicMotion.Mono
             }
         }
 
-        public void RegisterMuscleAndConstraint()
+        public void RegisterData()
         {
+            if (parent==null)
+            {
+                parent = transform.parent?.GetComponentInParent<MMJoint>();
+            }
+
            var musclesTemp = gameObject.GetComponents<MMMuscle>();
             for (int i = 0; i < musclesTemp.Length; i++)
             {
@@ -190,7 +195,7 @@ namespace MagicMotion.Mono
 
         public void Initialize()
         {
-            RegisterMuscleAndConstraint();
+            RegisterData();
             ClacInitialLocalTransform();
             UpdateMuscleData();
             isInitialize=true;  

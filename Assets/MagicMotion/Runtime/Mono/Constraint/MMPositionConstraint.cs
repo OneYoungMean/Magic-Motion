@@ -72,6 +72,10 @@ namespace MagicMotion.Mono
 
         public void OnDrawGizmos()
         {
+            if (targetTransform==null)
+            {
+                return;
+            }
             Gizmos.color = Color.red;
             Gizmos.DrawSphere(targetTransform.position,0.01f);
         }
