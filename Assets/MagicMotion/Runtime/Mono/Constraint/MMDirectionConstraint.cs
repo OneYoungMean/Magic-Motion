@@ -74,7 +74,7 @@ namespace MagicMotion.Mono
                 return;
             }
             Gizmos.color = Color.green;
-            Gizmos.DrawSphere(TargetTransform.position, 0.1f);
+            Gizmos.DrawSphere(TargetTransform.position, 0.01f);
         }
         #endregion
 

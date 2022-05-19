@@ -33,6 +33,8 @@ namespace MagicMotion.Mono
         public int outsideLoopCount=1;
         [Range(1, 64)]
         public int insideLoopCount=1;
+        [Range(1, 32)]
+        public int searchLevel=2;
         /// <summary>
         ///  optimize kernel
         /// </summary>
@@ -47,6 +49,7 @@ namespace MagicMotion.Mono
         private int editorIndex = 0;*/
         [SerializeField]
         private AnimationCurve lossCurve = new AnimationCurve();
+        
 /*        [SerializeField]*/
 /*        private AnimationCurve muscleCurve = new AnimationCurve();*/
 /*        [SerializeField]*/
@@ -63,7 +66,7 @@ namespace MagicMotion.Mono
         public void Start()
         {
             Initialize();
-            kernel = new MagicMotionKernel((SearchLevel)4);
+            kernel = new MagicMotionKernel();
             kernel.isInMainThread = true;
             //kernel = new MagicMotionKernel((SearchLevel)4,21,3,4);
             //kernel = new MagicMotionKernel((SearchLevel)1, 1, 1);
@@ -78,7 +81,7 @@ namespace MagicMotion.Mono
             }
             UpdateData();
 
-            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation, speed, insideLoopCount, outsideLoopCount);
+            kernel.Optimize(Time.deltaTime, worldPosition, worldRotation, speed, insideLoopCount, outsideLoopCount,searchLevel);
             //Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点
