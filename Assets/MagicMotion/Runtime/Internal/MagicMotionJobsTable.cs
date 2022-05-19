@@ -475,7 +475,10 @@ namespace MagicMotion
                     if (constraintData->directionConstraint.isVaild)
                     {
                         RigidTransform parentTransform = parallelRelationData->parentJointIndex == -1 ? RigidTransform.identity : jointTransformNatives[parallelRelationData->parentJointIndex];
-                        RebuildTransform(relatedTransform, &parentTransform, muscleGradientRotation);
+                        if (parallelRelationData->parentJointIndex >= parallelRelationData->relatedJointIndex)
+                        {
+                            RebuildTransform(relatedTransform, &parentTransform, muscleGradientRotation);
+                        }
 
                         ClacDirectionLoss(constraintData, &jointTransform, &parentTransform, jointLoss);
                     }
@@ -500,7 +503,7 @@ namespace MagicMotion
                     loss += jointLosses[i] / settingData->constraintLength;
 
                     int3* jointMuscleIndex = jointMuscleIndexs + i;
-                    int constraintCount = jointConstraintRelativeCounts[i];
+/*                    int constraintCount = jointConstraintRelativeCounts[i];
                     for (int ii = 0; ii < 3; ii++)
                     {
                         if ((*jointMuscleIndex)[ii] != -1)
@@ -508,7 +511,7 @@ namespace MagicMotion
                             double* gradient = gradients + (*jointMuscleIndex)[ii];
                             *gradient  /= constraintCount;
                         }
-                    }
+                    }*/
                 }
 
                 #endregion
@@ -547,10 +550,10 @@ namespace MagicMotion
                     double cosA = math.dot(direction, targetDirection);
                     cosA = math.clamp(cosA, -1, 1);
 
-                    double loss = math.acos(cosA);
-                    loss = math.max(0, math.abs(loss) - tolerance * math.PI);
+                    double loss = 2 * (1 - cosA);
+                    //loss = math.max(0, math.abs(loss) - tolerance * math.PI);
                     loss = loss * loss * weight;
-                    loss /= constraintData->lengthSum;
+                   // loss /=math.pow( constraintData->lengthSum ,2);
 
                     * jointLoss += loss * loss * weight;
                 }

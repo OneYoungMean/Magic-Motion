@@ -694,15 +694,15 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 606021804}
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0.5, y: 0, z: 0}
+  m_LocalRotation: {x: -0.014177076, y: 0.019666333, z: -0.0055514774, w: 0.99969065}
+  m_LocalPosition: {x: 0.541, y: -0.006, z: -0.192}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 241540434}
   m_Father: {fileID: 0}
   m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: -1.612, y: 2.263, z: -0.668}
 --- !u!1 &778666458
 GameObject:
   m_ObjectHideFlags: 0
@@ -715,8 +715,6 @@ GameObject:
   - component: {fileID: 778666464}
   - component: {fileID: 778666463}
   - component: {fileID: 778666462}
-  - component: {fileID: 778666461}
-  - component: {fileID: 778666460}
   m_Layer: 0
   m_Name: Sphere
   m_TagString: Untagged
@@ -739,50 +737,6 @@ Transform:
   m_Father: {fileID: 1373137479}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &778666460
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 778666458}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2440488d7a6637049af54504c88a1027, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  relationJoint: {fileID: 778666461}
-  weight3: {x: 1, y: 1, z: 1}
-  tolerance3: {x: 0, y: 0, z: 0}
-  targetTransform: {fileID: 606021805}
---- !u!114 &778666461
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 778666458}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9e07ee8d648fdee44b0198f3e56a64d9, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  jointName: 
-  parent: {fileID: 0}
-  muscles:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  constraints:
-  - {fileID: 778666460}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  humanBodyBone: 0
 --- !u!135 &778666462
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -984,7 +938,7 @@ MonoBehaviour:
   - {fileID: 130591744}
   motionMuscles: []
   motionConstraints: []
-  speed: 0.655
+  speed: 1
   outsideLoopCount: 1
   insideLoopCount: 1
   lossCurve:

@@ -269,8 +269,8 @@ namespace MagicMotion.Mono
                         ConstraintAimRoot.transform.parent = transform;
                         ConstraintAimRoot.transform.localPosition = Vector3.zero;
                         ConstraintAimRoot.transform.localRotation = Quaternion.identity;*/
-            //AddDirectionConstraint();
-            AddPositionConstraint();
+            AddDirectionConstraint();
+            //AddPositionConstraint();
             //AddConstraint(MMConstraintType.DofChange);
         }
         /// <summary>
