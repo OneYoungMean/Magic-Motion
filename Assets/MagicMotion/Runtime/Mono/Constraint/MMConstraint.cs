@@ -7,6 +7,7 @@ namespace MagicMotion.Mono
     public abstract class MMConstraint : MonoBehaviour
     {
         public MMJoint relationJoint;
+        public bool isEnable;
         public abstract void ReSet();
         public abstract MMConstraintType ConstraintType { get; }
         internal abstract ConstriantContainer GetConstriantContainer();

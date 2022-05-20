@@ -108,7 +108,7 @@ namespace MagicMotion
         }
         public void Optimize(float deltatime, float3 worldPosition, quaternion worldRotation,float convergence=1, int innerLoopCount=64,int outsideLoopCount =1,int linerSearchGroupCount=4)
         {
-            if (!isInitialize)
+            if (!isInitialize&& SettingData.constraintLength==0)
             {
                 return;
             }
@@ -338,15 +338,12 @@ namespace MagicMotion
         private void BuildJobDataInternal()
         {
             //OYM：啊怎么才能把这个干掉
-            unsafe
+            copyConstraintDataJob = new CopyConstraintDataJob()
             {
-                copyConstraintDataJob = new CopyConstraintDataJob()
-                {
-                    parallelRelationDatas =(ParallelRelationData*) parallelRelationDataNativeArray.GetUnsafeReadOnlyPtr(),
-                    constraintDatas =(ConstraintData*) constraintDataNativeArray.GetUnsafePtr(),
-                    jointLength = jointCount,
-                };
-            }
+                parallelRelationDatas =parallelRelationDataNativeArray,
+                constraintDatas = constraintDataNativeArray,
+                jointLength = jointCount,
+            };
         }
 
         private void ReBuildGroupData()

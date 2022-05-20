@@ -135,6 +135,7 @@ namespace MagicMotion.Internal
         /// <summary>
         /// clac Dof3 rotaton
         /// </summary>
+        private LinerSearchJobUnsafe linerSearchJobUnsafe;
         private LinerSearchJob linerSearchJob;
         private NativeArray<double> muscleEpsilionNativeArray;
 
@@ -209,7 +210,7 @@ NativeArray<float> muscleValueNativeArray,
 
             #region CreateJob
 
-            linerSearchJob = new LinerSearchJob
+            linerSearchJobUnsafe = new LinerSearchJobUnsafe
             {
                 constraintDatas = (ConstraintData*)constraintNativeArray.GetUnsafeReadOnlyPtr(),
                 jointMuscleIndexs = (int3*)jointMusclesIndexNativeArray.GetUnsafeReadOnlyPtr(),
@@ -233,6 +234,31 @@ NativeArray<float> muscleValueNativeArray,
                 jointLosses = (double*)jointlossNativeArray.GetUnsafePtr(),
 
             };
+
+            linerSearchJob = new LinerSearchJob()
+            {
+                constraintDatas = constraintNativeArray,
+                jointMuscleIndexs = jointMusclesIndexNativeArray,
+                jointDatas = jointDataNativeArray,
+                parallelRelationDatas = parallelRelationDataNativeArray,
+                jointConstraintRelativeCounts = jointConstraintRelativeCountNativeArray,
+
+                muscleValues = muscleValueNativeArray,
+                Dof3s = Dof3NativeArray,
+                //muscleCurrentRotation =Dof3QuaternionNativeArray,
+                muscleGradientRotations = muscleGradientRotationArray,
+                jointTransformNatives = jointTransformNativeArray,
+
+                LBFGSSolver = LBFGSNative,
+                settingData = groupSettingData,
+                currentGroupLoss = currentGroupLoss,
+
+                gradients = gradients,
+                dataStore = dataStore,
+                lossesRecorder = lossRecorderNativeArray,
+
+                jointLosses = jointlossNativeArray,
+            };
             #endregion
 
             #region PostInitialize
@@ -253,7 +279,15 @@ NativeArray<float> muscleValueNativeArray,
             Reset();
             try
             {
-                linerSearchJob.Run(groupSettingData->insideLoopCount);
+                if (true)
+                {
+                    linerSearchJob.Run(groupSettingData->insideLoopCount);
+                }
+                else
+                {
+                    linerSearchJobUnsafe.Run(groupSettingData->insideLoopCount);
+                }
+
             }
             catch (Exception e)
             {

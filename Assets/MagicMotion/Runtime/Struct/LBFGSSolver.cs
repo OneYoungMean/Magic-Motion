@@ -227,7 +227,7 @@ namespace MagicMotion
         /// <param name="dataStore"></param>
         /// <param name="currentSolution"></param>
         /// <param name="gradient"></param>
-        public void Optimize( int leastLoopCount,ref double loss,double* dataStore, float* currentSolution, double* gradient)
+        public void OptimizeUnsafe( int leastLoopCount,ref double loss,double* dataStore, float* currentSolution, double* gradient)
         {
             UnpackData(dataStore,numberOfVariables, out double* diagonal, out double* gradientStore, out double* rho, out double* alpha, out double* steps, out double* delta);
             while (true)
@@ -321,6 +321,11 @@ namespace MagicMotion
             }
             //OYM£ºInitializeLoop
 
+        }
+
+        internal void Optimize(int leastLoopCount, ref double loss, NativeArray<double> dataStore, NativeArray<float> muscleValues, NativeArray<double> gradients)
+        {
+            OptimizeUnsafe(leastLoopCount, ref loss, (double*)dataStore.GetUnsafePtr(), (float*)muscleValues.GetUnsafePtr(), (double*)gradients.GetUnsafePtr());
         }
     }
 }

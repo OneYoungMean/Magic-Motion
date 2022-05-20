@@ -5,9 +5,7 @@
         "GUID:d8b63aba1907145bea998dd612889d6b",
         "GUID:8a2eafa29b15f444eb6d74f94a930e1d",
         "GUID:2665a8d13d1b3f18800f46e256720795",
-        "GUID:e0cd26848372d4e5c891c569017e11f1",
-        "GUID:f8a696560d180fb42a0165ace37ef877",
-        "GUID:14ac06a42ef4d5d4f95b83fb61791d55"
+        "GUID:e0cd26848372d4e5c891c569017e11f1"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],
@@ -16,6 +14,12 @@
     "precompiledReferences": [],
     "autoReferenced": true,
     "defineConstraints": [],
-    "versionDefines": [],
+    "versionDefines": [
+        {
+            "name": "Unity",
+            "expression": "",
+            "define": "Enable_MM_Debug"
+        }
+    ],
     "noEngineReferences": false
 }

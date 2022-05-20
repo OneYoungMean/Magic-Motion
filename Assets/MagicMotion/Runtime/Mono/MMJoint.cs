@@ -170,6 +170,7 @@ namespace MagicMotion.Mono
             for (int i = 0; i < constraintsTemp.Length; i++)
             {
                 int index = (int)constraintsTemp[i].ConstraintType;
+                constraintsTemp[i].relationJoint = this;
                 constraints[index]=constraintsTemp[i];
             }
         }

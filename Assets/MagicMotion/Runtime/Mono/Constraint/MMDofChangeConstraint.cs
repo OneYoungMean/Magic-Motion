@@ -11,17 +11,15 @@ namespace MagicMotion.Mono
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
-        [Range(0, 1)]
-        public Vector3 weight3;
+        public Vector3 weight3=Vector3.one;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>
-        [Range(0, 1f)]
         public Vector3 tolerance3;
         /// <summary>
         /// constraint Type
         /// </summary>
-        public override MMConstraintType ConstraintType => MMConstraintType.PositionChange;
+        public override MMConstraintType ConstraintType => MMConstraintType.DofChange;
         /// <summary>
         /// old Dof3 value
         /// </summary>
@@ -42,7 +40,6 @@ namespace MagicMotion.Mono
             yield break;
         }
 
-
         public override void ReSet()
         {
             StartCoroutine(BeginReset());
@@ -61,7 +58,7 @@ namespace MagicMotion.Mono
             return new DofChangeConstraint()
             {
                 tolerance3 = tolerance3,
-                weight3 = weight3,
+                weight3 = isEnable?weight3:0,
                 oldDof3 = oldDof3
             };
         }
