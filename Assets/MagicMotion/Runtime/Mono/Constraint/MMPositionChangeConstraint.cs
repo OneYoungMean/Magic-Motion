@@ -10,7 +10,7 @@ namespace MagicMotion.Mono
         /// <summary>
         /// the constraint error's weight;
         /// </summary>
-        public Vector3 weight3;
+        public Vector3 weight3=Vector3.one;
         /// <summary>
         /// the constraint error's tolerance;
         /// </summary>

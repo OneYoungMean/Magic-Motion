@@ -128,7 +128,7 @@ namespace MagicMotion
             settingData.insideLoopCount= innerLoopCount+1;
             settingData.outsideLoopCount= outsideLoopCount;
             settingData.outsideLoopIndex = 0; 
-            settingData.loopConvergence = math.pow(10, convergence*5 / (settingData.insideLoopCount-1));
+            settingData.loopConvergence = math.pow(10, convergence*5 / (settingData.insideLoopCount-1))-1;
             settingData.linerSearchGroupCount = linerSearchGroupCount;
             SettingData = settingData;
 
@@ -331,6 +331,7 @@ namespace MagicMotion
                 data[muscle.dof] = i;
                 jointMusclesIndexNativeArray[muscle.jointIndex] = data;
             }
+
         }
         /// <summary>
         /// Build all job data 
@@ -348,6 +349,8 @@ namespace MagicMotion
 
         private void ReBuildGroupData()
         {
+            float[] muscleValue = muscleValueNativeArray.IsCreated? muscleValueNativeArray.ToArray():new float[0];
+
             NativeArray<T> CreateNativeData<T>(int length) where T:struct
                 {
                     var nativeArr = new NativeArray<T>(length, Allocator.Persistent);
@@ -355,7 +358,7 @@ namespace MagicMotion
                     return nativeArr;
                 }
             DisposeGroupData();
-
+         
             groupLossNativeArray = CreateNativeData<GroupLossData>(SettingData.linerSearchGroupCount);
 
             for (int i = 0; i < SettingData.linerSearchGroupCount; i++)
@@ -368,6 +371,7 @@ namespace MagicMotion
             }
 
             muscleValueNativeArray = CreateNativeData<float>(SettingData.muscleLength * SettingData.linerSearchGroupCount);
+            NativeArray<float>.Copy(muscleValue, muscleValueNativeArray,math.min(muscleValueNativeArray.Length, muscleValue.Length));
 
             muscleValueSubNativeArrays = new NativeArray<float>[SettingData.linerSearchGroupCount];
 

@@ -544,11 +544,11 @@ namespace MagicMotion
 
             private void ClacPositionChangeLoss(ConstraintData constraintData, RigidTransform jointTransform,ref double jointLoss)
             {
-                return;
                 //OYM：还没有思考出震颤的问题怎么解决
                 float3 jointPosition = jointTransform.pos;
                 float lengthSum = constraintData.lengthSum;
 
+                float3 tolerance = constraintData.positionChangeConstraint.tolerance3;
                 float3 weight3 = constraintData.positionChangeConstraint.weight3;
                 float3 constraintPosition = constraintData.positionChangeConstraint.oldPosition;
                 float3 direction = (constraintPosition - jointPosition);
@@ -622,7 +622,7 @@ namespace MagicMotion
                 if (math.any(direction != 0))
                 {
                     double lossCos = math.csum(direction * direction * weight3);
-                    lossCos /= (lengthSum * lengthSum);
+                    //lossCos /= (lengthSum * lengthSum);
                     //lossCos *= math.PI* math.PI;
                     jointLoss += lossCos;
                 }
