@@ -54,82 +54,110 @@ namespace MagicMotion
             /// <summary>
             /// all group's loss
             /// </summary>
-            public NativeArray<GroupLossData> groupLoss;
+            public NativeArray<GroupLossData> groupLosses;
             /// <summary>
             /// all group's muscle value
             /// </summary>
-            public NativeArray<float> musclesValue;
+            public NativeArray<float> musclesValues;
             /// <summary>
-            /// muscle count
+            /// last iterationMuscleValue;
             /// </summary>
-            public int muscleLength;
-            /// <summary>
-            /// groupCount
-            /// </summary>
-            public int groupLength;
+            internal NativeArray<float> oldMuslceValues;
+
             public void Execute()
             {
                 var setting = settingData[0];
-                setting.outsideLoopIndex++;
-                settingData[0] = setting;
 
                 //OYM：后面会想办法接入遗传算法或者粒子群算法什么的吧(大概)
                 //OYM：可以利用梯度获取比较优的梯度值,可以依据loss进行杂交,可以依梯度正交矩阵计算正交线上的值
                 //OYM：有很多很棒的想法,不过先一笔带过,先拿最稳定的结果来计算
-                for (int i = 0; i < groupLength; i++)
+
+
+
+                for (int i = 0; i < settingData[0].groupLength; i++)
                 {
-                    var loss = groupLoss[i];
+                    var loss = groupLosses[i];
                     loss.index = i;
-                    groupLoss[i] = loss;
+                    groupLosses[i] = loss;
                 }
-                groupLoss.Sort();
+                groupLosses.Sort();
+                int bestStartPoint = groupLosses[0].index;
+                NativeArray<float>.Copy(musclesValues, bestStartPoint * setting.muscleLength, musclesValues, 0, setting.muscleLength);
 
-                int offset = groupLoss[0].index * muscleLength;
-                float bestLoss = (float)groupLoss[0].loss;
-
-                for (int groupIndex = 0; groupIndex < groupLength; groupIndex++)
+                if (setting.outsideLoopIndex == setting.outsideLoopCount - 1)
                 {
-                    for (int ii = 0; ii < muscleLength; ii++)
-                    {
-                        float bestMusles = musclesValue[ii + offset];
-                        int muscleIndex = ii + groupIndex * muscleLength;
-                        float result = GetValueByGroup(groupIndex, bestMusles, 0);
-                        musclesValue[muscleIndex] = result;
-                    }
+                    return;
                 }
 
+                //OYM：查重
+                float originDimLength = 0;
+                for (int i = 0; i < setting.muscleLength; i++)
+                {
+                    originDimLength += musclesValues[i] * musclesValues[i];
+                }
+                originDimLength = math.sqrt(originDimLength);
+                for (int groupIndex = 1; groupIndex < setting.groupLength; groupIndex++)
+                {
+                    float targetDimLength = 0;
+                    float dot = 0;
+                    for (int ii = 0; ii < setting.muscleLength; ii++)
+                    {
+                        int muscleIndex = ii + groupIndex * setting.muscleLength;
+                        targetDimLength += musclesValues[muscleIndex] * musclesValues[muscleIndex];
+                        dot += musclesValues[muscleIndex] * musclesValues[ii];
+                    }
+                    targetDimLength=math.sqrt(targetDimLength);
+
+                    float cos = dot  / (targetDimLength * originDimLength);
+                    if (cos < 0.99f&& targetDimLength!=0&& originDimLength!=0)//OYM：查重合格
+                    {
+                        continue;
+                    }
+                    for (int ii = 0; ii < setting.muscleLength; ii++)
+                    {
+                        int muscleIndex = ii + groupIndex * setting.muscleLength;
+                        float bestMusles = musclesValues[ii];
+                        float result = GetValueByGroup(groupIndex, bestMusles, ii);
+                        musclesValues[muscleIndex] = result;
+                    }
+                    
+                }
+
+                oldMuslceValues.CopyFrom(musclesValues);//OYM：虽然不知道有什么用,但是总感觉会用上
+
+                setting.outsideLoopIndex++;
+                settingData[0] = setting;
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            public static float GetValueByGroup(int groupIndex, float refValue, float lastLoss)
+            public static float GetValueByGroup(int groupIndex, float refValue, int index)
             {
-                lastLoss = math.clamp(lastLoss, 0.1f, 10f);
                 switch (groupIndex)
                 {
                     case 0:
                         break;
                     case 1:
-                        refValue = refValue * lastLoss / 10;
+                        refValue = 0;
                         break;
                     case 2:
-                        refValue = math.lerp(refValue, -1, 1e-4f * lastLoss);
-
+                        //refValue = math.lerp(refValue, -1, 1e-4f * lastLoss);
+                        refValue = 1;
                         break;
                     case 3:
-                        refValue = math.lerp(refValue, 1, 1e-4f * lastLoss);
-
+                        //refValue = math.lerp(refValue, 1, 1e-4f * lastLoss);
+                        refValue = -1;
                         break;
                     case 4:
-                        refValue = math.lerp(refValue, -1, 1e-3f * lastLoss);
+                        refValue = math.lerp(refValue, -1, 1e-3f );
                         break;
                     case 5:
-                        refValue = math.lerp(refValue, 1, 1e-3f * lastLoss);
+                        refValue = math.lerp(refValue, 1, 1e-3f );
                         break;
                     case 6:
-                        refValue = math.lerp(refValue, -1, 1e-2f * lastLoss);
+                        refValue = math.lerp(refValue, -1, 1e-2f );
                         break;
                     case 7:
-                        refValue = math.lerp(refValue, 1, 1e-2f * lastLoss);
+                        refValue = math.lerp(refValue, 1, 1e-2f );
                         break;
                     case >= 8 and < 16:
                         refValue = math.clamp(refValue * groupIndex / 16f, -1, 1);
@@ -1828,6 +1856,7 @@ public struct MainControllerJob : IJob
 }
 */
 #endregion
+#region note2
 /*                for (int i = settingData->jointLength; i < settingData->parallelLength; i++)
                 {
                     ParallelRelationData* relationData = parallelRelationDatas + i;
@@ -1878,3 +1907,20 @@ public struct MainControllerJob : IJob
 
                     * jointLoss += loss * loss * weight;
                 }*/
+/*                    for (int i = 0; i < setting.muscleLength; i++)
+                    {
+                        float currentPoint = oldMuslceValues[i];
+                        for (int iii = 1; iii < setting.groupLength; iii++)
+                        {
+                            int offset = iii * setting.muscleLength;
+                            currentPoint += musclesValues[i + offset];
+                        }
+                        currentPoint /= setting.groupLength;
+                        for (int ii = 0; ii < setting.groupLength; ii++)
+                        {
+                            int offset = ii * setting.muscleLength;
+                            float lastMuscle = oldMuslceValues[i + offset];
+                            musclesValues[i+ offset] = math.lerp(currentPoint, lastMuscle, 0.9f);
+                        }
+                    }*/
+#endregion

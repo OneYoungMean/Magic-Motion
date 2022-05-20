@@ -82,7 +82,7 @@ namespace MagicMotion.Mono
             UpdateData();
 
             kernel.Optimize(Time.deltaTime, worldPosition, worldRotation, speed, insideLoopCount, outsideLoopCount,searchLevel);
-            //Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
+            Debug.Log(kernel.BestOptimizerIndex + " - " + kernel.Loss);
 
             //OYM：这部分我一直没想好怎么写会好一点
             //OYM：异步赋值再访问感觉怪怪的.

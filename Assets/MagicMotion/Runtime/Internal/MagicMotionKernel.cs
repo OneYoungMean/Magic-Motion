@@ -37,10 +37,13 @@ namespace MagicMotion
         private NativeArray<ParallelRelationData> parallelRelationDataNativeArray;
         private NativeArray<int3> jointMusclesIndexNativeArray;
         private NativeArray<GroupSettingData> groupSettingDataNativeArray;
-        private NativeArray<int> JointConstraintRelativeCountNativeArray;
+        private NativeArray<int> jointConstraintRelativeCountNativeArray;
+
+        private NativeArray<float> oldMuscleValueNativeArray;
         //OYM£º share data (read write)
         private NativeArray<GroupLossData> groupLossNativeArray;
         private NativeArray<float> muscleValueNativeArray;
+
         private NativeArray<float>[] muscleValueSubNativeArrays;
 
         #endregion
@@ -121,15 +124,15 @@ namespace MagicMotion
 
             #region Build Question
             GroupSettingData settingData = SettingData;
-            bool isRebuildGroup = (settingData.insideLoopCount != innerLoopCount + 1 || settingData.outsideLoopCount != outsideLoopCount|| settingData.linerSearchGroupCount != linerSearchGroupCount);
+            bool isRebuildGroup = (settingData.insideLoopCount != innerLoopCount + 1 || settingData.outsideLoopCount != outsideLoopCount+1|| settingData.groupLength != linerSearchGroupCount);
 
             var rootTransform = new RigidTransform(worldRotation, worldPosition);
             settingData.rootTransform = rootTransform;
             settingData.insideLoopCount= innerLoopCount+1;
-            settingData.outsideLoopCount= outsideLoopCount;
+            settingData.outsideLoopCount= outsideLoopCount+1;
             settingData.outsideLoopIndex = 0; 
             settingData.loopConvergence = math.pow(10, convergence*5 / (settingData.insideLoopCount-1))-1;
-            settingData.linerSearchGroupCount = linerSearchGroupCount;
+            settingData.groupLength = linerSearchGroupCount;
             SettingData = settingData;
 
             if (isRebuildGroup)
@@ -150,23 +153,25 @@ namespace MagicMotion
             if (isInMainThread)
             {
                 copyConstraintDataJob.Schedule(parallelDataCount, mainHandle).Complete();
+                sortingFactoryJob.Schedule(mainHandle).Complete();
                 for (int i = 0; i < outsideLoopCount; i++)
                 {
-                    for (int ii = 0; ii < settingData.linerSearchGroupCount; ii++)
+                    for (int ii = 0; ii < settingData.groupLength; ii++)
                     {
                         optimizes[ii].Run();
+                        
                     }
-                   sortingFactoryJob.Schedule(mainHandle).Complete();
+                    sortingFactoryJob.Schedule(mainHandle).Complete();
                 }
             }
             else
             {
-                mainHandle = copyConstraintDataJob.Schedule(parallelDataCount, mainHandle);
-
-                NativeArray<JobHandle> tempHandles = new NativeArray<JobHandle>(settingData.linerSearchGroupCount, Allocator.Temp);
+                mainHandle =JobHandle.CombineDependencies(copyConstraintDataJob.Schedule(parallelDataCount, mainHandle), sortingFactoryJob.Schedule(mainHandle));
+               
+                NativeArray<JobHandle> tempHandles = new NativeArray<JobHandle>(settingData.groupLength, Allocator.Temp);
                 for (int i = 0; i < outsideLoopCount; i++)
                 {
-                    for (int ii = 0; ii < settingData.linerSearchGroupCount; ii++)
+                    for (int ii = 0; ii < settingData.groupLength; ii++)
                     {
                         tempHandles[ii] = optimizes[ii].GetHandle(mainHandle);
                     }
@@ -312,7 +317,9 @@ namespace MagicMotion
 
             jointDataNativeArray = CreateNativeData<JointData>(joints, Allocator.Persistent);
 
-            JointConstraintRelativeCountNativeArray = CreateNativeData(jointRelativedCounts, Allocator.Persistent);
+            jointConstraintRelativeCountNativeArray = CreateNativeData(jointRelativedCounts, Allocator.Persistent);
+
+
 
             groupSettingDataNativeArray = CreateNativeData<GroupSettingData>(1, Allocator.Persistent);
             {
@@ -359,9 +366,9 @@ namespace MagicMotion
                 }
             DisposeGroupData();
          
-            groupLossNativeArray = CreateNativeData<GroupLossData>(SettingData.linerSearchGroupCount);
+            groupLossNativeArray = CreateNativeData<GroupLossData>(SettingData.groupLength);
 
-            for (int i = 0; i < SettingData.linerSearchGroupCount; i++)
+            for (int i = 0; i < SettingData.groupLength; i++)
             {
                 groupLossNativeArray[i] = new GroupLossData()
                 {
@@ -370,17 +377,19 @@ namespace MagicMotion
                 };
             }
 
-            muscleValueNativeArray = CreateNativeData<float>(SettingData.muscleLength * SettingData.linerSearchGroupCount);
+            muscleValueNativeArray = CreateNativeData<float>(SettingData.muscleLength * SettingData.groupLength);
             NativeArray<float>.Copy(muscleValue, muscleValueNativeArray,math.min(muscleValueNativeArray.Length, muscleValue.Length));
 
-            muscleValueSubNativeArrays = new NativeArray<float>[SettingData.linerSearchGroupCount];
+            oldMuscleValueNativeArray = CreateNativeData<float>(SettingData.muscleLength * SettingData.groupLength);
 
-            for (int i = 0; i < SettingData. linerSearchGroupCount; i++)
+            muscleValueSubNativeArrays = new NativeArray<float>[SettingData.groupLength];
+
+            for (int i = 0; i < SettingData. groupLength; i++)
             {
                 muscleValueSubNativeArrays[i] = muscleValueNativeArray.GetSubArray(i * muscleCount, muscleCount);
             }
-            optimizes = new LinerSearchGroup[SettingData.linerSearchGroupCount];
-            for (int i = 0; i < SettingData.linerSearchGroupCount; i++)
+            optimizes = new LinerSearchGroup[SettingData.groupLength];
+            for (int i = 0; i < SettingData.groupLength; i++)
             {
                 optimizes[i] = new LinerSearchGroup
                 (
@@ -389,7 +398,7 @@ namespace MagicMotion
                 groupLossNativeArray.GetSubArray(i, 1),
                 constraintDataNativeArray,
                 parallelRelationDataNativeArray,
-                JointConstraintRelativeCountNativeArray,
+                jointConstraintRelativeCountNativeArray,
                 jointMusclesIndexNativeArray,
                 muscleValueSubNativeArrays[i],
                 groupDataDisposeList
@@ -398,10 +407,9 @@ namespace MagicMotion
             }
             sortingFactoryJob = new SortingFactoryJob()
             {
-                musclesValue = muscleValueNativeArray,
-                groupLoss = groupLossNativeArray,
-                muscleLength = muscleCount,
-                groupLength = SettingData.linerSearchGroupCount,
+                oldMuslceValues=oldMuscleValueNativeArray,
+                musclesValues = muscleValueNativeArray,
+                groupLosses = groupLossNativeArray,
                 settingData = groupSettingDataNativeArray
             };
         }
@@ -448,7 +456,7 @@ namespace MagicMotion
         public Keyframe[] GetLossKey()
         {
             var result= optimizes[BestOptimizerIndex].GetLossKey();
-            Debug.Log(result[0].value-result[result.Length-1].value);
+            //Debug.Log(result[0].value-result[result.Length-1].value);
             return result;
         }
     }

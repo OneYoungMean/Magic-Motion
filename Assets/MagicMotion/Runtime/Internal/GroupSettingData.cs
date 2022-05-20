@@ -33,14 +33,22 @@ namespace MagicMotion
         /// </summary>
         public int outsideLoopCount;
         /// <summary>
+        /// the group count;
+        /// </summary>
+        public int groupLength;
+        /// <summary>
         /// rootTransform
         /// </summary>
         public RigidTransform rootTransform;
+        /// <summary>
+        /// magic number.
+        /// </summary>
+        public double loopConvergence;
 
         public int LoopSum => insideLoopCount * outsideLoopCount;
 
-        public double loopConvergence;
-        internal int linerSearchGroupCount;
+
+
 
         public GroupSettingData(int constraintLength, int parallelLength, int muscleLength, int jointLength)
         {
@@ -54,7 +62,8 @@ namespace MagicMotion
             outsideLoopCount= 0;
             rootTransform = RigidTransform.identity;
             loopConvergence = 1;
-            linerSearchGroupCount = 1;
+            groupLength = 1;
+
         }
 
     }
