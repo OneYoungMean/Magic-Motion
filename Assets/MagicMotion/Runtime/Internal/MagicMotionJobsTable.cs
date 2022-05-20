@@ -534,47 +534,48 @@ namespace MagicMotion
 
             private static void ClacDirectionLoss(ConstraintData* constraintData, RigidTransform* jointTransform, RigidTransform* parentTransform, double* jointLoss)
             {
-                double3 direction = constraintData->directionConstraint.direction;
+                float3 targetDirection = constraintData->directionConstraint.direction;
                 float weight = constraintData->directionConstraint.weight;
                 float tolerance = constraintData->directionConstraint.tolerance;
+                float lengthSum = constraintData->lengthSum;
 
                 float3 jointPosition = jointTransform->pos;
                 quaternion jointRotation = jointTransform->rot;
                 float3 parentPosition = parentTransform->pos;
 
 
-                double3 targetDirection = jointPosition - parentPosition;
-                if (math.any(targetDirection != 0))
+                float3 originDirection = jointPosition - parentPosition;
+
+                float length =math.length(originDirection);
+                float3 targetPosition = targetDirection * length+ parentPosition;
+
+                float3 direction = (targetPosition - jointPosition);
+
+                if (math.any(direction != 0))
                 {
-                    targetDirection=math.normalize(targetDirection);
-                    double cosA = math.dot(direction, targetDirection);
-                    cosA = math.clamp(cosA, -1, 1);
-
-                    double loss = 2 * (1 - cosA);
-                    //loss = math.max(0, math.abs(loss) - tolerance * math.PI);
-                    loss = loss * loss * weight;
-                   // loss /=math.pow( constraintData->lengthSum ,2);
-
-                    * jointLoss += loss * loss * weight;
+                    double lossCos = math.csum(direction * direction * weight);
+                    lossCos /= (lengthSum * lengthSum);
+                    //lossCos *= math.PI * math.PI;
+                    *jointLoss += lossCos;
                 }
-   
+
             }
 
-            private static void ClacPositionLoss(ConstraintData* constraintNative, RigidTransform* pJointTransform, double* jointloss)
+            private static void ClacPositionLoss(ConstraintData* constraintData, RigidTransform* pJointTransform, double* jointLoss)
             {
                 float3 jointPosition = pJointTransform->pos;
-                float lengthSum = constraintNative->lengthSum;
+                float lengthSum = constraintData->lengthSum;
 
-                float3 weight3 = constraintNative->positionConstraint.weight3;
-                float3 constraintPosition = constraintNative->positionConstraint.position;
+                float3 weight3 = constraintData->positionConstraint.weight3;
+                float3 constraintPosition = constraintData->positionConstraint.position;
                 float3 direction = (constraintPosition - jointPosition);
 
                 if (math.any(direction != 0))
                 {
                     double lossCos = math.csum(direction * direction * weight3);
                     lossCos /= (lengthSum * lengthSum);
-                    lossCos *= math.PI* math.PI;
-                    *jointloss+= lossCos;
+                    //lossCos *= math.PI* math.PI;
+                    *jointLoss+= lossCos;
                 }
             }
         }
@@ -1348,3 +1349,26 @@ public struct MainControllerJob : IJob
                     }
                 }
 */
+/*                double3 direction = constraintData->directionConstraint.direction;
+                float weight = constraintData->directionConstraint.weight;
+                float tolerance = constraintData->directionConstraint.tolerance;
+
+                float3 jointPosition = jointTransform->pos;
+                quaternion jointRotation = jointTransform->rot;
+                float3 parentPosition = parentTransform->pos;
+
+
+                double3 targetDirection = jointPosition - parentPosition;
+                if (math.any(targetDirection != 0))
+                {
+                    targetDirection=math.normalize(targetDirection);
+                    double cosA = math.dot(direction, targetDirection);
+                    cosA = math.clamp(cosA, -1, 1);
+
+                    double loss = 2 * (1 - cosA);
+                    //loss = math.max(0, math.abs(loss) - tolerance * math.PI);
+                    loss = loss * loss * weight;
+                   // loss /=math.pow( constraintData->lengthSum ,2);
+
+                    * jointLoss += loss * loss * weight;
+                }*/

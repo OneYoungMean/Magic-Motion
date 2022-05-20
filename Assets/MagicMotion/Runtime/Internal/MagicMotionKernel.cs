@@ -128,7 +128,7 @@ namespace MagicMotion
             settingData.insideLoopCount= innerLoopCount+1;
             settingData.outsideLoopCount= outsideLoopCount;
             settingData.outsideLoopIndex = 0; 
-            settingData.loopConvergence = math.pow(10, convergence*8 / settingData.insideLoopCount);
+            settingData.loopConvergence = math.pow(10, convergence*5 / (settingData.insideLoopCount-1));
             settingData.linerSearchGroupCount = linerSearchGroupCount;
             SettingData = settingData;
 
