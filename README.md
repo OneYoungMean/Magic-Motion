@@ -11,7 +11,7 @@
 ***
 
 # 参考
-https://assetstore.unity.com/packages/tools/animation/bio-animation-147937#description
+https://assetstore.unity.com/packages/tools/animation/bio-animation-147937#description  
 https://github.com/sebastianstarke/BioIK  
 https://github.com/TAMS-Group/bio_ik  
   
